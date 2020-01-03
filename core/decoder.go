@@ -91,44 +91,45 @@ func (decoder *Decoder) ReadAttribute(reader io.Reader, explicitVR bool, byteOrd
 }
 
 // Read reads bytes into a buffer
-func (decoder *Decoder) Read(reader io.Reader, len int) (int, []byte, error) {
-	buf := make([]byte, len)
-	num, err := io.ReadFull(reader, buf)
-	decoder.bytesRead += uint32(num)
+func (decoder *Decoder) Read(reader io.Reader, buf []byte) error {
+	_, err := io.ReadFull(reader, buf)
 	if err != nil {
-		return num, buf, err
+		return err
 	}
-	return num, buf, nil
+	return nil
 }
 
 // reads an unsigned short
 func (decoder *Decoder) readShort(reader io.Reader, byteOrder binary.ByteOrder) (uint16, error) {
-	_, buf, err := decoder.Read(reader, 2)
+	var buf [2]byte
+	err := decoder.Read(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	value := byteOrder.Uint16(buf)
+	value := byteOrder.Uint16(buf[:])
 	return value, nil
 }
 
 // reads an unsigned long
 func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
-	_, buf, err := decoder.Read(reader, 4)
+	var buf [4]byte
+	err := decoder.Read(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	value := byteOrder.Uint32(buf)
+	value := byteOrder.Uint32(buf[:])
 	return value, nil
 }
 
 // reads the vr of an attribute
 func (decoder *Decoder) readVR(reader io.Reader, group uint16, element uint16, explicitVR bool) (string, error) {
 	if explicitVR {
-		_, buf, err := decoder.Read(reader, 2)
+		var buf [2]byte
+		err := decoder.Read(reader, buf[:])
 		if err != nil {
 			return "", err
 		}
-		return string(buf), nil
+		return string(buf[:]), nil
 	}
 	vr, err := findVR(group, element)
 	if err != nil {
@@ -161,7 +162,8 @@ func (decoder *Decoder) readLength(reader io.Reader, explicitVR bool, byteOrder 
 		}
 
 		// if explicit vr but not short length, need to skip 2 bytes before reading length as a long
-		_, _, err := decoder.Read(reader, 2)
+		var buf [2]byte
+		err := decoder.Read(reader, buf[:])
 		if err != nil {
 			return 0, err
 		}
@@ -254,11 +256,12 @@ func (decoder *Decoder) readLongs(reader io.Reader, length uint32, byteOrder bin
 
 // reads an unsigned very long
 func (decoder *Decoder) readVeryLong(reader io.Reader, byteOrder binary.ByteOrder) (uint64, error) {
-	_, buf, err := decoder.Read(reader, 8)
+	var buf [8]byte
+	err := decoder.Read(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	value := byteOrder.Uint64(buf)
+	value := byteOrder.Uint64(buf[:])
 	return value, nil
 }
 
@@ -277,11 +280,12 @@ func (decoder *Decoder) readVeryLongs(reader io.Reader, length uint32, byteOrder
 
 // reads a float
 func (decoder *Decoder) readFloat(reader io.Reader, byteOrder binary.ByteOrder) (float32, error) {
-	_, buf, err := decoder.Read(reader, 4)
+	var buf [4]byte
+	err := decoder.Read(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	value := math.Float32frombits(byteOrder.Uint32(buf))
+	value := math.Float32frombits(byteOrder.Uint32(buf[:]))
 	return value, nil
 }
 
@@ -300,11 +304,12 @@ func (decoder *Decoder) readFloats(reader io.Reader, length uint32, byteOrder bi
 
 // reads a double
 func (decoder *Decoder) readDouble(reader io.Reader, byteOrder binary.ByteOrder) (float64, error) {
-	_, buf, err := decoder.Read(reader, 8)
+	var buf [8]byte
+	err := decoder.Read(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	value := math.Float64frombits(byteOrder.Uint64(buf))
+	value := math.Float64frombits(byteOrder.Uint64(buf[:]))
 	return value, nil
 }
 
@@ -331,7 +336,8 @@ func parseUID(value []byte) string {
 
 // readUIDs reads UIDs from a reader
 func (decoder *Decoder) readUIDs(reader io.Reader, length uint32) ([]string, error) {
-	_, buf, err := decoder.Read(reader, int(length))
+	buf := make([]byte, int(length))
+	err := decoder.Read(reader, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +354,8 @@ func parseText(value []byte) string {
 
 // readTexts read texts from a reader
 func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, error) {
-	_, buf, err := decoder.Read(reader, int(length))
+	buf := make([]byte, int(length))
+	err := decoder.Read(reader, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +364,8 @@ func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, er
 
 // readText read text from a reader
 func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error) {
-	_, buf, err := decoder.Read(reader, int(length))
+	buf := make([]byte, int(length))
+	err := decoder.Read(reader, buf)
 	if err != nil {
 		return "", err
 	}
@@ -366,7 +374,8 @@ func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error
 
 // reads bytes
 func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, error) {
-	_, buf, err := decoder.Read(reader, int(length))
+	buf := make([]byte, int(length))
+	err := decoder.Read(reader, buf)
 	if err != nil {
 		return nil, err
 	}

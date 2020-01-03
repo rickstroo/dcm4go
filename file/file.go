@@ -25,19 +25,21 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	decoder := core.NewDecoder()
 
 	// read the preamble
-	_, _, err = decoder.Read(file, 128)
+	var preamble [128]byte
+	err = decoder.Read(file, preamble[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
-	_, prefix, err := decoder.Read(file, 4)
+	var prefix [4]byte
+	err = decoder.Read(file, prefix[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// check the prefix
-	if string(prefix) != "DICM" {
+	if string(prefix[:]) != "DICM" {
 		return nil, nil, fmt.Errorf("unrecognized prefix, '%s'", prefix)
 	}
 
@@ -69,13 +71,13 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	}
 
 	// figure out the vr and endian of the remainder of the object
-	transferSyntax, err := findTransferSyntax(transferSyntaxUID)
+	transferSyntax, err := core.FindTransferSyntax(transferSyntaxUID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// read the remainder of the attributes from the file
-	otherGroups, err := decoder.ReadObject(file, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	otherGroups, err := decoder.ReadObject(file, transferSyntax.ExplicitVR(), transferSyntax.ByteOrder())
 	if err != nil {
 		return nil, nil, err
 	}
