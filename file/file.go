@@ -9,30 +9,6 @@ import (
 	"github.com/rickstroo/dcm4go/core"
 )
 
-// TransferSyntax describes the how an object is encoded
-type TransferSyntax struct {
-	explicitVR bool
-	byteOrder  binary.ByteOrder
-	name       string
-}
-
-// findTransferSyntax figures out the explicit vr and byte ByteOrder
-func findTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
-	switch transferSyntaxUID {
-	case "1.2.840.10008.1.2":
-		return &TransferSyntax{false, binary.LittleEndian, "Implicit VR Little Endian"}, nil
-	case "1.2.840.10008.1.2.1":
-		return &TransferSyntax{true, binary.LittleEndian, "Explicit VR Little Endian"}, nil
-	case "1.2.840.10008.1.2.1.99":
-		return &TransferSyntax{true, binary.LittleEndian, "Deflated Explicit VR Little Endian"}, nil
-	case "1.2.840.10008.1.2.2":
-		return &TransferSyntax{true, binary.BigEndian, "Explicit VR Big Endian"}, nil
-	case "1.2.840.10008.1.2.4.91":
-		return &TransferSyntax{true, binary.LittleEndian, "JPEG 2000 Image Compression"}, nil
-	}
-	return nil, fmt.Errorf("unrecognized transfer syntax uid, '%s'", transferSyntaxUID)
-}
-
 // ReadFile reads a DICOM object from a file
 func ReadFile(path string) (*core.Object, *core.Object, error) {
 
