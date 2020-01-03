@@ -24,9 +24,12 @@ func main() {
 	flag.Parse()
 
 	// read the file
-	object, err := file.ReadFile(*path)
+	groupTwo, object, err := file.ReadFile(*path)
 	check(err)
 
+	// print the group two object
+	fmt.Printf("%s", groupTwo.String())
+
 	// print the object
-	fmt.Printf("%v\n", object)
+	fmt.Printf("%s", object.String())
 }
