@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/rickstroo/dcm4go/dcm4go"
 )
 
 // ReadFile reads a DICOM object from a file
-func ReadFile(path string) (*core.Object, *core.Object, error) {
+func ReadFile(path string) (*Object, *Object, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
@@ -22,18 +20,18 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	defer file.Close()
 
 	// create a decoder, it counts bytes
-	decoder := dcm4go.NewDecoder()
+	decoder := newDecoder()
 
 	// read the preamble
 	var preamble [128]byte
-	err = decoder.Read(file, preamble[:])
+	err = decoder.readFully(file, preamble[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
 	var prefix [4]byte
-	err = decoder.Read(file, prefix[:])
+	err = decoder.readFully(file, prefix[:])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -44,13 +42,13 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	}
 
 	// read the group 2 length attribute
-	groupTwoLength, err := decoder.ReadAttribute(file, true, binary.LittleEndian)
+	groupTwoLength, err := decoder.readAttribute(file, true, binary.LittleEndian)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// calculate the length of group two
-	groupTwoLengthValue, err := groupTwoLength.AsLong(0)
+	groupTwoLengthValue, err := groupTwoLength.asLong(0)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,25 +57,25 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	limitReader := io.LimitReader(file, int64(groupTwoLengthValue))
 
 	// read the remainder of the group two attribute
-	groupTwo, err := decoder.ReadObject(limitReader, true, binary.LittleEndian)
+	groupTwo, err := decoder.readObject(limitReader, true, binary.LittleEndian)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// need to find the transfer syntax uid
-	transferSyntaxUID, err := groupTwo.AsString(0x0002, 0x0010, 0)
+	transferSyntaxUID, err := groupTwo.asString(0x0002, 0x0010, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// figure out the vr and endian of the remainder of the object
-	transferSyntax, err := core.FindTransferSyntax(transferSyntaxUID)
+	transferSyntax, err := findTransferSyntax(transferSyntaxUID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// read the remainder of the attributes from the file
-	otherGroups, err := decoder.ReadObject(file, transferSyntax.ExplicitVR(), transferSyntax.ByteOrder())
+	otherGroups, err := decoder.readObject(file, transferSyntax.explicitVR, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, nil, err
 	}

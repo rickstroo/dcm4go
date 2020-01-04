@@ -11,26 +11,22 @@ type Object struct {
 }
 
 // NewObject creates and initializes a new object
-func NewObject() *Object {
+func newObject() *Object {
 	return &Object{list.New()}
 }
 
 // Add adds an attribute to an object
-func (object *Object) Add(attribute *Attribute) {
+func (object *Object) add(attribute *Attribute) {
 	object.attributes.PushBack(attribute)
 }
 
 // String returns a string representation of an object
 func (object *Object) String() string {
-	s := ""
-	for item := object.attributes.Front(); item != nil; item = item.Next() {
-		s += item.Value.(*Attribute).String()
-	}
-	return s
+	return objectToString(object, "")
 }
 
 // Find looks for an attribute in an object
-func (object *Object) Find(group uint16, element uint16) (*Attribute, error) {
+func (object *Object) find(group uint16, element uint16) (*Attribute, error) {
 	for item := object.attributes.Front(); item != nil; item = item.Next() {
 		attribute := item.Value.(*Attribute)
 		if attribute.group == group && attribute.element == element {
@@ -41,19 +37,19 @@ func (object *Object) Find(group uint16, element uint16) (*Attribute, error) {
 }
 
 // AsLong returns attribute value as a long
-func (object *Object) AsLong(group uint16, element uint16, index int) (uint32, error) {
-	attribute, err := object.Find(group, element)
+func (object *Object) asLong(group uint16, element uint16, index int) (uint32, error) {
+	attribute, err := object.find(group, element)
 	if err != nil {
 		return 0, err
 	}
-	return attribute.AsLong(index)
+	return attribute.asLong(index)
 }
 
 // AsString returns attribute value as a string
-func (object *Object) AsString(group uint16, element uint16, index int) (string, error) {
-	attribute, err := object.Find(group, element)
+func (object *Object) asString(group uint16, element uint16, index int) (string, error) {
+	attribute, err := object.find(group, element)
 	if err != nil {
 		return "", err
 	}
-	return attribute.AsString(index)
+	return attribute.asString(index)
 }

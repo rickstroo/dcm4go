@@ -12,23 +12,8 @@ type TransferSyntax struct {
 	name       string
 }
 
-// ExplicitVR returns a boolean indicating whether or not this transfer syntax use an explicit VR
-func (transferSyntax *TransferSyntax) ExplicitVR() bool {
-	return transferSyntax.explicitVR
-}
-
-// ByteOrder returns the byte order for this transfer syntax
-func (transferSyntax *TransferSyntax) ByteOrder() binary.ByteOrder {
-	return transferSyntax.byteOrder
-}
-
-// Name returns the name of this transfer syntax
-func (transferSyntax *TransferSyntax) Name() string {
-	return transferSyntax.name
-}
-
 // FindTransferSyntax figures out the explicit vr and byte ByteOrder
-func FindTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
+func findTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
 	switch transferSyntaxUID {
 	case "1.2.840.10008.1.2":
 		return &TransferSyntax{false, binary.LittleEndian, "Implicit VR Little Endian"}, nil

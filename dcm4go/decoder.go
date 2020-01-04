@@ -19,17 +19,17 @@ type Decoder struct {
 }
 
 // NewDecoder creates a new Decoder
-func NewDecoder() *Decoder {
+func newDecoder() *Decoder {
 	return &Decoder{0}
 }
 
 // ReadObject reads a DICOM object from a reader
-func (decoder *Decoder) ReadObject(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
+func (decoder *Decoder) readObject(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
-	object := NewObject()
+	object := newObject()
 
 	for {
-		attribute, err := decoder.ReadAttribute(reader, explicitVR, byteOrder)
+		attribute, err := decoder.readAttribute(reader, explicitVR, byteOrder)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -37,14 +37,14 @@ func (decoder *Decoder) ReadObject(reader io.Reader, explicitVR bool, byteOrder 
 			return nil, err
 		}
 
-		object.Add(attribute)
+		object.add(attribute)
 	}
 
 	return object, nil
 }
 
 // ReadAttribute reads a DICOM attribute from a reader
-func (decoder *Decoder) ReadAttribute(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
+func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
 
 	group, err := decoder.readShort(reader, byteOrder)
 	if err != nil {
@@ -91,7 +91,7 @@ func (decoder *Decoder) ReadAttribute(reader io.Reader, explicitVR bool, byteOrd
 }
 
 // Read reads bytes into a buffer
-func (decoder *Decoder) Read(reader io.Reader, buf []byte) error {
+func (decoder *Decoder) readFully(reader io.Reader, buf []byte) error {
 	num, err := io.ReadFull(reader, buf)
 	decoder.bytesRead += uint32(num)
 	if err != nil {
@@ -103,7 +103,7 @@ func (decoder *Decoder) Read(reader io.Reader, buf []byte) error {
 // reads an unsigned short
 func (decoder *Decoder) readShort(reader io.Reader, byteOrder binary.ByteOrder) (uint16, error) {
 	var buf [2]byte
-	err := decoder.Read(reader, buf[:])
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -114,7 +114,7 @@ func (decoder *Decoder) readShort(reader io.Reader, byteOrder binary.ByteOrder) 
 // reads an unsigned long
 func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
 	var buf [4]byte
-	err := decoder.Read(reader, buf[:])
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -126,7 +126,7 @@ func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (
 func (decoder *Decoder) readVR(reader io.Reader, group uint16, element uint16, explicitVR bool) (string, error) {
 	if explicitVR {
 		var buf [2]byte
-		err := decoder.Read(reader, buf[:])
+		err := decoder.readFully(reader, buf[:])
 		if err != nil {
 			return "", err
 		}
@@ -164,7 +164,7 @@ func (decoder *Decoder) readLength(reader io.Reader, explicitVR bool, byteOrder 
 
 		// if explicit vr but not short length, need to skip 2 bytes before reading length as a long
 		var buf [2]byte
-		err := decoder.Read(reader, buf[:])
+		err := decoder.readFully(reader, buf[:])
 		if err != nil {
 			return 0, err
 		}
@@ -258,7 +258,7 @@ func (decoder *Decoder) readLongs(reader io.Reader, length uint32, byteOrder bin
 // reads an unsigned very long
 func (decoder *Decoder) readVeryLong(reader io.Reader, byteOrder binary.ByteOrder) (uint64, error) {
 	var buf [8]byte
-	err := decoder.Read(reader, buf[:])
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -282,7 +282,7 @@ func (decoder *Decoder) readVeryLongs(reader io.Reader, length uint32, byteOrder
 // reads a float
 func (decoder *Decoder) readFloat(reader io.Reader, byteOrder binary.ByteOrder) (float32, error) {
 	var buf [4]byte
-	err := decoder.Read(reader, buf[:])
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -306,7 +306,7 @@ func (decoder *Decoder) readFloats(reader io.Reader, length uint32, byteOrder bi
 // reads a double
 func (decoder *Decoder) readDouble(reader io.Reader, byteOrder binary.ByteOrder) (float64, error) {
 	var buf [8]byte
-	err := decoder.Read(reader, buf[:])
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -338,7 +338,7 @@ func parseUID(value []byte) string {
 // readUIDs reads UIDs from a reader
 func (decoder *Decoder) readUIDs(reader io.Reader, length uint32) ([]string, error) {
 	buf := make([]byte, int(length))
-	err := decoder.Read(reader, buf)
+	err := decoder.readFully(reader, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func parseText(value []byte) string {
 // readTexts read texts from a reader
 func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, error) {
 	buf := make([]byte, int(length))
-	err := decoder.Read(reader, buf)
+	err := decoder.readFully(reader, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, er
 // readText read text from a reader
 func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error) {
 	buf := make([]byte, int(length))
-	err := decoder.Read(reader, buf)
+	err := decoder.readFully(reader, buf)
 	if err != nil {
 		return "", err
 	}
@@ -376,7 +376,7 @@ func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error
 // reads bytes
 func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, error) {
 	buf := make([]byte, int(length))
-	err := decoder.Read(reader, buf)
+	err := decoder.readFully(reader, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -443,14 +443,14 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 	}
 
 	if length == 0xFFFFFFFF {
-		object, err := decoder.ReadObject(reader, explicitVR, byteOrder)
+		object, err := decoder.readObject(reader, explicitVR, byteOrder)
 		if err != nil {
 			return nil, err
 		}
 		return object, nil
 	}
 
-	object, err := decoder.ReadObject(io.LimitReader(reader, int64(length)), explicitVR, byteOrder)
+	object, err := decoder.readObject(io.LimitReader(reader, int64(length)), explicitVR, byteOrder)
 	if err != nil {
 		return nil, err
 	}

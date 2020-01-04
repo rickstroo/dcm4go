@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/rickstroo/dcm4go/file"
+	"github.com/rickstroo/dcm4go/dcm4go"
 )
 
 // simple error management
@@ -24,12 +24,12 @@ func main() {
 	flag.Parse()
 
 	// read the file
-	groupTwo, object, err := file.ReadFile(*path)
+	groupTwo, otherGroups, err := dcm4go.ReadFile(*path)
 	check(err)
 
 	// print the group two object
 	fmt.Printf("%s", groupTwo.String())
 
-	// print the object
-	fmt.Printf("%s", object.String())
+	// print the other groups
+	fmt.Printf("%s", otherGroups.String())
 }
