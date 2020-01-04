@@ -1,4 +1,4 @@
-package core
+package dcm4go
 
 import "fmt"
 

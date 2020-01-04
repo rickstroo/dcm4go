@@ -1,4 +1,4 @@
-package core
+package dcm4go
 
 // Tag uniquely identifies a DICOM attribute
 type Tag struct {

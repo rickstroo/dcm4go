@@ -1,4 +1,4 @@
-package file
+package dcm4go
 
 import (
 	"encoding/binary"
@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/rickstroo/dcm4go/core"
+	"github.com/rickstroo/dcm4go/dcm4go"
 )
 
 // ReadFile reads a DICOM object from a file
@@ -22,7 +22,7 @@ func ReadFile(path string) (*core.Object, *core.Object, error) {
 	defer file.Close()
 
 	// create a decoder, it counts bytes
-	decoder := core.NewDecoder()
+	decoder := dcm4go.NewDecoder()
 
 	// read the preamble
 	var preamble [128]byte
