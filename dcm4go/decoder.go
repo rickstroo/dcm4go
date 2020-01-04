@@ -191,8 +191,8 @@ func isShortLength(vr string) bool {
 // readValue reads the value of an attribute
 func (decoder *Decoder) readValue(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder, vr string, length uint32) (interface{}, error) {
 	switch vr {
-	// not all of these VRs interpret the backslash as a separator
-	case "AE", "AS", "CS", "DA", "DS", "DT", "LO", "SH", "TM", "UC", "UR":
+	// these VRs support multiple text values
+	case "AE", "AS", "CS", "DA", "DS", "DT", "IS", "LO", "PN", "SH", "TM", "UC":
 		return decoder.readTexts(reader, length)
 	case "AT":
 		return decoder.readTags(reader, length, byteOrder)
@@ -200,18 +200,12 @@ func (decoder *Decoder) readValue(reader io.Reader, explicitVR bool, byteOrder b
 		return decoder.readDoubles(reader, length, byteOrder)
 	case "FL", "OF":
 		return decoder.readFloats(reader, length, byteOrder)
-	case "IS":
-		return decoder.readTexts(reader, length)
-	case "LT", "ST", "UT":
+		// these VRs support single text values
+	case "LT", "ST", "UT", "UR":
 		return decoder.readText(reader, length)
-	case "PN":
-		return decoder.readTexts(reader, length)
 	case "OB":
-		if length == 0xFFFFFFFF {
-			return decoder.readFragments(reader, byteOrder)
-		}
-		return decoder.readBytes(reader, length)
-	case "OL", "OV", "OW":
+		return decoder.readPixelData(reader, length, byteOrder)
+	case "OL", "OV", "OW", "UN":
 		return decoder.readBytes(reader, length)
 	case "SL", "UL":
 		return decoder.readLongs(reader, length, byteOrder)
@@ -223,8 +217,6 @@ func (decoder *Decoder) readValue(reader io.Reader, explicitVR bool, byteOrder b
 		return decoder.readVeryLongs(reader, length, byteOrder)
 	case "UI":
 		return decoder.readUIDs(reader, length)
-	case "UN":
-		return decoder.readBytes(reader, length)
 	}
 	return nil, fmt.Errorf("unrecognized vr, '%s'", vr)
 }
@@ -385,10 +377,12 @@ func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, erro
 
 func (decoder *Decoder) readSequence(reader io.Reader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
+	// if undefined length, read the sequence  using the provided reader knowing that there will be a delimiter item
 	if length == 0xFFFFFFFF {
 		return decoder.readSequenceItems(reader, explicitVR, byteOrder)
 	}
 
+	// otherwise, read the sequence using a limited reader for the length of sequence
 	return decoder.readSequenceItems(io.LimitReader(reader, int64(length)), explicitVR, byteOrder)
 }
 
@@ -456,6 +450,17 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 	}
 	return object, nil
 
+}
+
+func (decoder *Decoder) readPixelData(reader io.Reader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
+
+	// if undefined length, read the pixel data  using the provided reader knowing that there will be a delimiter item
+	if length == 0xFFFFFFFF {
+		return decoder.readFragments(reader, byteOrder)
+	}
+
+	// otherwise, just read the bytes
+	return decoder.readBytes(reader, length)
 }
 
 func (decoder *Decoder) readFragments(reader io.Reader, byteOrder binary.ByteOrder) ([][]byte, error) {
