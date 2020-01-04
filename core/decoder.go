@@ -92,7 +92,8 @@ func (decoder *Decoder) ReadAttribute(reader io.Reader, explicitVR bool, byteOrd
 
 // Read reads bytes into a buffer
 func (decoder *Decoder) Read(reader io.Reader, buf []byte) error {
-	_, err := io.ReadFull(reader, buf)
+	num, err := io.ReadFull(reader, buf)
+	decoder.bytesRead += uint32(num)
 	if err != nil {
 		return err
 	}
