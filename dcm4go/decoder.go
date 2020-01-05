@@ -46,18 +46,13 @@ func (decoder *Decoder) readObject(reader io.Reader, explicitVR bool, byteOrder 
 // ReadAttribute reads a DICOM attribute from a reader
 func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
 
-	group, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return nil, err
-	}
-
-	element, err := decoder.readShort(reader, byteOrder)
+	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
 		return nil, err
 	}
 
 	// item delimiter tag
-	if group == 0xFFFE && element == 0xE00D {
+	if tag == ItemDelimitationItemTag {
 
 		// need to consume the length
 		_, err := decoder.readLong(reader, byteOrder)
@@ -69,7 +64,7 @@ func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrd
 		return nil, io.EOF
 	}
 
-	vr, err := decoder.readVR(reader, group, element, explicitVR)
+	vr, err := decoder.readVR(reader, tag, explicitVR)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +82,7 @@ func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrd
 		return nil, err
 	}
 
-	return &Attribute{group, element, vr, length, offset, value}, nil
+	return &Attribute{tag, vr, length, offset, value}, nil
 }
 
 // Read reads bytes into a buffer
@@ -123,7 +118,7 @@ func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (
 }
 
 // reads the vr of an attribute
-func (decoder *Decoder) readVR(reader io.Reader, group uint16, element uint16, explicitVR bool) (string, error) {
+func (decoder *Decoder) readVR(reader io.Reader, tag uint32, explicitVR bool) (string, error) {
 	if explicitVR {
 		var buf [2]byte
 		err := decoder.readFully(reader, buf[:])
@@ -132,7 +127,7 @@ func (decoder *Decoder) readVR(reader io.Reader, group uint16, element uint16, e
 		}
 		return string(buf[:]), nil
 	}
-	vr, err := findVR(group, element)
+	vr, err := findVR(tag)
 	if err != nil {
 		return "", err
 	}
@@ -140,10 +135,10 @@ func (decoder *Decoder) readVR(reader io.Reader, group uint16, element uint16, e
 }
 
 // finds a vr in a dictionary
-func findVR(group uint16, element uint16) (string, error) {
-	vr, ok := vrs[uint32(group<<8)|uint32(element)]
+func findVR(tag uint32) (string, error) {
+	vr, ok := vrs[tag]
 	if !ok {
-		return "", fmt.Errorf("unable to find vr for tag %04x%04x", group, element)
+		return "", fmt.Errorf("unable to find vr for tag %04x%04x", toGroup(tag), toElement(tag))
 	}
 	return vr, nil
 }
@@ -232,6 +227,30 @@ func (decoder *Decoder) readShorts(reader io.Reader, length uint32, byteOrder bi
 		shorts[i] = short
 	}
 	return shorts, nil
+}
+
+func (decoder *Decoder) readTag(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
+	group, err := decoder.readShort(reader, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	element, err := decoder.readShort(reader, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	return toTag(group, element), nil
+}
+
+func (decoder *Decoder) readTags(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
+	tags := make([]uint32, length/4)
+	for i := 0; i < len(tags); i++ {
+		tag, err := decoder.readTag(reader, byteOrder)
+		if err != nil {
+			return nil, err
+		}
+		tags[i] = tag
+	}
+	return tags, nil
 }
 
 // reads unsigned longs
@@ -375,10 +394,13 @@ func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, erro
 	return buf, nil
 }
 
+// UndefinedLength represents the value for undefined length
+const UndefinedLength = 0xFFFFFFFF
+
 func (decoder *Decoder) readSequence(reader io.Reader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
 	// if undefined length, read the sequence  using the provided reader knowing that there will be a delimiter item
-	if length == 0xFFFFFFFF {
+	if length == UndefinedLength {
 		return decoder.readSequenceItems(reader, explicitVR, byteOrder)
 	}
 
@@ -411,12 +433,7 @@ func (decoder *Decoder) readSequenceItems(reader io.Reader, explicitVR bool, byt
 
 func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
-	group, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return nil, err
-	}
-
-	element, err := decoder.readShort(reader, byteOrder)
+	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -427,16 +444,16 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 	}
 
 	// sequence delimitation item
-	if group == 0xFFFE && element == 0xE0DD {
+	if tag == SequenceDelimitationItemTag {
 		return nil, io.EOF
 	}
 
 	// item tag
-	if group != 0xFFFE || element != 0xE000 {
-		return nil, fmt.Errorf("expecting item tag at beginning of sequence item, found (0x%04x,0x%04x) instead", group, element)
+	if tag != ItemTag {
+		return nil, fmt.Errorf("expecting item tag at beginning of sequence item, found %s instead", toString(tag))
 	}
 
-	if length == 0xFFFFFFFF {
+	if length == UndefinedLength {
 		object, err := decoder.readObject(reader, explicitVR, byteOrder)
 		if err != nil {
 			return nil, err
@@ -455,7 +472,7 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 func (decoder *Decoder) readPixelData(reader io.Reader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
 
 	// if undefined length, read the pixel data  using the provided reader knowing that there will be a delimiter item
-	if length == 0xFFFFFFFF {
+	if length == UndefinedLength {
 		return decoder.readEncapsulatedPixelData(reader, byteOrder)
 	}
 
@@ -497,12 +514,7 @@ func (decoder *Decoder) readEncapsulatedPixelData(reader io.Reader, byteOrder bi
 
 func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrder) (*Fragment, error) {
 
-	group, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return nil, err
-	}
-
-	element, err := decoder.readShort(reader, byteOrder)
+	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -513,13 +525,13 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 	}
 
 	// fragment delimitation item
-	if group == 0xFFFE && element == 0xE0DD {
+	if tag == SequenceDelimitationItemTag {
 		return nil, io.EOF
 	}
 
 	// item tag
-	if group != 0xFFFE || element != 0xE000 {
-		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", group, element)
+	if tag != ItemTag {
+		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", toString(tag))
 	}
 
 	offset := decoder.bytesRead
@@ -530,28 +542,4 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 	}
 
 	return &Fragment{bytes, offset}, nil
-}
-
-func (decoder *Decoder) readTag(reader io.Reader, byteOrder binary.ByteOrder) (*Tag, error) {
-	group, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return nil, err
-	}
-	element, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return nil, err
-	}
-	return toTag(group, element), nil
-}
-
-func (decoder *Decoder) readTags(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]*Tag, error) {
-	tags := make([]*Tag, length/4)
-	for i := 0; i < len(tags); i++ {
-		tag, err := decoder.readTag(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		tags[i] = tag
-	}
-	return tags, nil
 }

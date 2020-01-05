@@ -3,7 +3,7 @@ package dcm4go
 import "fmt"
 
 func attributeToString(attribute *Attribute, prefix string) string {
-	s := fmt.Sprintf("%stag=(%04X,%04X) vr=%s off=%d len=%d", prefix, attribute.group, attribute.element, attribute.vr, attribute.offset, attribute.length)
+	s := fmt.Sprintf("%stag=%s vr=%s off=%d len=%d", prefix, toString(attribute.tag), attribute.vr, attribute.offset, attribute.length)
 	switch attribute.vr {
 	case "AE", "AS", "CS", "DA", "DT", "LO", "SH", "TM", "UC", "UI", "UR", "LT", "ST", "UT", "PN":
 		s += fmt.Sprintf(" value=%q\n", attribute.value)

@@ -16,10 +16,10 @@ func ReadFile(path string) (*Object, *Object, error) {
 		return nil, nil, err
 	}
 
-	// make sure we close the file
+	// make sure we close the file upon exit
 	defer file.Close()
 
-	// create a decoder, it counts bytes
+	// create a decoder
 	decoder := newDecoder()
 
 	// read the preamble
@@ -47,6 +47,11 @@ func ReadFile(path string) (*Object, *Object, error) {
 		return nil, nil, err
 	}
 
+	// check that it is the attribute that we are expecting
+	if groupTwoLength.tag != FileMetaInformationGroupLengthTag {
+		return nil, nil, fmt.Errorf("unexpected first attribute in file, was expecting %s, found %s", toString(FileMetaInformationGroupLengthTag), toString(groupTwoLength.tag))
+	}
+
 	// calculate the length of group two
 	groupTwoLengthValue, err := groupTwoLength.asLong(0)
 	if err != nil {
@@ -63,7 +68,7 @@ func ReadFile(path string) (*Object, *Object, error) {
 	}
 
 	// need to find the transfer syntax uid
-	transferSyntaxUID, err := groupTwo.asString(0x0002, 0x0010, 0)
+	transferSyntaxUID, err := groupTwo.asString(TransferSyntaxUIDTag, 0)
 	if err != nil {
 		return nil, nil, err
 	}

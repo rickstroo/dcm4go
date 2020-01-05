@@ -26,19 +26,19 @@ func (object *Object) String() string {
 }
 
 // Find looks for an attribute in an object
-func (object *Object) find(group uint16, element uint16) (*Attribute, error) {
+func (object *Object) find(tag uint32) (*Attribute, error) {
 	for item := object.attributes.Front(); item != nil; item = item.Next() {
 		attribute := item.Value.(*Attribute)
-		if attribute.group == group && attribute.element == element {
+		if attribute.tag == tag {
 			return attribute, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to find attribute with group 0x%04x and element 0x%04x", group, element)
+	return nil, fmt.Errorf("unable to find attribute with tag %s", toString(tag))
 }
 
 // AsLong returns attribute value as a long
-func (object *Object) asLong(group uint16, element uint16, index int) (uint32, error) {
-	attribute, err := object.find(group, element)
+func (object *Object) asLong(tag uint32, index int) (uint32, error) {
+	attribute, err := object.find(tag)
 	if err != nil {
 		return 0, err
 	}
@@ -46,8 +46,8 @@ func (object *Object) asLong(group uint16, element uint16, index int) (uint32, e
 }
 
 // AsString returns attribute value as a string
-func (object *Object) asString(group uint16, element uint16, index int) (string, error) {
-	attribute, err := object.find(group, element)
+func (object *Object) asString(tag uint32, index int) (string, error) {
+	attribute, err := object.find(tag)
 	if err != nil {
 		return "", err
 	}

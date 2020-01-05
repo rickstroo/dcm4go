@@ -4,12 +4,11 @@ import "fmt"
 
 // Attribute contains all the properties of a DICOM attribute
 type Attribute struct {
-	group   uint16
-	element uint16
-	vr      string
-	length  uint32
-	offset  uint32
-	value   interface{}
+	tag    uint32
+	vr     string
+	length uint32
+	offset uint32
+	value  interface{}
 }
 
 // String returns attribute as a string
