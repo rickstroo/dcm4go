@@ -33,7 +33,7 @@ func (object *Object) find(tag uint32) (*Attribute, error) {
 			return attribute, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to find attribute with tag %s", toString(tag))
+	return nil, fmt.Errorf("unable to find attribute with tag %s", tagToString(tag))
 }
 
 // AsLong returns attribute value as a long

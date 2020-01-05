@@ -14,6 +14,6 @@ func toElement(tag uint32) uint16 {
 	return uint16(tag)
 }
 
-func toString(tag uint32) string {
+func tagToString(tag uint32) string {
 	return fmt.Sprintf("(%04X,%04X)", toGroup(tag), toElement(tag))
 }
