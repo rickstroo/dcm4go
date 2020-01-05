@@ -2,7 +2,7 @@ package dcm4go
 
 import "container/list"
 
-// PixelData contains an ordered list of fragments
+// Encapsulated contains an ordered list of fragments
 type Encapsulated struct {
 	fragments *list.List
 }
