@@ -20,11 +20,14 @@ func main() {
 	// get the path to the file
 	path := flag.String("path", "-", "path to file to convert from DICOM to JSON")
 
+	// threshold for bulk data
+	bulkDataThreshold := flag.Uint("bulk", 1024, "threshold for binary bulk data")
+
 	// parse the flags
 	flag.Parse()
 
 	// read the file
-	groupTwo, otherGroups, err := dcm4go.ReadFile(*path)
+	groupTwo, otherGroups, err := dcm4go.ReadFile(*path, uint32(*bulkDataThreshold))
 	check(err)
 
 	// print the group two object

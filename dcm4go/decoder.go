@@ -15,12 +15,13 @@ import (
 // information ought to go to into a derived class, but
 // it is easier to just include it in this classs for now.
 type Decoder struct {
-	bytesRead uint32
+	bytesRead         uint32
+	bulkDataThreshold uint32
 }
 
 // NewDecoder creates a new Decoder
-func newDecoder() *Decoder {
-	return &Decoder{0}
+func newDecoder(bulkDataThreshold uint32) *Decoder {
+	return &Decoder{0, bulkDataThreshold}
 }
 
 // ReadObject reads a DICOM object from a reader
@@ -450,7 +451,7 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 
 	// item tag
 	if tag != ItemTag {
-		return nil, fmt.Errorf("expecting item tag at beginning of sequence item, found %s instead", toString(tag))
+		return nil, fmt.Errorf("expecting item tag at beginning of sequence item, found %s instead", tagToString(tag))
 	}
 
 	if length == UndefinedLength {
@@ -531,7 +532,7 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 
 	// item tag
 	if tag != ItemTag {
-		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", toString(tag))
+		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", tagToString(tag))
 	}
 
 	offset := decoder.bytesRead

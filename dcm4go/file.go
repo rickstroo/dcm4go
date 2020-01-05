@@ -8,7 +8,7 @@ import (
 )
 
 // ReadFile reads a DICOM object from a file
-func ReadFile(path string) (*Object, *Object, error) {
+func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
@@ -20,7 +20,7 @@ func ReadFile(path string) (*Object, *Object, error) {
 	defer file.Close()
 
 	// create a decoder
-	decoder := newDecoder()
+	decoder := newDecoder(bulkDataThreshold)
 
 	// read the preamble
 	var preamble [128]byte
@@ -49,7 +49,7 @@ func ReadFile(path string) (*Object, *Object, error) {
 
 	// check that it is the attribute that we are expecting
 	if groupTwoLength.tag != FileMetaInformationGroupLengthTag {
-		return nil, nil, fmt.Errorf("unexpected first attribute in file, was expecting %s, found %s", toString(FileMetaInformationGroupLengthTag), toString(groupTwoLength.tag))
+		return nil, nil, fmt.Errorf("unexpected first attribute in file, was expecting %s, found %s", tagToString(FileMetaInformationGroupLengthTag), tagToString(groupTwoLength.tag))
 	}
 
 	// calculate the length of group two
