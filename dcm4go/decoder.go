@@ -456,22 +456,31 @@ func (decoder *Decoder) readPixelData(reader io.Reader, length uint32, byteOrder
 
 	// if undefined length, read the pixel data  using the provided reader knowing that there will be a delimiter item
 	if length == 0xFFFFFFFF {
-		return decoder.readFragments(reader, byteOrder)
+		return decoder.readEncapsulatedPixelData(reader, byteOrder)
 	}
 
-	// otherwise, just read the bytes
-	return decoder.readBytes(reader, length)
+	return decoder.readNativePixelData(reader, length)
 }
 
-func (decoder *Decoder) readFragments(reader io.Reader, byteOrder binary.ByteOrder) ([][]byte, error) {
+func (decoder *Decoder) readNativePixelData(reader io.Reader, length uint32) ([]byte, error) {
 
-	// create a sequence
-	fragments := make([][]byte, 0)
+	bytes, err := decoder.readBytes(reader, length)
+	if err != nil {
+		return nil, err
+	}
 
-	// read the sequence items
+	return bytes, nil
+}
+
+func (decoder *Decoder) readEncapsulatedPixelData(reader io.Reader, byteOrder binary.ByteOrder) (*Encapsulated, error) {
+
+	// create an encapsualted pixel data object
+	encapsulated := newEncapsulated()
+
+	// read the fragments
 	for {
 
-		bytes, err := decoder.readFragment(reader, byteOrder)
+		fragment, err := decoder.readFragment(reader, byteOrder)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -480,13 +489,13 @@ func (decoder *Decoder) readFragments(reader io.Reader, byteOrder binary.ByteOrd
 		}
 
 		// add the object to the sequence
-		fragments = append(fragments, bytes)
+		encapsulated.add(fragment)
 	}
 
-	return fragments, nil
+	return encapsulated, nil
 }
 
-func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrder) ([]byte, error) {
+func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrder) (*Fragment, error) {
 
 	group, err := decoder.readShort(reader, byteOrder)
 	if err != nil {
@@ -513,11 +522,14 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", group, element)
 	}
 
+	offset := decoder.bytesRead
+
 	bytes, err := decoder.readBytes(reader, length)
 	if err != nil {
 		return nil, err
 	}
-	return bytes, nil
+
+	return &Fragment{bytes, offset}, nil
 }
 
 func (decoder *Decoder) readTag(reader io.Reader, byteOrder binary.ByteOrder) (*Tag, error) {

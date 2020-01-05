@@ -11,8 +11,15 @@ func attributeToString(attribute *Attribute, prefix string) string {
 		s += fmt.Sprintf(" value=%v\n", attribute.value)
 	case "SQ":
 		s += "\n" + sequenceToString(attribute.value.(*Sequence), prefix)
-	case "AT", "OB", "OL", "OV", "OW", "UN":
+	case "AT", "OL", "OV", "OW", "UN":
 		s += "\n"
+	case "OB":
+		switch v := attribute.value.(type) {
+		case []byte:
+			s += "\n"
+		case *Encapsulated:
+			s += "\n" + encapsulatedToString(v, prefix)
+		}
 	default:
 	}
 	return s
@@ -21,7 +28,7 @@ func attributeToString(attribute *Attribute, prefix string) string {
 func sequenceToString(sequence *Sequence, prefix string) string {
 	s := ""
 	for i, item := 1, sequence.objects.Front(); item != nil; i, item = i+1, item.Next() {
-		s += objectToString(item.Value.(*Object), fmt.Sprintf("%s%d>", prefix, i))
+		s += objectToString(item.Value.(*Object), fmt.Sprintf("%sitem#%d>", prefix, i))
 	}
 	return s
 }
@@ -32,4 +39,16 @@ func objectToString(object *Object, prefix string) string {
 		s += attributeToString(item.Value.(*Attribute), prefix)
 	}
 	return s
+}
+
+func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
+	s := ""
+	for i, item := 1, encapsulated.fragments.Front(); item != nil; i, item = i+1, item.Next() {
+		s += fragmentToString(item.Value.(*Fragment), fmt.Sprintf("%sfrag#%d>", prefix, i))
+	}
+	return s
+}
+
+func fragmentToString(fragment *Fragment, prefix string) string {
+	return fmt.Sprintf("%soffset=%d,length=%d\n", prefix, fragment.offset, len(fragment.bytes))
 }
