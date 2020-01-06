@@ -16,6 +16,17 @@ func newObject() *Object {
 }
 
 // Add adds an attribute to an object
+// TODO: Right now, this works because we are
+// parsing files and we know that we will be
+// adding attributes in order.  We might
+// even get away with this simple implementation
+// if we are careful in how we construct our
+// objects.  However, for general purposes, we
+// will want to add support for adding attributes
+// in an unordered manner.  We could do that using
+// a list, or we could use a map that we would need
+// to sort before using.  I prefer the list, as I think
+// that will be more efficient.
 func (object *Object) add(attribute *Attribute) {
 	object.attributes.PushBack(attribute)
 }
