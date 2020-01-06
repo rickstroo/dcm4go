@@ -139,7 +139,7 @@ func (decoder *Decoder) readVR(reader io.Reader, tag uint32, explicitVR bool) (s
 func findVR(tag uint32) (string, error) {
 	vr, ok := vrs[tag]
 	if !ok {
-		return "", fmt.Errorf("unable to find vr for tag %04x%04x", toGroup(tag), toElement(tag))
+		return "", fmt.Errorf("unable to find vr for tag %s", tagToString(tag))
 	}
 	return vr, nil
 }
@@ -532,7 +532,7 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 
 	// item tag
 	if tag != ItemTag {
-		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found (0x%04x,0x%04x) instead", tagToString(tag))
+		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found %s instead", tagToString(tag))
 	}
 
 	offset := decoder.bytesRead
