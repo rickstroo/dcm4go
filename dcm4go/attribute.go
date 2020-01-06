@@ -16,14 +16,21 @@ func (attribute *Attribute) String() string {
 	return attributeToString(attribute, "")
 }
 
+func check(index int, length int) error {
+	if index < 0 || index >= length {
+		return fmt.Errorf("index %d out of bounds, range is 0..%d", index, length-1)
+	}
+	return nil
+}
+
 // AsLong returns attribute value as a long
 func (attribute *Attribute) asLong(index int) (uint32, error) {
 	longs, ok := attribute.value.([]uint32)
 	if !ok {
 		return 0, fmt.Errorf("attribute was not of types longs")
 	}
-	if index < 0 || index >= len(longs) {
-		return 0, fmt.Errorf("index %d out of bounds, range is 0..%d", index, len(longs)-1)
+	if err := check(index, len(longs)); err != nil {
+		return 0, nil
 	}
 	return longs[index], nil
 }
@@ -34,8 +41,8 @@ func (attribute *Attribute) asString(index int) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("attribute was not of types strings")
 	}
-	if index < 0 || index >= len(strings) {
-		return "", fmt.Errorf("index %d out of bounds, range is 0..%d", index, len(strings)-1)
+	if err := check(index, len(strings)); err != nil {
+		return "", nil
 	}
 	return strings[index], nil
 }
