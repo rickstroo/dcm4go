@@ -530,7 +530,7 @@ func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.Byte
 		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found %s instead", tagToString(tag))
 	}
 
-	offset := decoder.bytesRead
+	offset := uint32(reader.BytesRead())
 
 	bytes, err := decoder.readBytes(reader, length)
 	if err != nil {
