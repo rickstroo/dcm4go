@@ -9,21 +9,16 @@ import (
 )
 
 // Decoder decodes a stream of bytes as a DICOM object.
-// It also keeps track of the number of bytes read so
-// that encoders can use that information to generate
-// offset information as required.  It seems like that
-// information ought to go to into a derived class, but
-// it is easier to just include it in this classs for now.
 type Decoder struct {
 	bulkDataThreshold uint32
 }
 
-// NewDecoder creates a new Decoder
+// newDecoder creates a new Decoder
 func newDecoder(bulkDataThreshold uint32) *Decoder {
 	return &Decoder{bulkDataThreshold}
 }
 
-// ReadObject reads a DICOM object from a reader
+// readObject reads a DICOM object from a reader
 func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
 	object := newObject()
@@ -43,7 +38,7 @@ func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOr
 	return object, nil
 }
 
-// ReadAttribute reads a DICOM attribute from a reader
+// readAttribute reads a DICOM attribute from a reader
 func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
@@ -83,34 +78,6 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 	}
 
 	return &Attribute{tag, vr, length, offset, value}, nil
-}
-
-// Read reads bytes into a buffer
-func (decoder *Decoder) readFully(reader CounterReader, buf []byte) error {
-	_, err := io.ReadFull(reader, buf)
-	return err
-}
-
-// reads an unsigned short
-func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
-	var buf [2]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := byteOrder.Uint16(buf[:])
-	return value, nil
-}
-
-// reads an unsigned long
-func (decoder *Decoder) readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
-	var buf [4]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := byteOrder.Uint32(buf[:])
-	return value, nil
 }
 
 // reads the vr of an attribute
@@ -179,7 +146,7 @@ func isShortLength(vr string) bool {
 	return false
 }
 
-// readValue reads the value of an attribute
+// reads the value of an attribute
 func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, length uint32) (interface{}, error) {
 	switch vr {
 	// these VRs support multiple text values
@@ -212,6 +179,49 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 	return nil, fmt.Errorf("unrecognized vr, '%s'", vr)
 }
 
+// reads bytes into a buffer
+func (decoder *Decoder) readFully(reader CounterReader, buf []byte) error {
+	_, err := io.ReadFull(reader, buf)
+	return err
+}
+
+// reads tag
+func (decoder *Decoder) readTag(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
+	group, err := decoder.readShort(reader, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	element, err := decoder.readShort(reader, byteOrder)
+	if err != nil {
+		return 0, err
+	}
+	return toTag(group, element), nil
+}
+
+// reads tags
+func (decoder *Decoder) readTags(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
+	tags := make([]uint32, length/4)
+	for i := 0; i < len(tags); i++ {
+		tag, err := decoder.readTag(reader, byteOrder)
+		if err != nil {
+			return nil, err
+		}
+		tags[i] = tag
+	}
+	return tags, nil
+}
+
+// reads an unsigned short
+func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
+	var buf [2]byte
+	err := decoder.readFully(reader, buf[:])
+	if err != nil {
+		return 0, err
+	}
+	value := byteOrder.Uint16(buf[:])
+	return value, nil
+}
+
 // reads unsigned shorts
 func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
 	shorts := make([]uint16, length/2)
@@ -225,28 +235,15 @@ func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrde
 	return shorts, nil
 }
 
-func (decoder *Decoder) readTag(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
-	group, err := decoder.readShort(reader, byteOrder)
+// reads an unsigned long
+func (decoder *Decoder) readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
+	var buf [4]byte
+	err := decoder.readFully(reader, buf[:])
 	if err != nil {
 		return 0, err
 	}
-	element, err := decoder.readShort(reader, byteOrder)
-	if err != nil {
-		return 0, err
-	}
-	return toTag(group, element), nil
-}
-
-func (decoder *Decoder) readTags(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
-	tags := make([]uint32, length/4)
-	for i := 0; i < len(tags); i++ {
-		tag, err := decoder.readTag(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		tags[i] = tag
-	}
-	return tags, nil
+	value := byteOrder.Uint32(buf[:])
+	return value, nil
 }
 
 // reads unsigned longs
@@ -393,6 +390,7 @@ func (decoder *Decoder) readBytes(reader CounterReader, length uint32) ([]byte, 
 // UndefinedLength represents the value for undefined length
 const UndefinedLength = 0xFFFFFFFF
 
+// parses and reads a sequence
 func (decoder *Decoder) readSequence(reader CounterReader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
 	// if undefined length, read the sequence  using the provided reader knowing that there will be a deer item
@@ -404,6 +402,7 @@ func (decoder *Decoder) readSequence(reader CounterReader, length uint32, explic
 	return decoder.readSequenceItems(newLimitedCountingReader(reader, int64(length)), explicitVR, byteOrder)
 }
 
+// reads the items of a sequence
 func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
 	// create a sequence
@@ -427,6 +426,7 @@ func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool,
 	return sequence, nil
 }
 
+// reads a single item of a sequence
 func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
@@ -465,6 +465,7 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, 
 
 }
 
+// parses and reads pixel data, in native or encapsulated formats
 func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
 
 	// if undefined length, read the pixel data  using the provided reader knowing that there will be a deer item
@@ -475,6 +476,7 @@ func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, byteO
 	return decoder.readNativePixelData(reader, length)
 }
 
+// read native pixel data
 func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32) ([]byte, error) {
 
 	bytes, err := decoder.readBytes(reader, length)
@@ -485,6 +487,7 @@ func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32)
 	return bytes, nil
 }
 
+// read encapsulated pixel data
 func (decoder *Decoder) readEncapsulatedPixelData(reader CounterReader, byteOrder binary.ByteOrder) (*Encapsulated, error) {
 
 	// create an encapsualted pixel data object
@@ -508,6 +511,7 @@ func (decoder *Decoder) readEncapsulatedPixelData(reader CounterReader, byteOrde
 	return encapsulated, nil
 }
 
+// read a fragment
 func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.ByteOrder) (*Fragment, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
@@ -530,8 +534,11 @@ func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.Byte
 		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found %s instead", tagToString(tag))
 	}
 
+	// get the offset from the underlying reader before we read the pixel data
 	offset := uint32(reader.BytesRead())
 
+	// read the pixel data
+	// TODO: skip the pixel data and create a bulk data reference
 	bytes, err := decoder.readBytes(reader, length)
 	if err != nil {
 		return nil, err
