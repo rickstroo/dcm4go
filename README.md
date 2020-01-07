@@ -62,11 +62,11 @@ dcm4go was built using the Atom IDE and the go-plus and go-debug plugins.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+At this time, I'm not accepting contributions.  If this project becomes useful to a larger community at some point, we will revisit.
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
+At this time, we're not versioning.  The develop branch is where development happens.  At points in time when we've developed useful functionality, we'll merge with master.
 
 ## Authors
 
