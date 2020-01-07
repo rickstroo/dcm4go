@@ -15,17 +15,16 @@ import (
 // information ought to go to into a derived class, but
 // it is easier to just include it in this classs for now.
 type Decoder struct {
-	bytesRead         uint32
 	bulkDataThreshold uint32
 }
 
 // NewDecoder creates a new Decoder
 func newDecoder(bulkDataThreshold uint32) *Decoder {
-	return &Decoder{0, bulkDataThreshold}
+	return &Decoder{bulkDataThreshold}
 }
 
 // ReadObject reads a DICOM object from a reader
-func (decoder *Decoder) readObject(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
+func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
 	object := newObject()
 
@@ -45,14 +44,14 @@ func (decoder *Decoder) readObject(reader io.Reader, explicitVR bool, byteOrder 
 }
 
 // ReadAttribute reads a DICOM attribute from a reader
-func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
+func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
 		return nil, err
 	}
 
-	// item delimiter tag
+	// item deer tag
 	if tag == ItemDelimitationItemTag {
 
 		// need to consume the length
@@ -76,7 +75,7 @@ func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrd
 	}
 
 	// remember the offset of this attribute's value
-	offset := decoder.bytesRead
+	offset := uint32(reader.BytesRead())
 
 	value, err := decoder.readValue(reader, explicitVR, byteOrder, vr, length)
 	if err != nil {
@@ -87,17 +86,13 @@ func (decoder *Decoder) readAttribute(reader io.Reader, explicitVR bool, byteOrd
 }
 
 // Read reads bytes into a buffer
-func (decoder *Decoder) readFully(reader io.Reader, buf []byte) error {
-	num, err := io.ReadFull(reader, buf)
-	decoder.bytesRead += uint32(num)
-	if err != nil {
-		return err
-	}
-	return nil
+func (decoder *Decoder) readFully(reader CounterReader, buf []byte) error {
+	_, err := io.ReadFull(reader, buf)
+	return err
 }
 
 // reads an unsigned short
-func (decoder *Decoder) readShort(reader io.Reader, byteOrder binary.ByteOrder) (uint16, error) {
+func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
 	var buf [2]byte
 	err := decoder.readFully(reader, buf[:])
 	if err != nil {
@@ -108,7 +103,7 @@ func (decoder *Decoder) readShort(reader io.Reader, byteOrder binary.ByteOrder) 
 }
 
 // reads an unsigned long
-func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
+func (decoder *Decoder) readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
 	var buf [4]byte
 	err := decoder.readFully(reader, buf[:])
 	if err != nil {
@@ -119,7 +114,7 @@ func (decoder *Decoder) readLong(reader io.Reader, byteOrder binary.ByteOrder) (
 }
 
 // reads the vr of an attribute
-func (decoder *Decoder) readVR(reader io.Reader, tag uint32, explicitVR bool) (string, error) {
+func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool) (string, error) {
 	if explicitVR {
 		var buf [2]byte
 		err := decoder.readFully(reader, buf[:])
@@ -145,7 +140,7 @@ func findVR(tag uint32) (string, error) {
 }
 
 // reads the length of an attribute
-func (decoder *Decoder) readLength(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder, vr string) (uint32, error) {
+func (decoder *Decoder) readLength(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string) (uint32, error) {
 
 	if explicitVR {
 
@@ -185,7 +180,7 @@ func isShortLength(vr string) bool {
 }
 
 // readValue reads the value of an attribute
-func (decoder *Decoder) readValue(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder, vr string, length uint32) (interface{}, error) {
+func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, length uint32) (interface{}, error) {
 	switch vr {
 	// these VRs support multiple text values
 	case "AE", "AS", "CS", "DA", "DS", "DT", "IS", "LO", "PN", "SH", "TM", "UC":
@@ -218,7 +213,7 @@ func (decoder *Decoder) readValue(reader io.Reader, explicitVR bool, byteOrder b
 }
 
 // reads unsigned shorts
-func (decoder *Decoder) readShorts(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
+func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
 	shorts := make([]uint16, length/2)
 	for i := 0; i < len(shorts); i++ {
 		short, err := decoder.readShort(reader, byteOrder)
@@ -230,7 +225,7 @@ func (decoder *Decoder) readShorts(reader io.Reader, length uint32, byteOrder bi
 	return shorts, nil
 }
 
-func (decoder *Decoder) readTag(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
+func (decoder *Decoder) readTag(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
 	group, err := decoder.readShort(reader, byteOrder)
 	if err != nil {
 		return 0, err
@@ -242,7 +237,7 @@ func (decoder *Decoder) readTag(reader io.Reader, byteOrder binary.ByteOrder) (u
 	return toTag(group, element), nil
 }
 
-func (decoder *Decoder) readTags(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
+func (decoder *Decoder) readTags(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
 	tags := make([]uint32, length/4)
 	for i := 0; i < len(tags); i++ {
 		tag, err := decoder.readTag(reader, byteOrder)
@@ -255,7 +250,7 @@ func (decoder *Decoder) readTags(reader io.Reader, length uint32, byteOrder bina
 }
 
 // reads unsigned longs
-func (decoder *Decoder) readLongs(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
+func (decoder *Decoder) readLongs(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
 	longs := make([]uint32, length/4)
 	for i := 0; i < len(longs); i++ {
 		long, err := decoder.readLong(reader, byteOrder)
@@ -268,7 +263,7 @@ func (decoder *Decoder) readLongs(reader io.Reader, length uint32, byteOrder bin
 }
 
 // reads an unsigned very long
-func (decoder *Decoder) readVeryLong(reader io.Reader, byteOrder binary.ByteOrder) (uint64, error) {
+func (decoder *Decoder) readVeryLong(reader CounterReader, byteOrder binary.ByteOrder) (uint64, error) {
 	var buf [8]byte
 	err := decoder.readFully(reader, buf[:])
 	if err != nil {
@@ -279,7 +274,7 @@ func (decoder *Decoder) readVeryLong(reader io.Reader, byteOrder binary.ByteOrde
 }
 
 // reads unsigned very longs
-func (decoder *Decoder) readVeryLongs(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]uint64, error) {
+func (decoder *Decoder) readVeryLongs(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint64, error) {
 	veryLongs := make([]uint64, length/8)
 	for i := 0; i < len(veryLongs); i++ {
 		veryLong, err := decoder.readVeryLong(reader, byteOrder)
@@ -292,7 +287,7 @@ func (decoder *Decoder) readVeryLongs(reader io.Reader, length uint32, byteOrder
 }
 
 // reads a float
-func (decoder *Decoder) readFloat(reader io.Reader, byteOrder binary.ByteOrder) (float32, error) {
+func (decoder *Decoder) readFloat(reader CounterReader, byteOrder binary.ByteOrder) (float32, error) {
 	var buf [4]byte
 	err := decoder.readFully(reader, buf[:])
 	if err != nil {
@@ -303,7 +298,7 @@ func (decoder *Decoder) readFloat(reader io.Reader, byteOrder binary.ByteOrder) 
 }
 
 // reads floats
-func (decoder *Decoder) readFloats(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]float32, error) {
+func (decoder *Decoder) readFloats(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]float32, error) {
 	floats := make([]float32, length/4)
 	for i := 0; i < len(floats); i++ {
 		float, err := decoder.readFloat(reader, byteOrder)
@@ -316,7 +311,7 @@ func (decoder *Decoder) readFloats(reader io.Reader, length uint32, byteOrder bi
 }
 
 // reads a double
-func (decoder *Decoder) readDouble(reader io.Reader, byteOrder binary.ByteOrder) (float64, error) {
+func (decoder *Decoder) readDouble(reader CounterReader, byteOrder binary.ByteOrder) (float64, error) {
 	var buf [8]byte
 	err := decoder.readFully(reader, buf[:])
 	if err != nil {
@@ -327,7 +322,7 @@ func (decoder *Decoder) readDouble(reader io.Reader, byteOrder binary.ByteOrder)
 }
 
 // reads doubles
-func (decoder *Decoder) readDoubles(reader io.Reader, length uint32, byteOrder binary.ByteOrder) ([]float64, error) {
+func (decoder *Decoder) readDoubles(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]float64, error) {
 	doubles := make([]float64, length/8)
 	for i := 0; i < len(doubles); i++ {
 		double, err := decoder.readDouble(reader, byteOrder)
@@ -348,7 +343,7 @@ func parseUID(value []byte) string {
 }
 
 // readUIDs reads UIDs from a reader
-func (decoder *Decoder) readUIDs(reader io.Reader, length uint32) ([]string, error) {
+func (decoder *Decoder) readUIDs(reader CounterReader, length uint32) ([]string, error) {
 	buf := make([]byte, int(length))
 	err := decoder.readFully(reader, buf)
 	if err != nil {
@@ -366,7 +361,7 @@ func parseText(value []byte) string {
 }
 
 // readTexts read texts from a reader
-func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, error) {
+func (decoder *Decoder) readTexts(reader CounterReader, length uint32) ([]string, error) {
 	buf := make([]byte, int(length))
 	err := decoder.readFully(reader, buf)
 	if err != nil {
@@ -376,7 +371,7 @@ func (decoder *Decoder) readTexts(reader io.Reader, length uint32) ([]string, er
 }
 
 // readText read text from a reader
-func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error) {
+func (decoder *Decoder) readText(reader CounterReader, length uint32) (string, error) {
 	buf := make([]byte, int(length))
 	err := decoder.readFully(reader, buf)
 	if err != nil {
@@ -386,7 +381,7 @@ func (decoder *Decoder) readText(reader io.Reader, length uint32) (string, error
 }
 
 // reads bytes
-func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, error) {
+func (decoder *Decoder) readBytes(reader CounterReader, length uint32) ([]byte, error) {
 	buf := make([]byte, int(length))
 	err := decoder.readFully(reader, buf)
 	if err != nil {
@@ -398,18 +393,18 @@ func (decoder *Decoder) readBytes(reader io.Reader, length uint32) ([]byte, erro
 // UndefinedLength represents the value for undefined length
 const UndefinedLength = 0xFFFFFFFF
 
-func (decoder *Decoder) readSequence(reader io.Reader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
+func (decoder *Decoder) readSequence(reader CounterReader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
-	// if undefined length, read the sequence  using the provided reader knowing that there will be a delimiter item
+	// if undefined length, read the sequence  using the provided reader knowing that there will be a deer item
 	if length == UndefinedLength {
 		return decoder.readSequenceItems(reader, explicitVR, byteOrder)
 	}
 
 	// otherwise, read the sequence using a limited reader for the length of sequence
-	return decoder.readSequenceItems(io.LimitReader(reader, int64(length)), explicitVR, byteOrder)
+	return decoder.readSequenceItems(newLimitedCountingReader(reader, int64(length)), explicitVR, byteOrder)
 }
 
-func (decoder *Decoder) readSequenceItems(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
+func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
 
 	// create a sequence
 	sequence := newSequence()
@@ -432,7 +427,7 @@ func (decoder *Decoder) readSequenceItems(reader io.Reader, explicitVR bool, byt
 	return sequence, nil
 }
 
-func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
+func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
@@ -444,7 +439,7 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 		return nil, err
 	}
 
-	// sequence delimitation item
+	// sequence deation item
 	if tag == SequenceDelimitationItemTag {
 		return nil, io.EOF
 	}
@@ -462,7 +457,7 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 		return object, nil
 	}
 
-	object, err := decoder.readObject(io.LimitReader(reader, int64(length)), explicitVR, byteOrder)
+	object, err := decoder.readObject(newLimitedCountingReader(reader, int64(length)), explicitVR, byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -470,9 +465,9 @@ func (decoder *Decoder) readSequenceItem(reader io.Reader, explicitVR bool, byte
 
 }
 
-func (decoder *Decoder) readPixelData(reader io.Reader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
+func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
 
-	// if undefined length, read the pixel data  using the provided reader knowing that there will be a delimiter item
+	// if undefined length, read the pixel data  using the provided reader knowing that there will be a deer item
 	if length == UndefinedLength {
 		return decoder.readEncapsulatedPixelData(reader, byteOrder)
 	}
@@ -480,7 +475,7 @@ func (decoder *Decoder) readPixelData(reader io.Reader, length uint32, byteOrder
 	return decoder.readNativePixelData(reader, length)
 }
 
-func (decoder *Decoder) readNativePixelData(reader io.Reader, length uint32) ([]byte, error) {
+func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32) ([]byte, error) {
 
 	bytes, err := decoder.readBytes(reader, length)
 	if err != nil {
@@ -490,7 +485,7 @@ func (decoder *Decoder) readNativePixelData(reader io.Reader, length uint32) ([]
 	return bytes, nil
 }
 
-func (decoder *Decoder) readEncapsulatedPixelData(reader io.Reader, byteOrder binary.ByteOrder) (*Encapsulated, error) {
+func (decoder *Decoder) readEncapsulatedPixelData(reader CounterReader, byteOrder binary.ByteOrder) (*Encapsulated, error) {
 
 	// create an encapsualted pixel data object
 	encapsulated := newEncapsulated()
@@ -513,7 +508,7 @@ func (decoder *Decoder) readEncapsulatedPixelData(reader io.Reader, byteOrder bi
 	return encapsulated, nil
 }
 
-func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrder) (*Fragment, error) {
+func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.ByteOrder) (*Fragment, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
@@ -525,7 +520,7 @@ func (decoder *Decoder) readFragment(reader io.Reader, byteOrder binary.ByteOrde
 		return nil, err
 	}
 
-	// fragment delimitation item
+	// fragment deation item
 	if tag == SequenceDelimitationItemTag {
 		return nil, io.EOF
 	}

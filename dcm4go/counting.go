@@ -2,6 +2,12 @@ package dcm4go
 
 import "io"
 
+// CounterReader extends the Reader interface to include counting of bytes read
+type CounterReader interface {
+	io.Reader
+	BytesRead() int
+}
+
 // CountingReader wraps a reader and counts the bytes read
 type CountingReader struct {
 	bytesRead int
@@ -9,7 +15,7 @@ type CountingReader struct {
 }
 
 // newCountingReader returns a new counting reader
-func newCountingReader(reader io.Reader) *CountingReader {
+func newCountingReader(reader io.Reader) CounterReader {
 	return &CountingReader{0, reader}
 }
 
@@ -27,18 +33,18 @@ func (countingReader *CountingReader) BytesRead() int {
 
 // LimitedCountingReader wraps a limited reader and provides access to bytes read
 type LimitedCountingReader struct {
-	countingReader *CountingReader
-	limitReader    io.Reader
+	countingReader CounterReader
+	limitedReader  io.Reader
 }
 
 // newLimitedReader returns a new limited counting reader
-func newLimitedCountingReader(countingReader *CountingReader, length int) *LimitedCountingReader {
-	return &LimitedCountingReader{countingReader, io.LimitReader(countingReader, int64(length))}
+func newLimitedCountingReader(countingReader CounterReader, length int64) CounterReader {
+	return &LimitedCountingReader{countingReader, io.LimitReader(countingReader, length)}
 }
 
 // Read reads bytes from the underling limited reader
 func (limitedCountingReader *LimitedCountingReader) Read(buf []byte) (int, error) {
-	return limitedCountingReader.limitReader.Read(buf)
+	return limitedCountingReader.limitedReader.Read(buf)
 }
 
 // BytesRead returns the number of bytes read by the underlying counting reader

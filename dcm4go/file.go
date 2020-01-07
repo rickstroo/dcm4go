@@ -3,7 +3,6 @@ package dcm4go
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -19,19 +18,22 @@ func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 	// make sure we close the file upon exit
 	defer file.Close()
 
+	// create a counting reader
+	countingReader := newCountingReader(file)
+
 	// create a decoder
 	decoder := newDecoder(bulkDataThreshold)
 
 	// read the preamble
 	var preamble [128]byte
-	err = decoder.readFully(file, preamble[:])
+	err = decoder.readFully(countingReader, preamble[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
 	var prefix [4]byte
-	err = decoder.readFully(file, prefix[:])
+	err = decoder.readFully(countingReader, prefix[:])
 	if err != nil {
 		return nil, nil, err
 	}
@@ -42,7 +44,7 @@ func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 	}
 
 	// read the group 2 length attribute
-	groupTwoLength, err := decoder.readAttribute(file, true, binary.LittleEndian)
+	groupTwoLength, err := decoder.readAttribute(countingReader, true, binary.LittleEndian)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,10 +61,10 @@ func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 	}
 
 	// create a limit reader for the remainder of the group two attributes
-	limitReader := io.LimitReader(file, int64(groupTwoLengthValue))
+	limitCountingReader := newLimitedCountingReader(countingReader, int64(groupTwoLengthValue))
 
 	// read the remainder of the group two attribute
-	groupTwo, err := decoder.readObject(limitReader, true, binary.LittleEndian)
+	groupTwo, err := decoder.readObject(limitCountingReader, true, binary.LittleEndian)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,7 +82,7 @@ func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 	}
 
 	// read the remainder of the attributes from the file
-	otherGroups, err := decoder.readObject(file, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	otherGroups, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, nil, err
 	}
