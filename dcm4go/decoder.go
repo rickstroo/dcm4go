@@ -213,24 +213,18 @@ func (decoder *Decoder) readTags(reader CounterReader, length uint32, byteOrder 
 
 // reads an unsigned short
 func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
-	var buf [2]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
+	var short uint16
+	if err := binary.Read(reader, byteOrder, &short); err != nil {
 		return 0, err
 	}
-	value := byteOrder.Uint16(buf[:])
-	return value, nil
+	return short, nil
 }
 
 // reads unsigned shorts
 func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
 	shorts := make([]uint16, length/2)
-	for i := 0; i < len(shorts); i++ {
-		short, err := decoder.readShort(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		shorts[i] = short
+	if err := binary.Read(reader, byteOrder, shorts); err != nil {
+		return nil, err
 	}
 	return shorts, nil
 }
