@@ -273,50 +273,58 @@ func (decoder *Decoder) readDoubles(reader CounterReader, length uint32, byteOrd
 	return doubles, nil
 }
 
-// parseUID parses a UID from an attribute value
-func parseUID(value []byte) string {
+// readUIDs reads one or more UIDs from a reader
+func (decoder *Decoder) readUIDs(reader CounterReader, length uint32) ([]string, error) {
+	uid, err := decoder.readUID(reader, length)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(uid, "\\"), nil
+}
+
+// readUID reads a single UID from a reader
+func (decoder *Decoder) readUID(reader CounterReader, length uint32) (string, error) {
+	buf := make([]byte, int(length))
+	err := decoder.readFully(reader, buf)
+	if err != nil {
+		return "", err
+	}
+	return removeUIDPadding(buf), nil
+}
+
+// removeUIDPadding removes the padding from the UID if any
+func removeUIDPadding(value []byte) string {
 	if len(value) > 0 && value[len(value)-1] == 0x00 {
 		return string(value[:len(value)-1])
 	}
 	return string(value)
 }
 
-// readUIDs reads UIDs from a reader
-func (decoder *Decoder) readUIDs(reader CounterReader, length uint32) ([]string, error) {
-	buf := make([]byte, int(length))
-	err := decoder.readFully(reader, buf)
-	if err != nil {
-		return nil, err
-	}
-	return strings.Split(parseUID(buf), "\\"), nil
-}
-
-// parseText parses text from an attribute value
-func parseText(value []byte) string {
-	if len(value) > 0 && value[len(value)-1] == byte(' ') {
-		return string(value[:len(value)-1])
-	}
-	return string(value)
-}
-
-// readTexts read texts from a reader
+// readTexts read one or more texts from a reader
 func (decoder *Decoder) readTexts(reader CounterReader, length uint32) ([]string, error) {
-	buf := make([]byte, int(length))
-	err := decoder.readFully(reader, buf)
+	text, err := decoder.readText(reader, length)
 	if err != nil {
 		return nil, err
 	}
-	return strings.Split(parseText(buf), "\\"), nil
+	return strings.Split(text, "\\"), nil
 }
 
-// readText read text from a reader
+// readText reads a single text from a reader
 func (decoder *Decoder) readText(reader CounterReader, length uint32) (string, error) {
 	buf := make([]byte, int(length))
 	err := decoder.readFully(reader, buf)
 	if err != nil {
 		return "", err
 	}
-	return parseText(buf), nil
+	return removeTextPadding(buf), nil
+}
+
+// removeTextPadding removes the padding from the text if any
+func removeTextPadding(value []byte) string {
+	if len(value) > 0 && value[len(value)-1] == byte(' ') {
+		return string(value[:len(value)-1])
+	}
+	return string(value)
 }
 
 // reads bytes
