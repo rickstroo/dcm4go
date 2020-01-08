@@ -222,6 +222,8 @@ func main() {
 	writeTags(elements)
 	//writeDictionary(elements)
 	writeVRs(elements)
+
+	writeSampleTestData("GENECG.dcm")
 }
 
 func parseStandard(filename string, elements elements, chapters ...string) {
@@ -409,3 +411,39 @@ type tagSlice []uint32
 func (p tagSlice) Len() int           { return len(p) }
 func (p tagSlice) Less(i, j int) bool { return p[i] < p[j] }
 func (p tagSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func writeSampleTestData(path string) {
+	out, err := os.Create("sample.go")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+
+	fmt.Fprintln(out, "package dcm4go")
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "// auto-generated, do not edit")
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "var sample []byte{")
+
+	in, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer in.Close()
+
+	var buffer [1024]byte
+	for {
+		num, err := in.Read(buffer[:])
+		for i := 0; i < num; i++ {
+			fmt.Fprintf(out, "0x%02X,", buffer[i])
+		}
+		if err != nil {
+			if err != io.EOF {
+				log.Fatal(err)
+			}
+			break
+		}
+	}
+
+	fmt.Fprintln(out, "}")
+}
