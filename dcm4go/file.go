@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -18,23 +19,28 @@ func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
 	// make sure we close the file upon exit
 	defer file.Close()
 
+	// read the file
+	return Read(file, bulkDataThreshold)
+}
+
+// Read reads a DICOM object from a reader
+func Read(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, error) {
+
 	// create a counting reader
-	countingReader := newCountingReader(file)
+	countingReader := newCountingReader(reader)
 
 	// create a decoder
 	decoder := newDecoder(bulkDataThreshold)
 
 	// read the preamble
 	var preamble [128]byte
-	err = decoder.readFully(countingReader, preamble[:])
-	if err != nil {
+	if err := decoder.readFully(countingReader, preamble[:]); err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
 	var prefix [4]byte
-	err = decoder.readFully(countingReader, prefix[:])
-	if err != nil {
+	if err := decoder.readFully(countingReader, prefix[:]); err != nil {
 		return nil, nil, err
 	}
 
