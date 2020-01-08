@@ -8,10 +8,41 @@ import (
 	"testing"
 )
 
+func initTest(buf []byte) (CounterReader, *Decoder) {
+	return newCountingReader(bytes.NewReader(buf)), newDecoder(1024)
+}
+
 func TestNewDecoder(t *testing.T) {
-	decoder := newDecoder(1024)
+	_, decoder := initTest([]byte{})
 	if decoder.bulkDataThreshold != 1024 {
 		t.Errorf("expected %d, was %d", 1024, decoder.bulkDataThreshold)
+	}
+}
+
+func testByteEquals(a, b byte) error {
+	if a != b {
+		return fmt.Errorf("expected 0x%02X, was 0x%02X", a, b)
+	}
+	return nil
+}
+
+func TestReadFully(t *testing.T) {
+	reader, decoder := initTest([]byte{0x12, 0x34, 0x56, 0x78})
+	var buf [4]byte
+	if err := decoder.readFully(reader, buf[:]); err != nil {
+		t.Error(err)
+	}
+	if err := testByteEquals(buf[0], 0x12); err != nil {
+		t.Error(err)
+	}
+	if err := testByteEquals(buf[1], 0x34); err != nil {
+		t.Error(err)
+	}
+	if err := testByteEquals(buf[2], 0x56); err != nil {
+		t.Error(err)
+	}
+	if err := testByteEquals(buf[3], 0x78); err != nil {
+		t.Error(err)
 	}
 }
 
@@ -22,12 +53,8 @@ func testShortEquals(a, b uint16) error {
 	return nil
 }
 
-func initShortTest(buf []byte) (CounterReader, *Decoder) {
-	return newCountingReader(bytes.NewReader(buf)), newDecoder(1024)
-}
-
 func TestReadShortLittleEndian(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12, 0x34})
+	reader, decoder := initTest([]byte{0x12, 0x34})
 	short, err := decoder.readShort(reader, binary.LittleEndian)
 	if err != nil {
 		t.Error(err)
@@ -38,7 +65,7 @@ func TestReadShortLittleEndian(t *testing.T) {
 }
 
 func TestReadShortBigEndian(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12, 0x34})
+	reader, decoder := initTest([]byte{0x12, 0x34})
 	short, err := decoder.readShort(reader, binary.BigEndian)
 	if err != nil {
 		t.Error(err)
@@ -49,7 +76,7 @@ func TestReadShortBigEndian(t *testing.T) {
 }
 
 func TestReadShortUnexpectedEOF(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12})
+	reader, decoder := initTest([]byte{0x12})
 	_, err := decoder.readShort(reader, binary.BigEndian)
 	if err != io.ErrUnexpectedEOF {
 		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
@@ -57,7 +84,7 @@ func TestReadShortUnexpectedEOF(t *testing.T) {
 }
 
 func TestReadShortsLittleEndian(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12, 0x34, 0x56, 0x78})
+	reader, decoder := initTest([]byte{0x12, 0x34, 0x56, 0x78})
 	shorts, err := decoder.readShorts(reader, 4, binary.LittleEndian)
 	if err != nil {
 		t.Error(err)
@@ -71,7 +98,7 @@ func TestReadShortsLittleEndian(t *testing.T) {
 }
 
 func TestReadShortsBigEndian(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12, 0x34, 0x56, 0x78})
+	reader, decoder := initTest([]byte{0x12, 0x34, 0x56, 0x78})
 	shorts, err := decoder.readShorts(reader, 4, binary.BigEndian)
 	if err != nil {
 		t.Error(err)
@@ -85,7 +112,7 @@ func TestReadShortsBigEndian(t *testing.T) {
 }
 
 func TestReadShortsUnexpectedEOF(t *testing.T) {
-	reader, decoder := initShortTest([]byte{0x12})
+	reader, decoder := initTest([]byte{0x12})
 	_, err := decoder.readShorts(reader, 4, binary.LittleEndian)
 	if err != io.ErrUnexpectedEOF {
 		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
