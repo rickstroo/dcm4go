@@ -2,13 +2,38 @@ package dcm4go
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"testing"
 )
 
 func TestGoodImage(t *testing.T) {
-	_, _, err := Read(bytes.NewReader(file), 1024)
+	_, _, err := ReadFile(bytes.NewReader(file), 1024)
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func TestMissingPreamble(t *testing.T) {
+	_, _, err := ReadFile(bytes.NewReader([]byte{0x00}), 1024)
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	}
+}
+
+func TestShortPrefix(t *testing.T) {
+	var preamble [130]byte
+	_, _, err := ReadFile(bytes.NewReader(preamble[:]), 1024)
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	}
+}
+
+func TestBadPrefix(t *testing.T) {
+	var preamble [132]byte
+	_, _, err := ReadFile(bytes.NewReader(preamble[:]), 1024)
+	if !errors.Is(err, ErrIllegalPrefix) {
+		t.Errorf("expected ErrIllegalPrefix, was %v", err)
 	}
 }
 

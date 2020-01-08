@@ -2,29 +2,17 @@ package dcm4go
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
-	"os"
 )
 
-// ReadFile reads a DICOM object from a file
-func ReadFile(path string, bulkDataThreshold uint32) (*Object, *Object, error) {
+// ErrIllegalPrefix means that a prefix other than "DICM" was encountered
+// at the beginning of the file
+var ErrIllegalPrefix = errors.New("illegal prefix")
 
-	// open the file, which returns a reader, defer a close
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// make sure we close the file upon exit
-	defer file.Close()
-
-	// read the file
-	return Read(file, bulkDataThreshold)
-}
-
-// Read reads a DICOM object from a reader
-func Read(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, error) {
+// ReadFile reads a DICOM object from a reader of a Part 10 source
+func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, error) {
 
 	// create a counting reader
 	countingReader := newCountingReader(reader)
@@ -46,7 +34,7 @@ func Read(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, error) 
 
 	// check the prefix
 	if string(prefix[:]) != "DICM" {
-		return nil, nil, fmt.Errorf("unrecognized prefix, '%s'", prefix)
+		return nil, nil, ErrIllegalPrefix
 	}
 
 	// read the group 2 length attribute

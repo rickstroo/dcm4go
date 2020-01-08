@@ -2,6 +2,7 @@ package dcm4go
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -25,7 +26,7 @@ func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOr
 	for {
 		attribute, err := decoder.readAttribute(reader, explicitVR, byteOrder)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -363,7 +364,7 @@ func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool,
 
 		object, err := decoder.readSequenceItem(reader, explicitVR, byteOrder)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
@@ -448,7 +449,7 @@ func (decoder *Decoder) readEncapsulatedPixelData(reader CounterReader, byteOrde
 
 		fragment, err := decoder.readFragment(reader, byteOrder)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, err
