@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"strings"
 )
 
@@ -185,6 +184,24 @@ func (decoder *Decoder) readFully(reader CounterReader, buf []byte) error {
 	return err
 }
 
+// reads an unsigned short
+func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
+	var short uint16
+	if err := binary.Read(reader, byteOrder, &short); err != nil {
+		return 0, err
+	}
+	return short, nil
+}
+
+// reads an unsigned long
+func (decoder *Decoder) readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
+	var long uint32
+	if err := binary.Read(reader, byteOrder, &long); err != nil {
+		return 0, err
+	}
+	return long, nil
+}
+
 // reads tag
 func (decoder *Decoder) readTag(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
 	group, err := decoder.readShort(reader, byteOrder)
@@ -196,6 +213,24 @@ func (decoder *Decoder) readTag(reader CounterReader, byteOrder binary.ByteOrder
 		return 0, err
 	}
 	return toTag(group, element), nil
+}
+
+// reads unsigned shorts
+func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
+	shorts := make([]uint16, length/2)
+	if err := binary.Read(reader, byteOrder, shorts); err != nil {
+		return nil, err
+	}
+	return shorts, nil
+}
+
+// reads unsigned longs
+func (decoder *Decoder) readLongs(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
+	longs := make([]uint32, length/4)
+	if err := binary.Read(reader, byteOrder, longs); err != nil {
+		return nil, err
+	}
+	return longs, nil
 }
 
 // reads tags
@@ -211,116 +246,29 @@ func (decoder *Decoder) readTags(reader CounterReader, length uint32, byteOrder 
 	return tags, nil
 }
 
-// reads an unsigned short
-func (decoder *Decoder) readShort(reader CounterReader, byteOrder binary.ByteOrder) (uint16, error) {
-	var short uint16
-	if err := binary.Read(reader, byteOrder, &short); err != nil {
-		return 0, err
-	}
-	return short, nil
-}
-
-// reads unsigned shorts
-func (decoder *Decoder) readShorts(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint16, error) {
-	shorts := make([]uint16, length/2)
-	if err := binary.Read(reader, byteOrder, shorts); err != nil {
-		return nil, err
-	}
-	return shorts, nil
-}
-
-// reads an unsigned long
-func (decoder *Decoder) readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
-	var buf [4]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := byteOrder.Uint32(buf[:])
-	return value, nil
-}
-
-// reads unsigned longs
-func (decoder *Decoder) readLongs(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint32, error) {
-	longs := make([]uint32, length/4)
-	for i := 0; i < len(longs); i++ {
-		long, err := decoder.readLong(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		longs[i] = long
-	}
-	return longs, nil
-}
-
-// reads an unsigned very long
-func (decoder *Decoder) readVeryLong(reader CounterReader, byteOrder binary.ByteOrder) (uint64, error) {
-	var buf [8]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := byteOrder.Uint64(buf[:])
-	return value, nil
-}
-
 // reads unsigned very longs
 func (decoder *Decoder) readVeryLongs(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]uint64, error) {
 	veryLongs := make([]uint64, length/8)
-	for i := 0; i < len(veryLongs); i++ {
-		veryLong, err := decoder.readVeryLong(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		veryLongs[i] = veryLong
+	if err := binary.Read(reader, byteOrder, veryLongs); err != nil {
+		return nil, err
 	}
 	return veryLongs, nil
-}
-
-// reads a float
-func (decoder *Decoder) readFloat(reader CounterReader, byteOrder binary.ByteOrder) (float32, error) {
-	var buf [4]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := math.Float32frombits(byteOrder.Uint32(buf[:]))
-	return value, nil
 }
 
 // reads floats
 func (decoder *Decoder) readFloats(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]float32, error) {
 	floats := make([]float32, length/4)
-	for i := 0; i < len(floats); i++ {
-		float, err := decoder.readFloat(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		floats[i] = float
+	if err := binary.Read(reader, byteOrder, floats); err != nil {
+		return nil, err
 	}
 	return floats, nil
-}
-
-// reads a double
-func (decoder *Decoder) readDouble(reader CounterReader, byteOrder binary.ByteOrder) (float64, error) {
-	var buf [8]byte
-	err := decoder.readFully(reader, buf[:])
-	if err != nil {
-		return 0, err
-	}
-	value := math.Float64frombits(byteOrder.Uint64(buf[:]))
-	return value, nil
 }
 
 // reads doubles
 func (decoder *Decoder) readDoubles(reader CounterReader, length uint32, byteOrder binary.ByteOrder) ([]float64, error) {
 	doubles := make([]float64, length/8)
-	for i := 0; i < len(doubles); i++ {
-		double, err := decoder.readDouble(reader, byteOrder)
-		if err != nil {
-			return nil, err
-		}
-		doubles[i] = double
+	if err := binary.Read(reader, byteOrder, doubles); err != nil {
+		return nil, err
 	}
 	return doubles, nil
 }
