@@ -53,8 +53,8 @@ func TestReadByte(t *testing.T) {
 func TestReadByteUnexpectedEOF(t *testing.T) {
 	reader := initReadTest([]byte{})
 	_, err := readByte(reader)
-	if err != io.ErrUnexpectedEOF {
-		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	if err != io.EOF {
+		t.Errorf("expected io.EOF, was %v", err)
 	}
 }
 
