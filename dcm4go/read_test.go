@@ -39,6 +39,25 @@ func TestReadBytes(t *testing.T) {
 	}
 }
 
+func TestReadByte(t *testing.T) {
+	reader := initReadTest([]byte{0x12})
+	b, err := readByte(reader)
+	if err != nil {
+		t.Error(err)
+	}
+	if err := testByteEquals(b, 0x12); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestReadByteUnexpectedEOF(t *testing.T) {
+	reader := initReadTest([]byte{})
+	_, err := readByte(reader)
+	if err != io.ErrUnexpectedEOF {
+		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	}
+}
+
 func testShortEquals(a, b uint16) error {
 	if a != b {
 		return fmt.Errorf("expected 0x%04X, was 0x%04X", a, b)
