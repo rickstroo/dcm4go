@@ -17,18 +17,15 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 	// create a counting reader
 	countingReader := newCountingReader(reader)
 
-	// create a decoder
-	decoder := newDecoder(bulkDataThreshold)
-
 	// read the preamble
 	var preamble [128]byte
-	if err := decoder.readFully(countingReader, preamble[:]); err != nil {
+	if err := readBytes(countingReader, preamble[:]); err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
 	var prefix [4]byte
-	if err := decoder.readFully(countingReader, prefix[:]); err != nil {
+	if err := readBytes(countingReader, prefix[:]); err != nil {
 		return nil, nil, err
 	}
 
@@ -36,6 +33,9 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 	if string(prefix[:]) != "DICM" {
 		return nil, nil, ErrIllegalPrefix
 	}
+
+	// create a decoder
+	decoder := newDecoder(bulkDataThreshold)
 
 	// read the group 2 length attribute
 	groupTwoLength, err := decoder.readAttribute(countingReader, true, binary.LittleEndian)
