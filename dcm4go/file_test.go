@@ -16,8 +16,8 @@ func TestGoodImage(t *testing.T) {
 
 func TestMissingPreamble(t *testing.T) {
 	_, _, err := ReadFile(bytes.NewReader([]byte{0x00}), 1024)
-	if !errors.Is(err, io.ErrUnexpectedEOF) {
-		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	if !errors.Is(err, io.EOF) {
+		t.Errorf("expected io.EOF, was %v", err)
 	}
 }
 

@@ -11,20 +11,19 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 	// create a counting reader
 	countingReader := newCountingReader(reader)
 
-	// read the preamble
-	var preamble [128]byte
-	if err := readBytes(countingReader, preamble[:]); err != nil {
+	// skip the preamble
+	if err := skipBytes(countingReader, 128); err != nil {
 		return nil, nil, err
 	}
 
 	// read the prefix
-	var prefix [4]byte
-	if err := readBytes(countingReader, prefix[:]); err != nil {
+	prefix, err := readText(countingReader, 4)
+	if err != nil {
 		return nil, nil, err
 	}
 
 	// check the prefix
-	if string(prefix[:]) != "DICM" {
+	if prefix != "DICM" {
 		return nil, nil, ErrIllegalPrefix
 	}
 
@@ -69,7 +68,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 		return nil, nil, err
 	}
 
-	// read the remainder of the attributes from the file
+	// read the remainder of the attributes from the file using the provided transfer syntax
 	otherGroups, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, nil, err
