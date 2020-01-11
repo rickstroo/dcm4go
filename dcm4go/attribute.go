@@ -14,7 +14,7 @@ func (attribute *Attribute) String() string {
 	return attributeToString(attribute, "")
 }
 
-func check(index int, length int) error {
+func checkIndex(index int, length int) error {
 	if index < 0 || index >= length {
 		return ErrIndexOutOfBounds
 	}
@@ -27,7 +27,7 @@ func (attribute *Attribute) asLong(index int) (uint32, error) {
 	if !ok {
 		return 0, ErrWrongType
 	}
-	if err := check(index, len(longs)); err != nil {
+	if err := checkIndex(index, len(longs)); err != nil {
 		return 0, err
 	}
 	return longs[index], nil
@@ -39,7 +39,7 @@ func (attribute *Attribute) asString(index int) (string, error) {
 	if !ok {
 		return "", ErrWrongType
 	}
-	if err := check(index, len(strings)); err != nil {
+	if err := checkIndex(index, len(strings)); err != nil {
 		return "", err
 	}
 	return strings[index], nil
