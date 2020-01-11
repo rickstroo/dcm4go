@@ -49,7 +49,7 @@ func TestReadShortsBigEndian(t *testing.T) {
 func TestReadShortsUnexpectedEOF(t *testing.T) {
 	reader, decoder := initDecoderTest([]byte{0x12})
 	_, err := decoder.readShorts(reader, 4, binary.LittleEndian)
-	if err != io.ErrUnexpectedEOF {
-		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
+	if err := testErrEquals(err, io.ErrUnexpectedEOF); err != nil {
+		t.Error(err)
 	}
 }

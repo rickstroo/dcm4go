@@ -2,16 +2,8 @@ package dcm4go
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
-
-func testLongEquals(a, b uint32) error {
-	if a != b {
-		return fmt.Errorf("expected 0x%04X, was 0x%04X", a, b)
-	}
-	return nil
-}
 
 func TestAttributeToString(t *testing.T) {
 	attribute := &Attribute{FileMetaInformationGroupLengthTag, "UL", 4, 0, []uint32{0x04}}
@@ -47,13 +39,6 @@ func TestAttributeAsLongWrongType(t *testing.T) {
 	}
 }
 
-func testStringEquals(a, b string) error {
-	if a != b {
-		return fmt.Errorf("expected '%s', was '%s'", a, b)
-	}
-	return nil
-}
-
 func TestAttributeAsString(t *testing.T) {
 	attribute := &Attribute{ModalityTag, "CS", 4, 0, []string{"CT"}}
 	value, err := attribute.asString(0)
@@ -68,7 +53,7 @@ func TestAttributeAsString(t *testing.T) {
 func TestAttributeAsStringIndexOutOfBounds(t *testing.T) {
 	attribute := &Attribute{ModalityTag, "CS", 4, 0, []string{"CT"}}
 	_, err := attribute.asString(1)
-	if !errors.Is(err, ErrIndexOutOfBounds) {
+	if err := testErrEquals(err, ErrIndexOutOfBounds); err != nil {
 		t.Error(err)
 	}
 }
@@ -76,7 +61,7 @@ func TestAttributeAsStringIndexOutOfBounds(t *testing.T) {
 func TestAttributeAsStringWrongType(t *testing.T) {
 	attribute := &Attribute{ModalityTag, "CS", 4, 0, []byte{0x01}}
 	_, err := attribute.asString(0)
-	if !errors.Is(err, ErrWrongType) {
+	if err := testErrEquals(err, ErrWrongType); err != nil {
 		t.Error(err)
 	}
 }
