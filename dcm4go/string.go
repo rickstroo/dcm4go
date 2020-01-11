@@ -1,6 +1,9 @@
 package dcm4go
 
-import "fmt"
+import (
+	"encoding/base64"
+	"fmt"
+)
 
 func lengthToString(length uint32) string {
 	if length == UndefinedLength {
@@ -11,6 +14,9 @@ func lengthToString(length uint32) string {
 
 func attributeToString(attribute *Attribute, prefix string) string {
 	s := fmt.Sprintf("%stag=%s vr=%s off=%d len=%s", prefix, tagToString(attribute.tag), attribute.vr, attribute.offset, lengthToString(attribute.length))
+	if attribute.length == 0 {
+		return s + "\n"
+	}
 	switch attribute.vr {
 	case "AE", "AS", "CS", "DA", "DT", "LO", "SH", "TM", "UC", "UI", "UR", "LT", "ST", "UT", "PN":
 		s += fmt.Sprintf(" value=%q\n", attribute.value)
@@ -23,11 +29,19 @@ func attributeToString(attribute *Attribute, prefix string) string {
 	case "OB":
 		switch v := attribute.value.(type) {
 		case []byte:
-			s += "\n"
+			buf := attribute.value.([]byte)
+			if len(buf) > 0 {
+				s += fmt.Sprintf(" value=[%s]\n", base64.StdEncoding.EncodeToString(buf))
+			} else {
+				s += "\n"
+			}
 		case *Encapsulated:
 			s += "\n" + encapsulatedToString(v, prefix)
+		default:
+			s += "\n"
 		}
 	default:
+		s += "\n"
 	}
 	return s
 }
@@ -57,5 +71,5 @@ func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
 }
 
 func fragmentToString(fragment *Fragment, prefix string) string {
-	return fmt.Sprintf("%soffset=%d,length=%d\n", prefix, fragment.offset, fragment.length)
+	return fmt.Sprintf("%soff=%d,len=%d\n", prefix, fragment.offset, fragment.length)
 }
