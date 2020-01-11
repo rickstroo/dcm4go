@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -53,7 +54,7 @@ func TestReadByte(t *testing.T) {
 func TestReadByteUnexpectedEOF(t *testing.T) {
 	reader := initReadTest([]byte{})
 	_, err := readByte(reader)
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Errorf("expected io.EOF, was %v", err)
 	}
 }
@@ -90,7 +91,7 @@ func TestReadShortBigEndian(t *testing.T) {
 func TestReadShortUnexpectedEOF(t *testing.T) {
 	reader := initReadTest([]byte{0x12})
 	_, err := readShort(reader, binary.BigEndian)
-	if err != io.ErrUnexpectedEOF {
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Errorf("expected io.ErrUnexpectedEOF, was %v", err)
 	}
 }

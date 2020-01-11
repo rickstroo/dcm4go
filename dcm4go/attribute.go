@@ -28,7 +28,7 @@ func (attribute *Attribute) asLong(index int) (uint32, error) {
 		return 0, ErrWrongType
 	}
 	if err := check(index, len(longs)); err != nil {
-		return 0, nil
+		return 0, err
 	}
 	return longs[index], nil
 }
@@ -40,7 +40,7 @@ func (attribute *Attribute) asString(index int) (string, error) {
 		return "", ErrWrongType
 	}
 	if err := check(index, len(strings)); err != nil {
-		return "", nil
+		return "", err
 	}
 	return strings[index], nil
 }
