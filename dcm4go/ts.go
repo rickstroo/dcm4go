@@ -2,7 +2,6 @@ package dcm4go
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
 // TransferSyntax describes the how an object is encoded
@@ -26,5 +25,5 @@ func findTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
 	case "1.2.840.10008.1.2.4.91":
 		return &TransferSyntax{true, binary.LittleEndian, "JPEG 2000 Image Compression"}, nil
 	}
-	return nil, fmt.Errorf("unrecognized transfer syntax uid, '%s'", transferSyntaxUID)
+	return nil, ErrUnrecognizedTransferSyntax
 }

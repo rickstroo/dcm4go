@@ -3,7 +3,6 @@ package dcm4go
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 )
@@ -101,7 +100,7 @@ func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool
 func findVR(tag uint32) (string, error) {
 	vr, ok := vrs[tag]
 	if !ok {
-		return "", fmt.Errorf("unable to find vr for tag %s", tagToString(tag))
+		return "", ErrUnrecognizedVR
 	}
 	return vr, nil
 }
@@ -176,7 +175,7 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 	case "UI":
 		return decoder.readUIDs(reader, length)
 	}
-	return nil, fmt.Errorf("unrecognized vr, '%s'", vr)
+	return nil, ErrUnrecognizedVR
 }
 
 // reads a tag
@@ -356,7 +355,7 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, 
 
 	// item tag
 	if tag != ItemTag {
-		return nil, fmt.Errorf("expecting item tag at beginning of sequence item, found %s instead", tagToString(tag))
+		return nil, ErrUnexpectedAttribute
 	}
 
 	if length == UndefinedLength {
@@ -441,7 +440,7 @@ func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.Byte
 
 	// item tag
 	if tag != ItemTag {
-		return nil, fmt.Errorf("expecting item tag at beginning of fragment, found %s instead", tagToString(tag))
+		return nil, ErrUnexpectedAttribute
 	}
 
 	// get the offset from the underlying reader before we read the pixel data

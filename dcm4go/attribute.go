@@ -1,7 +1,5 @@
 package dcm4go
 
-import "fmt"
-
 // Attribute contains all the properties of a DICOM attribute
 type Attribute struct {
 	tag    uint32
@@ -18,7 +16,7 @@ func (attribute *Attribute) String() string {
 
 func check(index int, length int) error {
 	if index < 0 || index >= length {
-		return fmt.Errorf("index %d out of bounds, range is 0..%d", index, length-1)
+		return ErrIndexOutOfBounds
 	}
 	return nil
 }
@@ -27,7 +25,7 @@ func check(index int, length int) error {
 func (attribute *Attribute) asLong(index int) (uint32, error) {
 	longs, ok := attribute.value.([]uint32)
 	if !ok {
-		return 0, fmt.Errorf("attribute was not of types longs")
+		return 0, ErrWrongType
 	}
 	if err := check(index, len(longs)); err != nil {
 		return 0, nil
@@ -39,7 +37,7 @@ func (attribute *Attribute) asLong(index int) (uint32, error) {
 func (attribute *Attribute) asString(index int) (string, error) {
 	strings, ok := attribute.value.([]string)
 	if !ok {
-		return "", fmt.Errorf("attribute was not of types strings")
+		return "", ErrWrongType
 	}
 	if err := check(index, len(strings)); err != nil {
 		return "", nil

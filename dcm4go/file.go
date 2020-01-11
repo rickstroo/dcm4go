@@ -2,14 +2,8 @@ package dcm4go
 
 import (
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 )
-
-// ErrIllegalPrefix means that a prefix other than "DICM" was encountered
-// at the beginning of the file
-var ErrIllegalPrefix = errors.New("illegal prefix")
 
 // ReadFile reads a DICOM object from a reader of a Part 10 source
 func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, error) {
@@ -45,7 +39,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 
 	// check that it is the attribute that we are expecting
 	if groupTwoLength.tag != FileMetaInformationGroupLengthTag {
-		return nil, nil, fmt.Errorf("unexpected first attribute in file, was expecting %s, found %s", tagToString(FileMetaInformationGroupLengthTag), tagToString(groupTwoLength.tag))
+		return nil, nil, ErrUnexpectedAttribute
 	}
 
 	// calculate the length of group two

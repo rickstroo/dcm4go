@@ -2,7 +2,6 @@ package dcm4go
 
 import (
 	"container/list"
-	"fmt"
 )
 
 // Object cotains all attributes of a DICOM object
@@ -44,7 +43,7 @@ func (object *Object) find(tag uint32) (*Attribute, error) {
 			return attribute, nil
 		}
 	}
-	return nil, fmt.Errorf("unable to find attribute with tag %s", tagToString(tag))
+	return nil, ErrAttributeNotFound
 }
 
 // AsLong returns attribute value as a long
