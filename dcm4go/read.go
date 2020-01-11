@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"encoding/binary"
 	"io"
+	"io/ioutil"
 	"math"
 )
 
@@ -14,6 +15,12 @@ func readBytes(reader io.Reader, buf []byte) error {
 	return nil
 }
 
+// skips bytes
+func skipBytes(reader io.Reader, length uint32) error {
+	_, err := io.CopyN(ioutil.Discard, reader, int64(length))
+	return err
+}
+
 // reads a byte
 func readByte(reader io.Reader) (byte, error) {
 	var buf [1]byte
@@ -21,6 +28,12 @@ func readByte(reader io.Reader) (byte, error) {
 		return 0, err
 	}
 	return buf[0], nil
+}
+
+// skips a byte
+func skipByte(reader io.Reader) error {
+	_, err := readByte(reader)
+	return err
 }
 
 // reads an unsigned short

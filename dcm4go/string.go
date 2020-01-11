@@ -2,8 +2,15 @@ package dcm4go
 
 import "fmt"
 
+func lengthToString(length uint32) string {
+	if length == UndefinedLength {
+		return "<undefined>"
+	}
+	return fmt.Sprintf("%d", length)
+}
+
 func attributeToString(attribute *Attribute, prefix string) string {
-	s := fmt.Sprintf("%stag=%s vr=%s off=%d len=%d", prefix, tagToString(attribute.tag), attribute.vr, attribute.offset, attribute.length)
+	s := fmt.Sprintf("%stag=%s vr=%s off=%d len=%s", prefix, tagToString(attribute.tag), attribute.vr, attribute.offset, lengthToString(attribute.length))
 	switch attribute.vr {
 	case "AE", "AS", "CS", "DA", "DT", "LO", "SH", "TM", "UC", "UI", "UR", "LT", "ST", "UT", "PN":
 		s += fmt.Sprintf(" value=%q\n", attribute.value)
@@ -50,5 +57,5 @@ func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
 }
 
 func fragmentToString(fragment *Fragment, prefix string) string {
-	return fmt.Sprintf("%soffset=%d,length=%d\n", prefix, fragment.offset, len(fragment.bytes))
+	return fmt.Sprintf("%soffset=%d,length=%d\n", prefix, fragment.offset, fragment.length)
 }

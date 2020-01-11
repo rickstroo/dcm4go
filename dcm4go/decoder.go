@@ -446,12 +446,11 @@ func (decoder *Decoder) readFragment(reader CounterReader, byteOrder binary.Byte
 	// get the offset from the underlying reader before we read the pixel data
 	offset := uint32(reader.BytesRead())
 
-	// read the pixel data
-	// TODO: skip the pixel data and create a bulk data reference
-	bytes, err := decoder.readBytes(reader, length)
-	if err != nil {
+	// always skip fragments
+	if err := skipBytes(reader, length); err != nil {
 		return nil, err
 	}
 
-	return &Fragment{bytes, offset}, nil
+	// return the fragment
+	return &Fragment{offset, length}, nil
 }
