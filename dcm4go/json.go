@@ -53,6 +53,21 @@ func valuesToJSON(attribute *Attribute, format string) string {
 	return strings.TrimSuffix(s, ",")
 }
 
+func cleanUpNumberStrings(ins []string) []string {
+	outs := make([]string, len(ins))
+	for i := 0; i < len(ins); i++ {
+		s := ins[i]
+		// trim the leading + sign if any, JSON doesn't like it
+		s = strings.TrimPrefix(s, "+")
+		// add a leading zero, JSON doesn't like leading decimals
+		if s[0] == '.' {
+			s = "0" + s
+		}
+		outs[i] = s
+	}
+	return outs
+}
+
 func attributeToJSON(path string, attribute *Attribute) string {
 	s := fmt.Sprintf("\"%08X\":{\"vr\":\"%s\"", attribute.tag, attribute.vr)
 	if attribute.length > 0 {
@@ -64,6 +79,8 @@ func attributeToJSON(path string, attribute *Attribute) string {
 		case "FD", "OD", "FL", "OF":
 			s += fmt.Sprintf(",\"Value\":[%s]", valuesToJSON(attribute, "%f"))
 		case "DS", "IS":
+			// clean up strings representing numbers
+			attribute.value = cleanUpNumberStrings(attribute.value.([]string))
 			s += fmt.Sprintf(",\"Value\":[%s]", valuesToJSON(attribute, "%s"))
 		case "LT", "ST", "UT":
 			s += fmt.Sprintf(",\"Value\":[%q]", attribute.value.(string))
