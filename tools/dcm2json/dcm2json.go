@@ -39,8 +39,11 @@ func main() {
 	check(err)
 
 	// print the group two object
-	fmt.Printf("%s", groupTwo.String())
+	//	fmt.Printf("%s", groupTwo.String())
 
 	// print the other groups
-	fmt.Printf("%s", otherGroups.String())
+	//	fmt.Printf("%s", otherGroups.String())
+
+	// print the object as JSON
+	fmt.Printf("%s\n", dcm4go.ObjectToJSON(*path, groupTwo, otherGroups))
 }
