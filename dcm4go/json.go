@@ -15,7 +15,7 @@ func encapsulatedToJSON(path string, encapsulated *Encapsulated) string {
 }
 
 func fragmentToJSON(path string, fragment *Fragment) string {
-	return fmt.Sprintf("{\"BulkDataURI\":\"%s?offset=%d&length=%d\"}", path, fragment.offset, fragment.length)
+	return fmt.Sprintf("{\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"}", path, fragment.offset, fragment.length)
 }
 
 func valuesToJSON(attribute *Attribute, format string) string {
@@ -87,7 +87,7 @@ func pixelDataToJSON(path string, attribute *Attribute) string {
 		return encapsulatedToJSON(path, v)
 	case []byte:
 		if v == nil {
-			return fmt.Sprintf(",\"BulkDataURI\":\"%s?offset=%d&length=%d\"", path, attribute.offset, attribute.length)
+			return fmt.Sprintf(",\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"", path, attribute.offset, attribute.length)
 		}
 		return fmt.Sprintf(",\"InlineBinary\":\"%s\"", base64.StdEncoding.EncodeToString(v))
 	default:
