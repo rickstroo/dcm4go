@@ -82,12 +82,11 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 // reads the vr of an attribute
 func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool) (string, error) {
 	if explicitVR {
-		var buf [2]byte
-		err := readBytes(reader, buf[:])
+		vr, err := readText(reader, 2)
 		if err != nil {
 			return "", err
 		}
-		return string(buf[:]), nil
+		return vr, nil
 	}
 	vr, err := findVR(tag)
 	if err != nil {
@@ -120,9 +119,8 @@ func (decoder *Decoder) readLength(reader CounterReader, explicitVR bool, byteOr
 		}
 
 		// if explicit vr but not short length, need to skip 2 bytes before reading length as a long
-		var buf [2]byte
-		err := readBytes(reader, buf[:])
-		if err != nil {
+
+		if err := skipBytes(reader, 2); err != nil {
 			return 0, err
 		}
 	}
@@ -163,7 +161,7 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 	case "OB":
 		return decoder.readPixelData(reader, length, byteOrder)
 	case "OL", "OV", "OW", "UN":
-		return decoder.readBytes(reader, length)
+		return readBytes(reader, length)
 	case "SL", "UL":
 		return decoder.readLongs(reader, length, byteOrder)
 	case "SQ":
@@ -287,15 +285,6 @@ func (decoder *Decoder) readTexts(reader CounterReader, length uint32) ([]string
 	return strings.Split(text, "\\"), nil
 }
 
-// reads bytes
-func (decoder *Decoder) readBytes(reader CounterReader, length uint32) ([]byte, error) {
-	buf := make([]byte, int(length))
-	if err := readBytes(reader, buf); err != nil {
-		return nil, err
-	}
-	return buf, nil
-}
-
 // UndefinedLength represents the value for undefined length
 const UndefinedLength = 0xFFFFFFFF
 
@@ -398,7 +387,7 @@ func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32)
 	}
 
 	// otherwise, read the bytes
-	bytes, err := decoder.readBytes(reader, length)
+	bytes, err := readBytes(reader, length)
 	if err != nil {
 		return nil, err
 	}

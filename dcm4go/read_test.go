@@ -13,8 +13,8 @@ func initReadTest(buf []byte) io.Reader {
 
 func TestReadBytes(t *testing.T) {
 	reader := initReadTest([]byte{0x12, 0x34, 0x56, 0x78})
-	var buf [4]byte
-	if err := readBytes(reader, buf[:]); err != nil {
+	buf, err := readBytes(reader, 4)
+	if err != nil {
 		t.Error(err)
 	}
 	if err := testByteEquals(buf[0], 0x12); err != nil {
