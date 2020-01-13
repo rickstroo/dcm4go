@@ -47,7 +47,7 @@ func readShort(reader io.Reader, byteOrder binary.ByteOrder) (uint16, error) {
 }
 
 // reads an unsigned long
-func readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) {
+func readLong(reader io.Reader, byteOrder binary.ByteOrder) (uint32, error) {
 	var buf [4]byte
 	if _, err := io.ReadFull(reader, buf[:]); err != nil {
 		return 0, err
@@ -56,7 +56,7 @@ func readLong(reader CounterReader, byteOrder binary.ByteOrder) (uint32, error) 
 }
 
 // reads an unsigned very long
-func readVeryLong(reader CounterReader, byteOrder binary.ByteOrder) (uint64, error) {
+func readVeryLong(reader io.Reader, byteOrder binary.ByteOrder) (uint64, error) {
 	var buf [8]byte
 	if _, err := io.ReadFull(reader, buf[:]); err != nil {
 		return 0, err
@@ -65,7 +65,7 @@ func readVeryLong(reader CounterReader, byteOrder binary.ByteOrder) (uint64, err
 }
 
 // reads a float
-func readFloat(reader CounterReader, byteOrder binary.ByteOrder) (float32, error) {
+func readFloat(reader io.Reader, byteOrder binary.ByteOrder) (float32, error) {
 	var buf [4]byte
 	if _, err := io.ReadFull(reader, buf[:]); err != nil {
 		return 0, err
@@ -74,7 +74,7 @@ func readFloat(reader CounterReader, byteOrder binary.ByteOrder) (float32, error
 }
 
 // reads a double
-func readDouble(reader CounterReader, byteOrder binary.ByteOrder) (float64, error) {
+func readDouble(reader io.Reader, byteOrder binary.ByteOrder) (float64, error) {
 	var buf [8]byte
 	if _, err := io.ReadFull(reader, buf[:]); err != nil {
 		return 0, err
@@ -83,7 +83,7 @@ func readDouble(reader CounterReader, byteOrder binary.ByteOrder) (float64, erro
 }
 
 // readUID reads a single UID from a reader
-func readUID(reader CounterReader, length uint32) (string, error) {
+func readUID(reader io.Reader, length uint32) (string, error) {
 	buf, err := readBytes(reader, length)
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func removeUIDPadding(buf []byte) string {
 }
 
 // readText reads a single text from a reader
-func readText(reader CounterReader, length uint32) (string, error) {
+func readText(reader io.Reader, length uint32) (string, error) {
 	buf, err := readBytes(reader, length)
 	if err != nil {
 		return "", err
