@@ -1,17 +1,13 @@
 package dcm4go
 
-import (
-	"container/list"
-)
-
 // Object cotains all attributes of a DICOM object
 type Object struct {
-	attributes *list.List
+	attributes []*Attribute
 }
 
 // NewObject creates and initializes a new object
 func newObject() *Object {
-	return &Object{list.New()}
+	return &Object{make([]*Attribute, 0, 100)}
 }
 
 // Add adds an attribute to an object
@@ -27,7 +23,7 @@ func newObject() *Object {
 // to sort before using.  I prefer the list, as I think
 // that will be more efficient.
 func (object *Object) add(attribute *Attribute) {
-	object.attributes.PushBack(attribute)
+	object.attributes = append(object.attributes, attribute)
 }
 
 // String returns a string representation of an object
@@ -37,8 +33,7 @@ func (object *Object) String() string {
 
 // Find looks for an attribute in an object
 func (object *Object) find(tag uint32) (*Attribute, error) {
-	for item := object.attributes.Front(); item != nil; item = item.Next() {
-		attribute := item.Value.(*Attribute)
+	for _, attribute := range object.attributes {
 		if attribute.tag == tag {
 			return attribute, nil
 		}

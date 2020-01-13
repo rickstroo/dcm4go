@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"container/list"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,7 +14,7 @@ type AssocRQPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	presContexts   *list.List
+	presContexts   []*PresContext
 	userInfo       *UserInfo
 }
 
@@ -23,7 +22,7 @@ type AssocRQPDU struct {
 type PresContext struct {
 	id               byte
 	abstractSyntax   string
-	transferSyntaxes *list.List
+	transferSyntaxes []string
 }
 
 // UserInfo represents user information
@@ -47,8 +46,8 @@ func (pdu *AssocRQPDU) String() string {
 		pdu.appContextName)
 
 	// print the list of presentation contexts
-	for item := pdu.presContexts.Front(); item != nil; item = item.Next() {
-		s += fmt.Sprintf("%s,", item.Value.(*PresContext))
+	for _, presContext := range pdu.presContexts {
+		s += fmt.Sprintf("%s,", presContext)
 	}
 
 	// trim the trailing comma separating presentation contexts and add the enclosing bracket
@@ -69,8 +68,7 @@ func (presContext *PresContext) String() string {
 		presContext.abstractSyntax)
 
 	// print the list of transfer syntaxes
-	for item := presContext.transferSyntaxes.Front(); item != nil; item = item.Next() {
-		transferSyntax := item.Value.(string)
+	for _, transferSyntax := range presContext.transferSyntaxes {
 		s += fmt.Sprintf("%q,", transferSyntax)
 	}
 
@@ -126,7 +124,7 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 	var appContextName string
 
 	// initialize a list of presentation contexts
-	presContexts := list.New()
+	presContexts := make([]*PresContext, 0, 5)
 
 	// initialize the user info
 	var userInfo *UserInfo
@@ -178,7 +176,7 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 			abstractSyntax := ""
 
-			transferSyntaxes := list.New()
+			transferSyntaxes := make([]string, 0)
 
 			// read the abstract syntax and transfer syntax items
 			for {
@@ -220,11 +218,14 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 						return nil, err
 					}
 
+					// read the transfer syntax
 					transferSyntax, err := readUID(limitedReader, uint32(length))
 					if err != nil {
 						return nil, err
 					}
-					transferSyntaxes.PushBack(transferSyntax)
+
+					// add it to the list
+					transferSyntaxes = append(transferSyntaxes, transferSyntax)
 
 				} else {
 
@@ -235,8 +236,11 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 			}
 
+			// create the presentation context
 			presContext := &PresContext{id, abstractSyntax, transferSyntaxes}
-			presContexts.PushBack(presContext)
+
+			// add it to the list
+			presContexts = append(presContexts, presContext)
 
 		} else if itemType == 0x050 {
 

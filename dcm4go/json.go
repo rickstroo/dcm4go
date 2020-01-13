@@ -8,8 +8,8 @@ import (
 
 func encapsulatedToJSON(path string, encapsulated *Encapsulated) string {
 	s := ",\"DataFragment\":["
-	for i, item := 1, encapsulated.fragments.Front(); item != nil; i, item = i+1, item.Next() {
-		s += fragmentToJSON(path, item.Value.(*Fragment)) + ","
+	for _, fragment := range encapsulated.fragments {
+		s += fragmentToJSON(path, fragment) + ","
 	}
 	return strings.TrimSuffix(s, ",") + "]"
 }
@@ -114,8 +114,8 @@ func pixelDataToJSON(path string, attribute *Attribute) string {
 
 func sequenceToJSON(path string, sequence *Sequence) string {
 	s := ""
-	for item := sequence.objects.Front(); item != nil; item = item.Next() {
-		s += ObjectToJSON(path, item.Value.(*Object)) + ","
+	for _, object := range sequence.objects {
+		s += ObjectToJSON(path, object) + ","
 	}
 	return strings.TrimSuffix(s, ",")
 }
@@ -124,8 +124,7 @@ func sequenceToJSON(path string, sequence *Sequence) string {
 func ObjectToJSON(path string, objects ...*Object) string {
 	s := ""
 	for _, object := range objects {
-		for item := object.attributes.Front(); item != nil; item = item.Next() {
-			attribute := item.Value.(*Attribute)
+		for _, attribute := range object.attributes {
 			// group lengths are not to be encoded in JSON representation
 			if toElement(attribute.tag) != 0x0000 {
 				s += attributeToJSON(path, attribute) + ","

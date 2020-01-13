@@ -48,24 +48,24 @@ func attributeToString(attribute *Attribute, prefix string) string {
 
 func sequenceToString(sequence *Sequence, prefix string) string {
 	s := ""
-	for i, item := 1, sequence.objects.Front(); item != nil; i, item = i+1, item.Next() {
-		s += objectToString(item.Value.(*Object), fmt.Sprintf("%sitem#%d>", prefix, i))
+	for i, object := range sequence.objects {
+		s += objectToString(object, fmt.Sprintf("%sitem#%d>", prefix, i+1))
 	}
 	return s
 }
 
 func objectToString(object *Object, prefix string) string {
 	s := ""
-	for item := object.attributes.Front(); item != nil; item = item.Next() {
-		s += attributeToString(item.Value.(*Attribute), prefix)
+	for _, attribute := range object.attributes {
+		s += attributeToString(attribute, prefix)
 	}
 	return s
 }
 
 func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
 	s := ""
-	for i, item := 1, encapsulated.fragments.Front(); item != nil; i, item = i+1, item.Next() {
-		s += fragmentToString(item.Value.(*Fragment), fmt.Sprintf("%sfrag#%d>", prefix, i))
+	for i, fragment := range encapsulated.fragments {
+		s += fragmentToString(fragment, fmt.Sprintf("%sfrag#%d>", prefix, i+1))
 	}
 	return s
 }

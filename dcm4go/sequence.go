@@ -1,16 +1,14 @@
 package dcm4go
 
-import "container/list"
-
 // Sequence contains an ordered list of objects
 type Sequence struct {
-	objects *list.List
+	objects []*Object
 }
 
 func (sequence *Sequence) add(object *Object) {
-	sequence.objects.PushBack(object)
+	sequence.objects = append(sequence.objects, object)
 }
 
 func newSequence() *Sequence {
-	return &Sequence{list.New()}
+	return &Sequence{make([]*Object, 0, 10)}
 }
