@@ -2,6 +2,7 @@ package dcm4go
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -24,7 +25,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, *Object, err
 
 	// check the prefix
 	if prefix != "DICM" {
-		return nil, nil, ErrIllegalPrefix
+		return nil, nil, fmt.Errorf("found '%s': '%w'", prefix, ErrIllegalPrefix)
 	}
 
 	// create a decoder
