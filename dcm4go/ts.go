@@ -2,6 +2,7 @@ package dcm4go
 
 import (
 	"encoding/binary"
+	"fmt"
 )
 
 // TransferSyntax describes the how an object is encoded
@@ -22,8 +23,10 @@ func findTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
 		return &TransferSyntax{true, binary.LittleEndian, "Deflated Explicit VR Little Endian"}, nil
 	case "1.2.840.10008.1.2.2":
 		return &TransferSyntax{true, binary.BigEndian, "Explicit VR Big Endian"}, nil
+	case "1.2.840.10008.1.2.4.90":
+		return &TransferSyntax{true, binary.LittleEndian, "JPEG 2000 Image Compression (Lssless Only)"}, nil
 	case "1.2.840.10008.1.2.4.91":
 		return &TransferSyntax{true, binary.LittleEndian, "JPEG 2000 Image Compression"}, nil
 	}
-	return nil, ErrUnrecognizedTransferSyntax
+	return nil, fmt.Errorf("transfer syntax '%s': %w", transferSyntaxUID, ErrUnrecognizedTransferSyntax)
 }
