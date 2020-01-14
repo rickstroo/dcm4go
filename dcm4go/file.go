@@ -75,9 +75,12 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 		return nil, err
 	}
 
-	// concatenate the groups
-	groupTwo.addAll(otherGroups)
+	// concatenate the group two length attribute, the group two object and othe other groups object
+	object := newObject()
+	object.add(groupTwoLength)
+	object.addAll(groupTwo)
+	object.addAll(otherGroups)
 
 	// return the groups
-	return groupTwo, nil
+	return object, nil
 }

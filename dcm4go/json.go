@@ -121,14 +121,12 @@ func sequenceToJSON(path string, sequence *Sequence) string {
 }
 
 // ObjectToJSON prints the objects as JSON
-func ObjectToJSON(path string, objects ...*Object) string {
+func ObjectToJSON(path string, object *Object) string {
 	s := ""
-	for _, object := range objects {
-		for _, attribute := range object.attributes {
-			// group lengths are not to be encoded in JSON representation
-			if toElement(attribute.tag) != 0x0000 {
-				s += attributeToJSON(path, attribute) + ","
-			}
+	for _, attribute := range object.attributes {
+		// group lengths are not to be encoded in JSON representation
+		if toElement(attribute.tag) != 0x0000 {
+			s += attributeToJSON(path, attribute) + ","
 		}
 	}
 	return "{" + strings.TrimSuffix(s, ",") + "}"

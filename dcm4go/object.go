@@ -1,21 +1,30 @@
 package dcm4go
 
-import "encoding/json"
-
 // Object cotains all attributes of a DICOM object
 type Object struct {
 	attributes []*Attribute
 }
 
-// MarshalJSON returns sequence as JSON
-func (object *Object) MarshalJSON() ([]byte, error) {
-	// return json.Marshal(&struct {
-	// 	Attributes []*Attribute `json:"attributes"`
-	// }{
-	// 	Attributes: object.attributes,
-	// })
-	return json.Marshal(object.attributes)
-}
+// // MarshalJSON returns sequence as JSON
+// func (object *Object) MarshalJSON() ([]byte, error) {
+// 	// return json.Marshal(&struct {
+// 	// 	Attributes []*Attribute `json:"attributes"`
+// 	// }{
+// 	// 	Attributes: object.attributes,
+// 	// })
+// 	type a struct {
+// 		VR    string
+// 		Value interface{}
+// 	}
+// 	m := make(map[string]*Attribute)
+// 	for _, attribute := range object.attributes {
+// 		// standards not to output group length attributes
+// 		if toElement(attribute.tag) != 0x0000 {
+// 			m[fmt.Sprintf("%08X", attribute.tag)] = attribute
+// 		}
+// 	}
+// 	return json.Marshal(m)
+// }
 
 // NewObject creates and initializes a new object
 func newObject() *Object {

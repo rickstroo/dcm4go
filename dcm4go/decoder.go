@@ -158,10 +158,8 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 		// these VRs support single text values
 	case "LT", "ST", "UT", "UR":
 		return readText(reader, length)
-	case "OB":
+	case "OB", "OL", "OV", "OW", "UN":
 		return decoder.readPixelData(reader, length, byteOrder)
-	case "OL", "OV", "OW", "UN":
-		return readBytes(reader, length)
 	case "SL", "UL":
 		return decoder.readLongs(reader, length, byteOrder)
 	case "SQ":

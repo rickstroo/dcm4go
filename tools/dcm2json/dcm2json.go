@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -40,18 +39,16 @@ func main() {
 	check(err)
 
 	// print the object
-	print(object)
+	print(*path, object)
 }
 
 // print the object
-func print(object *dcm4go.Object) {
-	//fmt.Printf("%s", object.String())
-	//fmt.Printf("%s\n", dcm4go.ObjectToJSON(*path, groupTwo, otherGroups))
-
-	buf, err := json.Marshal(object)
-	//	buf, err = json.MarshalIndent(otherGroups, "", " ")
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	}
-	fmt.Printf("%s\n", string(buf))
+func print(path string, object *dcm4go.Object) {
+	// buf, err := json.Marshal(object)
+	// //	buf, err = json.MarshalIndent(otherGroups, "", " ")
+	// if err != nil {
+	// 	fmt.Printf("%v\n", err)
+	// }
+	// fmt.Printf("%s\n", string(buf))
+	fmt.Printf("%s\n", dcm4go.ObjectToJSON(path, object))
 }
