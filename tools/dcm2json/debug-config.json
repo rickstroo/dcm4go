@@ -3,7 +3,7 @@
     {
       "name": "dcm2json",
       "mode": "debug",
-      "args": ["-path", "/Users/Rick/data/dicom/compsamples_j2k/IMAGES/J2KI/CT1_J2KI"]
+      "args": ["-path", "/Users/Rick/data/dicom/GENECG.dcm"]
     }
   ]
 }

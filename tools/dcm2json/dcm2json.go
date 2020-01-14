@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -35,15 +36,22 @@ func main() {
 	defer file.Close()
 
 	// read the file
-	groupTwo, otherGroups, err := dcm4go.ReadFile(file, uint32(*bulkDataThreshold))
+	object, err := dcm4go.ReadFile(file, uint32(*bulkDataThreshold))
 	check(err)
 
-	// print the group two object
-	fmt.Printf("%s", groupTwo.String())
+	// print the object
+	print(object)
+}
 
-	// print the other groups
-	fmt.Printf("%s", otherGroups.String())
+// print the object
+func print(object *dcm4go.Object) {
+	//fmt.Printf("%s", object.String())
+	//fmt.Printf("%s\n", dcm4go.ObjectToJSON(*path, groupTwo, otherGroups))
 
-	// print the object as JSON
-	fmt.Printf("%s\n", dcm4go.ObjectToJSON(*path, groupTwo, otherGroups))
+	buf, err := json.Marshal(object)
+	//	buf, err = json.MarshalIndent(otherGroups, "", " ")
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
+	fmt.Printf("%s\n", string(buf))
 }

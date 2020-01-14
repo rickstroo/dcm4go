@@ -1,8 +1,20 @@
 package dcm4go
 
+import "encoding/json"
+
 // Object cotains all attributes of a DICOM object
 type Object struct {
 	attributes []*Attribute
+}
+
+// MarshalJSON returns sequence as JSON
+func (object *Object) MarshalJSON() ([]byte, error) {
+	// return json.Marshal(&struct {
+	// 	Attributes []*Attribute `json:"attributes"`
+	// }{
+	// 	Attributes: object.attributes,
+	// })
+	return json.Marshal(object.attributes)
 }
 
 // NewObject creates and initializes a new object
@@ -24,6 +36,11 @@ func newObject() *Object {
 // that will be more efficient.
 func (object *Object) add(attribute *Attribute) {
 	object.attributes = append(object.attributes, attribute)
+}
+
+// Adds all attributes of an object
+func (object *Object) addAll(other *Object) {
+	object.attributes = append(object.attributes, other.attributes...)
 }
 
 // String returns a string representation of an object
