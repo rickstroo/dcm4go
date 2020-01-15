@@ -14,24 +14,15 @@ type AssocRQPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	presContexts   []*PresContext
+	presContexts   []*RQPresContext
 	userInfo       *UserInfo
 }
 
-// PresContext represents a presentation context
-type PresContext struct {
+// RQPresContext represents a presentation context
+type RQPresContext struct {
 	id               byte
 	abstractSyntax   string
 	transferSyntaxes []string
-}
-
-// UserInfo represents user information
-type UserInfo struct {
-	maxLenReceived     uint32
-	implClassUID       string
-	implVersionName    string
-	maxNumOpsInvoked   uint16
-	maxNumOpsPerformed uint16
 }
 
 // String returns a string representation of a AssocRQPDU
@@ -61,7 +52,7 @@ func (pdu *AssocRQPDU) String() string {
 }
 
 // String returns a string representation of a UserInfo
-func (presContext *PresContext) String() string {
+func (presContext *RQPresContext) String() string {
 	s := fmt.Sprintf(
 		"{id:%d,abstractSyntax:%q,transferSyntaxes:[",
 		presContext.id,
@@ -77,17 +68,6 @@ func (presContext *PresContext) String() string {
 
 	// return the fully constructed including a closing parenthesis for this presentation context
 	return s + "}"
-}
-
-// String returns a string representation of a UserInfo
-func (userInfo *UserInfo) String() string {
-	return fmt.Sprintf(
-		"{maxLenReceived:%v,implClassUID:%q,implVersionName:%q,maxNumOpsInvoked:%v,maxNumOpsPerformed:%v}",
-		userInfo.maxLenReceived,
-		userInfo.implClassUID,
-		userInfo.implVersionName,
-		userInfo.maxNumOpsInvoked,
-		userInfo.maxNumOpsPerformed)
 }
 
 // readAssocRQPDU reads an AssocRQPDU from a reader
@@ -124,7 +104,7 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 	var appContextName string
 
 	// initialize a list of presentation contexts
-	presContexts := make([]*PresContext, 0, 5)
+	presContexts := make([]*RQPresContext, 0, 5)
 
 	// initialize the user info
 	var userInfo *UserInfo
@@ -237,7 +217,7 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			}
 
 			// create the presentation context
-			presContext := &PresContext{id, abstractSyntax, transferSyntaxes}
+			presContext := &RQPresContext{id, abstractSyntax, transferSyntaxes}
 
 			// add it to the list
 			presContexts = append(presContexts, presContext)
@@ -247,120 +227,10 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			// create a limited reader for the user info
 			limitedReader := io.LimitReader(reader, int64(length))
 
-			// initialze a user info
-			userInfo = &UserInfo{}
-
-			// read the abstract syntax and transfer syntax items
-			for {
-
-				// read a sub item
-				subItemType, err := readByte(limitedReader)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					return nil, err
-				}
-
-				// skip a byte, as per the standard
-				if err := skipByte(limitedReader); err != nil {
-					return nil, err
-				}
-
-				if subItemType == 0x51 { // maximum length
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-
-					// check it
-					if length != 0x04 {
-						return nil, fmt.Errorf("expected length to be 0x04, was 0x%04X", length)
-					}
-
-					// read the maximum length received
-					maxLenReceived, err := readLong(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-					userInfo.maxLenReceived = maxLenReceived
-
-				} else if subItemType == 0x52 { // implementation class UID
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-
-					// read the implementation class UID
-					implClassUID, err := readUID(limitedReader, uint32(length))
-					if err != nil {
-						return nil, err
-					}
-					userInfo.implClassUID = implClassUID
-
-				} else if subItemType == 0x53 { // maximum number operations
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-
-					// check it
-					if length != 0x04 {
-						return nil, fmt.Errorf("expected length to be 0x04, was 0x%04X", length)
-					}
-
-					// read the maximum number of operations invoked
-					maxNumOpsInvoked, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-					userInfo.maxNumOpsInvoked = maxNumOpsInvoked
-
-					// read the maximum number of operations performed
-					maxNumOpsPerformed, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-					userInfo.maxNumOpsPerformed = maxNumOpsPerformed
-
-				} else if subItemType == 0x55 { // implementation version name
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-
-					// read the implementation version name
-					implVersionName, err := readText(limitedReader, uint32(length))
-					if err != nil {
-						return nil, err
-					}
-					userInfo.implVersionName = implVersionName
-
-				} else {
-
-					// unrecognized item
-					fmt.Printf("ignoring unrecognized user info sub item type: 0x%02X\n", subItemType)
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
-
-					// skip the bytes
-					if err := skipBytes(limitedReader, uint32(length)); err != nil {
-						return nil, err
-					}
-				}
-
+			// read the user info sub items
+			userInfo, err = readUserInfo(limitedReader)
+			if err != nil {
+				return nil, err
 			}
 
 		} else {

@@ -12,7 +12,7 @@ import (
 func check(err error) {
 	if err != nil {
 		fmt.Printf("panic: %v\n", err)
-		panic(err)
+		//		panic(err)
 	}
 }
 
