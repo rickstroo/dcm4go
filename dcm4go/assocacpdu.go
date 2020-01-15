@@ -18,12 +18,13 @@ type AssocACPDU struct {
 // ACPresContext represents an accepted presentation context
 type ACPresContext struct {
 	id             byte
+	result         byte
 	transferSyntax string
 }
 
 // String returns a string representation of a UserInfo
 func (presContext *ACPresContext) String() string {
-	return fmt.Sprintf("{id:%d,transferSyntax:%q}", presContext.id, presContext.transferSyntax)
+	return fmt.Sprintf("{id:%d,result:%d,transferSyntax:%q}", presContext.id, presContext.result, presContext.transferSyntax)
 }
 
 func writeAssocACPDU(reader io.Reader, assocACPDU *AssocACPDU) error {
