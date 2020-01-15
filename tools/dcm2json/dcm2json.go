@@ -44,11 +44,5 @@ func main() {
 
 // print the object
 func print(path string, object *dcm4go.Object) {
-	// buf, err := json.Marshal(object)
-	// //	buf, err = json.MarshalIndent(otherGroups, "", " ")
-	// if err != nil {
-	// 	fmt.Printf("%v\n", err)
-	// }
-	// fmt.Printf("%s\n", string(buf))
 	fmt.Printf("%s\n", dcm4go.ObjectToJSON(path, object))
 }

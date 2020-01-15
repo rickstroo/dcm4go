@@ -2,7 +2,9 @@ package dcm4go
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -130,4 +132,124 @@ func ObjectToJSON(path string, object *Object) string {
 		}
 	}
 	return "{" + strings.TrimSuffix(s, ",") + "}"
+}
+
+// ToJSON returns a JSON representation of an object
+func ToJSON(object *Object) ([]byte, error) {
+	jsonObject, err := prepareJSONObject(object)
+	if err != nil {
+		return nil, err
+	}
+	return json.MarshalIndent(jsonObject, "", " ")
+}
+
+// JSONObject is a struct optimized for JSON marshalling
+type JSONObject struct {
+	Attributes map[string]*JSONAttribute
+}
+
+// JSONAttribute is a struct optimized for JSON marshalling
+type JSONAttribute struct {
+	VR    string
+	Value interface{}
+}
+
+func prepareJSONObject(object *Object) (*JSONObject, error) {
+	jsonObject := &JSONObject{make(map[string]*JSONAttribute)}
+	for _, attribute := range object.attributes {
+		// as per the standard, group length attributes are ommited from JSON output
+		if toElement(attribute.tag) != 0x0000 {
+			jsonAttribute, err := prepareJSONAttribute(attribute)
+			if err != nil {
+				return nil, err
+			}
+			jsonObject.Attributes[fmt.Sprintf("%08X", attribute.tag)] = jsonAttribute
+		}
+	}
+	return jsonObject, nil
+}
+
+func prepareJSONAttribute(attribute *Attribute) (*JSONAttribute, error) {
+	jsonAttribute := &JSONAttribute{}
+	jsonAttribute.VR = attribute.vr
+	jsonValue, err := prepareJSONValue(attribute)
+	if err != nil {
+		return nil, err
+	}
+	jsonAttribute.Value = jsonValue
+	return jsonAttribute, nil
+}
+
+func prepareJSONValue(attribute *Attribute) (interface{}, error) {
+	switch attribute.vr {
+	case "DS":
+		// the standard says to format DS values as floats, not strings
+		return convertStringsToFloats(attribute.value)
+	case "IS":
+		// the standards says to format IS values as ints, not strings
+		return convertStringsToInts(attribute.value)
+	case "PN":
+		return convertStringsToAlphabetics(attribute.value)
+	case "OB":
+		switch attribute.value.(type) {
+		case []byte:
+			// do nothing, json converts byte slice to base64
+		case []*Fragment:
+			// todo
+		}
+	}
+	return attribute.value, nil
+}
+
+// converts a slice of strings to floats
+func convertStringsToFloats(value interface{}) ([]float64, error) {
+	strings, ok := value.([]string)
+	if !ok {
+		return nil, fmt.Errorf("value not of type []string")
+	}
+	floats := make([]float64, 0, len(strings))
+	for _, string := range strings {
+		float, err := strconv.ParseFloat(string, 64)
+		if err != nil {
+			fmt.Printf("while parsing float, caught %v, will skip\n", err)
+		} else {
+			floats = append(floats, float)
+		}
+	}
+	return floats, nil
+}
+
+// converts a slice of strings to ints
+func convertStringsToInts(value interface{}) ([]int64, error) {
+	strings, ok := value.([]string)
+	if !ok {
+		return nil, fmt.Errorf("value not of type []string")
+	}
+	ints := make([]int64, len(strings))
+	for i, string := range strings {
+		int, err := strconv.ParseInt(string, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		ints[i] = int
+	}
+	return ints, nil
+}
+
+// Alphabetic as per the standard
+type Alphabetic struct {
+	Alphabetic string
+}
+
+// converts a slice of strings to alphabetics, as per the standard
+func convertStringsToAlphabetics(value interface{}) ([]*Alphabetic, error) {
+	strings, ok := value.([]string)
+	if !ok {
+		return nil, fmt.Errorf("value not of type []string")
+	}
+	alphabetics := make([]*Alphabetic, len(strings))
+	for i, string := range strings {
+		alphabetics[i] = &Alphabetic{string}
+	}
+	return alphabetics, nil
 }
