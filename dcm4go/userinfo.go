@@ -292,8 +292,8 @@ func writeImplVersionName(writer io.Writer, userInfo *UserInfo) error {
 		return err
 	}
 
-	// write the implementation class uid
-	if err := writeUID(writer, userInfo.implVersionName); err != nil {
+	// write the implementation version name
+	if err := writeText(writer, userInfo.implVersionName); err != nil {
 		return err
 	}
 

@@ -169,7 +169,7 @@ func writeAppContextName(writer io.Writer, assocACPDU *AssocACPDU) error {
 	}
 
 	// write the application context name
-	if err := writeText(writer, assocACPDU.appContextName); err != nil {
+	if err := writeUID(writer, assocACPDU.appContextName); err != nil {
 		return err
 	}
 
@@ -233,7 +233,7 @@ func writeACPresContext(writer io.Writer, presContext *ACPresContext) error {
 	}
 
 	// write the length to the original writer
-	if err := writeLong(writer, uint32(byteWriter.Len()), binary.BigEndian); err != nil {
+	if err := writeShort(writer, uint16(byteWriter.Len()), binary.BigEndian); err != nil {
 		return err
 	}
 
@@ -265,7 +265,7 @@ func writeTransferSyntax(writer io.Writer, transferSyntax string) error {
 	}
 
 	// write the application context name
-	if err := writeText(writer, transferSyntax); err != nil {
+	if err := writeUID(writer, transferSyntax); err != nil {
 		return err
 	}
 
