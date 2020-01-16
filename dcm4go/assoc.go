@@ -14,7 +14,7 @@ type Assoc struct {
 }
 
 // AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn) (*Assoc, error) {
+func AcceptAssoc(conn net.Conn, ae *AE) (*Assoc, error) {
 
 	// read a pdu
 	pdu, err := readPDU(conn)
@@ -31,7 +31,7 @@ func AcceptAssoc(conn net.Conn) (*Assoc, error) {
 		}
 		fmt.Printf("assocRQPDU is %v\n", assocRQPDU)
 
-		assocACPDU, err := negotiateAssoc(assocRQPDU)
+		assocACPDU, err := negotiateAssoc(assocRQPDU, ae)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +47,15 @@ func AcceptAssoc(conn net.Conn) (*Assoc, error) {
 	return nil, fmt.Errorf("unrecognized pdu type: %d", pdu.pduType)
 }
 
-func negotiateAssoc(assocRQPDU *AssocRQPDU) (*AssocACPDU, error) {
+const (
+	pcAcceptance                   = 0x00
+	pcUserRejection                = 0x01
+	pcNoReason                     = 0x02
+	pcAbstractSyntaxNotSupported   = 0x03
+	pcTransferSyntaxesNotSupported = 0x04
+)
+
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)

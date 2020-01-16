@@ -58,8 +58,18 @@ func main() {
 
 func handleConnection(conn net.Conn) error {
 
+	defaultTransferSyntaxes := []string{
+		dcm4go.ImplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRBigEndianUID,
+	}
+
+	ae := dcm4go.NewAE("dcmrcv")
+	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes)
+	fmt.Printf("ae:%v\n", ae)
+
 	// accept the association
-	assoc, err := dcm4go.AcceptAssoc(conn)
+	assoc, err := dcm4go.AcceptAssoc(conn, ae)
 	check(err)
 
 	// close the association
