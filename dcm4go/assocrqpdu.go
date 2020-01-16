@@ -18,56 +18,15 @@ type AssocRQPDU struct {
 	userInfo       *UserInfo
 }
 
-// RQPresContext represents a presentation context
-type RQPresContext struct {
-	id               byte
-	abstractSyntax   string
-	transferSyntaxes []string
-}
-
 // String returns a string representation of a AssocRQPDU
 func (pdu *AssocRQPDU) String() string {
-
-	// format the simple attribute of the pdu
-	s := fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:[",
+	return fmt.Sprintf(
+		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s",
 		pdu.protocol,
 		strings.TrimSpace(pdu.calledAETitle),
 		strings.TrimSpace(pdu.callingAETitle),
-		pdu.appContextName)
-
-	// print the list of presentation contexts
-	for _, presContext := range pdu.presContexts {
-		s += fmt.Sprintf("%s,", presContext)
-	}
-
-	// trim the trailing comma separating presentation contexts and add the enclosing bracket
-	s = strings.TrimSuffix(s, ",") + "]"
-
-	// add the user info
-	s += fmt.Sprintf(",userInfo:%v", pdu.userInfo)
-
-	// return the fully constructed string including a closing parenthesis
-	return s + "}"
-}
-
-// String returns a string representation of a UserInfo
-func (presContext *RQPresContext) String() string {
-	s := fmt.Sprintf(
-		"{id:%d,abstractSyntax:%q,transferSyntaxes:[",
-		presContext.id,
-		presContext.abstractSyntax)
-
-	// print the list of transfer syntaxes
-	for _, transferSyntax := range presContext.transferSyntaxes {
-		s += fmt.Sprintf("%q,", transferSyntax)
-	}
-
-	// trim the trailing comma separating transfer syntaxes and add the enclosing bracket
-	s = strings.TrimSuffix(s, ",") + "]"
-
-	// return the fully constructed including a closing parenthesis for this presentation context
-	return s + "}"
+		pdu.appContextName,
+		pdu.presContexts)
 }
 
 // readAssocRQPDU reads an AssocRQPDU from a reader
