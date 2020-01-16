@@ -126,13 +126,13 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			return nil, err
 		}
 
-		if itemType == 0x10 { // application context name
+		// read the length
+		length, err := readShort(reader, binary.BigEndian)
+		if err != nil {
+			return nil, err
+		}
 
-			// read the length
-			length, err := readShort(reader, binary.BigEndian)
-			if err != nil {
-				return nil, err
-			}
+		if itemType == 0x10 { // application context name
 
 			// read the application context name
 			appContextName, err = readUID(reader, uint32(length))
@@ -141,12 +141,6 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			}
 
 		} else if itemType == 0x020 { // presentation context
-
-			// read the length
-			length, err := readShort(reader, binary.BigEndian)
-			if err != nil {
-				return nil, err
-			}
 
 			// create a limited reader for the requested presentation contextx
 			limitedReader := io.LimitReader(reader, int64(length))
@@ -185,13 +179,13 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 					return nil, err
 				}
 
-				if subItemType == 0x30 { // abstract syntax
+				// read the length
+				length, err := readShort(limitedReader, binary.BigEndian)
+				if err != nil {
+					return nil, err
+				}
 
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
+				if subItemType == 0x30 { // abstract syntax
 
 					// read the uid
 					uid, err := readUID(limitedReader, uint32(length))
@@ -203,12 +197,6 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 					abstractSyntax = uid
 
 				} else if subItemType == 0x40 { // transfer syntax
-
-					// read the length
-					length, err := readShort(limitedReader, binary.BigEndian)
-					if err != nil {
-						return nil, err
-					}
 
 					// read the transfer syntax
 					uid, err := readUID(limitedReader, uint32(length))
@@ -234,12 +222,6 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			presContexts = append(presContexts, presContext)
 
 		} else if itemType == 0x050 { // user info
-
-			// read the length
-			length, err := readShort(reader, binary.BigEndian)
-			if err != nil {
-				return nil, err
-			}
 
 			// create a limited reader for the user info
 			limitedReader := io.LimitReader(reader, int64(length))
