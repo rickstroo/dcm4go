@@ -35,6 +35,7 @@ func AcceptAssoc(conn net.Conn) (*Assoc, error) {
 		if err != nil {
 			return nil, err
 		}
+		fmt.Printf("assocACPDU is %v\n", assocACPDU)
 
 		if err := writeAssocACPDU(conn, assocACPDU); err != nil {
 			return nil, err
@@ -47,10 +48,25 @@ func AcceptAssoc(conn net.Conn) (*Assoc, error) {
 }
 
 func negotiateAssoc(assocRQPDU *AssocRQPDU) (*AssocACPDU, error) {
-	return nil, fmt.Errorf("negotiateAssoc: not implemented")
+
+	// initialize the association accept pdu
+	assocACPDU := newAssocACPDU(assocRQPDU)
+
+	// implement a simple acceptanace of the presentation contexts
+	for _, rqPresContext := range assocRQPDU.presContexts {
+		acPresContext := &ACPresContext{
+			rqPresContext.id,                  // the id
+			0x00,                              // success
+			rqPresContext.transferSyntaxes[0], // the first one
+		}
+		assocACPDU.presContexts = append(assocACPDU.presContexts, acPresContext)
+	}
+
+	// return the association accept pdu
+	return assocACPDU, nil
 }
 
 // Close closes an association
 func (assoc *Assoc) Close() error {
-	return fmt.Errorf("Assoc.Close: not implemented")
+	return nil
 }

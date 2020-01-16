@@ -157,7 +157,7 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 		return decoder.readFloats(reader, length, byteOrder)
 		// these VRs support single text values
 	case "LT", "ST", "UT", "UR":
-		return readText(reader, length)
+		return readPaddedText(reader, length)
 	case "OB", "OL", "OV", "OW", "UN":
 		return decoder.readPixelData(reader, length, byteOrder)
 	case "SL", "UL":
@@ -265,9 +265,43 @@ func (decoder *Decoder) readDoubles(reader CounterReader, length uint32, byteOrd
 	return doubles, nil
 }
 
+// readPaddedUID reads a single UID from a reader with potential padding
+func readPaddedUID(reader io.Reader, length uint32) (string, error) {
+	buf, err := readBytes(reader, length)
+	if err != nil {
+		return "", err
+	}
+	return removeUIDPadding(buf), nil
+}
+
+// removeUIDPadding removes the padding from the UID if any
+func removeUIDPadding(buf []byte) string {
+	if len(buf) > 0 && buf[len(buf)-1] == 0x00 {
+		return string(buf[:len(buf)-1])
+	}
+	return string(buf)
+}
+
+// readPaddedText reads a single text from a reader with potential padding
+func readPaddedText(reader io.Reader, length uint32) (string, error) {
+	buf, err := readBytes(reader, length)
+	if err != nil {
+		return "", err
+	}
+	return removeTextPadding(buf), nil
+}
+
+// removeTextPadding removes the padding from the text if any
+func removeTextPadding(buf []byte) string {
+	if len(buf) > 0 && buf[len(buf)-1] == byte(' ') {
+		return string(buf[:len(buf)-1])
+	}
+	return string(buf)
+}
+
 // reads one or more UIDs from a reader
 func (decoder *Decoder) readUIDs(reader CounterReader, length uint32) ([]string, error) {
-	uid, err := readUID(reader, length)
+	uid, err := readPaddedUID(reader, length)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +310,7 @@ func (decoder *Decoder) readUIDs(reader CounterReader, length uint32) ([]string,
 
 // read one or more texts from a reader
 func (decoder *Decoder) readTexts(reader CounterReader, length uint32) ([]string, error) {
-	text, err := readText(reader, length)
+	text, err := readPaddedText(reader, length)
 	if err != nil {
 		return nil, err
 	}

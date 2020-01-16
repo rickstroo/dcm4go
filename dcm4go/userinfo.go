@@ -1,6 +1,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -150,5 +151,152 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 }
 
 func writeUserInfo(writer io.Writer, userInfo *UserInfo) error {
-	return fmt.Errorf("writeUserInfo: not implemented")
+
+	// write the item type
+	if err := writeByte(writer, 0x50); err != nil {
+		return err
+	}
+
+	// write the padding zero
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// create a byte array output stream so we can calculate the length of the rest of the PDU
+	byteWriter := new(bytes.Buffer)
+
+	if err := writeMaxLenReceived(byteWriter, userInfo); err != nil {
+		return err
+	}
+
+	if err := writeImplClassUID(byteWriter, userInfo); err != nil {
+		return err
+	}
+
+	if err := writeMaxNumOps(byteWriter, userInfo); err != nil {
+		return err
+	}
+
+	// write the length to the original writer
+	if err := writeShort(writer, uint16(byteWriter.Len()), binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the byte array to the original writer
+	if err := writeBytes(writer, byteWriter.Bytes()); err != nil {
+		return err
+
+	}
+
+	// all is well
+	return nil
+}
+
+func writeMaxLenReceived(writer io.Writer, userInfo *UserInfo) error {
+
+	// write the sub item type
+	if err := writeByte(writer, 0x51); err != nil {
+		return err
+	}
+
+	// write the padding zero
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// write the length, must be four
+	if err := writeShort(writer, 0x04, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the maximum length received
+	if err := writeLong(writer, userInfo.maxLenReceived, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+func writeImplClassUID(writer io.Writer, userInfo *UserInfo) error {
+
+	// write the sub item type
+	if err := writeByte(writer, 0x52); err != nil {
+		return err
+	}
+
+	// write the padding zero
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// write the length of the implementation class uid
+	if err := writeShort(writer, uint16(len(userInfo.implClassUID)), binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the implementation class uid
+	if err := writeUID(writer, userInfo.implClassUID); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+func writeMaxNumOps(writer io.Writer, userInfo *UserInfo) error {
+
+	// write the sub item type
+	if err := writeByte(writer, 0x53); err != nil {
+		return err
+	}
+
+	// write the padding zero
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// write the length, must be four
+	if err := writeShort(writer, 0x04, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the max num ops invoked
+	if err := writeShort(writer, userInfo.maxNumOpsInvoked, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the max num ops performance
+	if err := writeShort(writer, userInfo.maxNumOpsPerformed, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+func writeImplVersionName(writer io.Writer, userInfo *UserInfo) error {
+
+	// write the sub item type
+	if err := writeByte(writer, 0x55); err != nil {
+		return err
+	}
+
+	// write the padding zero
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// write the length of the implementation class uid
+	if err := writeShort(writer, uint16(len(userInfo.implVersionName)), binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the implementation class uid
+	if err := writeUID(writer, userInfo.implVersionName); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
 }

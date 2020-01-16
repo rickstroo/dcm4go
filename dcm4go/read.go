@@ -82,36 +82,18 @@ func readDouble(reader io.Reader, byteOrder binary.ByteOrder) (float64, error) {
 	return math.Float64frombits(byteOrder.Uint64(buf[:])), nil
 }
 
-// readUID reads a single UID from a reader
 func readUID(reader io.Reader, length uint32) (string, error) {
 	buf, err := readBytes(reader, length)
 	if err != nil {
 		return "", err
 	}
-	return removeUIDPadding(buf), nil
+	return string(buf), nil
 }
 
-// removeUIDPadding removes the padding from the UID if any
-func removeUIDPadding(buf []byte) string {
-	if len(buf) > 0 && buf[len(buf)-1] == 0x00 {
-		return string(buf[:len(buf)-1])
-	}
-	return string(buf)
-}
-
-// readText reads a single text from a reader
 func readText(reader io.Reader, length uint32) (string, error) {
 	buf, err := readBytes(reader, length)
 	if err != nil {
 		return "", err
 	}
-	return removeTextPadding(buf), nil
-}
-
-// removeTextPadding removes the padding from the text if any
-func removeTextPadding(buf []byte) string {
-	if len(buf) > 0 && buf[len(buf)-1] == byte(' ') {
-		return string(buf[:len(buf)-1])
-	}
-	return string(buf)
+	return string(buf), nil
 }

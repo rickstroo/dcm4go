@@ -73,6 +73,7 @@ func (presContext *RQPresContext) String() string {
 // readAssocRQPDU reads an AssocRQPDU from a reader
 func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
+	// read the protocol
 	protocol, err := readShort(reader, binary.BigEndian)
 	if err != nil {
 		return nil, err
@@ -125,38 +126,47 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			return nil, err
 		}
 
-		// read the length
-		length, err := readShort(reader, binary.BigEndian)
-		if err != nil {
-			return nil, err
-		}
+		if itemType == 0x10 { // application context name
 
-		// if application context item
-		if itemType == 0x10 {
+			// read the length
+			length, err := readShort(reader, binary.BigEndian)
+			if err != nil {
+				return nil, err
+			}
 
-			// read the name
+			// read the application context name
 			appContextName, err = readUID(reader, uint32(length))
 			if err != nil {
 				return nil, err
 			}
 
-			// if presentation context item
-		} else if itemType == 0x020 {
+		} else if itemType == 0x020 { // presentation context
 
+			// read the length
+			length, err := readShort(reader, binary.BigEndian)
+			if err != nil {
+				return nil, err
+			}
+
+			// create a limited reader for the requested presentation contextx
 			limitedReader := io.LimitReader(reader, int64(length))
 
+			// read the presentation context id
 			id, err := readByte(limitedReader)
 			if err != nil {
 				return nil, err
 			}
 
+			// skip a byte, as per the standrd
 			if err := skipBytes(limitedReader, 3); err != nil {
 				return nil, err
 			}
 
-			abstractSyntax := ""
+			// initialize the abstract syntax name
+			var abstractSyntax string
 
-			transferSyntaxes := make([]string, 0)
+			// initialize the list of transfer syntaxes
+			transferSyntaxes := make([]string, 0, 5)
 
 			// read the abstract syntax and transfer syntax items
 			for {
@@ -175,41 +185,42 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 					return nil, err
 				}
 
-				if subItemType == 0x30 {
+				if subItemType == 0x30 { // abstract syntax
 
-					// abstract syntax
-
+					// read the length
 					length, err := readShort(limitedReader, binary.BigEndian)
 					if err != nil {
 						return nil, err
 					}
 
-					abstractSyntax, err = readUID(limitedReader, uint32(length))
+					// read the uid
+					uid, err := readUID(limitedReader, uint32(length))
 					if err != nil {
 						return nil, err
 					}
 
-				} else if subItemType == 0x40 {
+					// assign it to the abstract syntax
+					abstractSyntax = uid
 
-					// transfer syntax
+				} else if subItemType == 0x40 { // transfer syntax
 
+					// read the length
 					length, err := readShort(limitedReader, binary.BigEndian)
 					if err != nil {
 						return nil, err
 					}
 
 					// read the transfer syntax
-					transferSyntax, err := readUID(limitedReader, uint32(length))
+					uid, err := readUID(limitedReader, uint32(length))
 					if err != nil {
 						return nil, err
 					}
 
-					// add it to the list
-					transferSyntaxes = append(transferSyntaxes, transferSyntax)
+					// add it to the list of transfer syntaxes
+					transferSyntaxes = append(transferSyntaxes, uid)
 
-				} else {
+				} else { // unrecgonized item
 
-					// unrecognized item
 					return nil, fmt.Errorf("unrecognized presentation context sub item type: 0x%02X", subItemType)
 
 				}
@@ -219,10 +230,16 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			// create the presentation context
 			presContext := &RQPresContext{id, abstractSyntax, transferSyntaxes}
 
-			// add it to the list
+			// add it to the list of requested presentation contexts
 			presContexts = append(presContexts, presContext)
 
-		} else if itemType == 0x050 {
+		} else if itemType == 0x050 { // user info
+
+			// read the length
+			length, err := readShort(reader, binary.BigEndian)
+			if err != nil {
+				return nil, err
+			}
 
 			// create a limited reader for the user info
 			limitedReader := io.LimitReader(reader, int64(length))
