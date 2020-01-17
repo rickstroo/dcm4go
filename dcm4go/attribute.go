@@ -22,7 +22,19 @@ func checkIndex(index int, length int) error {
 	return nil
 }
 
-// AsLong returns attribute value as a long
+// asShort returns attribute value as a short
+func (attribute *Attribute) asShort(index int) (uint16, error) {
+	shorts, ok := attribute.value.([]uint16)
+	if !ok {
+		return 0, ErrWrongType
+	}
+	if err := checkIndex(index, len(shorts)); err != nil {
+		return 0, err
+	}
+	return shorts[index], nil
+}
+
+// asLong returns attribute value as a long
 func (attribute *Attribute) asLong(index int) (uint32, error) {
 	longs, ok := attribute.value.([]uint32)
 	if !ok {
@@ -34,7 +46,7 @@ func (attribute *Attribute) asLong(index int) (uint32, error) {
 	return longs[index], nil
 }
 
-// AsString returns attribute value as a string
+// asString returns attribute value as a string
 func (attribute *Attribute) asString(index int) (string, error) {
 	strings, ok := attribute.value.([]string)
 	if !ok {

@@ -12,6 +12,16 @@ type PDU struct {
 	pduLength uint32
 }
 
+const (
+	aAssociateRQPDU = 0x01
+	aAssociateACPDU = 0x02
+	aAssociateRJPDU = 0x03
+	pDataTFPDU      = 0x04
+	aReleaseRQPDU   = 0x05
+	aReleaseRPPDU   = 0x06
+	aAbortPDU       = 0x07
+)
+
 // String returns a string representation of a PDU
 func (pdu *PDU) String() string {
 	return fmt.Sprintf("pduType: %v, pduLength: %v", pdu.pduType, pdu.pduLength)
@@ -39,5 +49,3 @@ func readPDU(reader io.Reader) (*PDU, error) {
 
 	return &PDU{pduType, pduLength}, nil
 }
-
-// Reader returns a reader to the underlying byte stream

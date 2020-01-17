@@ -410,7 +410,7 @@ func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, byteO
 func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32) ([]byte, error) {
 
 	// if too long, skip the bytes and return empty
-	if length > decoder.bulkDataThreshold {
+	if decoder.bulkDataThreshold > 0 && length > decoder.bulkDataThreshold {
 		if err := skipBytes(reader, length); err != nil {
 			return nil, err
 		}

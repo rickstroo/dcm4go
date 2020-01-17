@@ -46,7 +46,16 @@ func (object *Object) find(tag uint32) (*Attribute, error) {
 	return nil, ErrAttributeNotFound
 }
 
-// AsLong returns attribute value as a long
+// asShort returns attribute value as a short
+func (object *Object) asShort(tag uint32, index int) (uint16, error) {
+	attribute, err := object.find(tag)
+	if err != nil {
+		return 0, err
+	}
+	return attribute.asShort(index)
+}
+
+// asLong returns attribute value as a long
 func (object *Object) asLong(tag uint32, index int) (uint32, error) {
 	attribute, err := object.find(tag)
 	if err != nil {
@@ -55,7 +64,7 @@ func (object *Object) asLong(tag uint32, index int) (uint32, error) {
 	return attribute.asLong(index)
 }
 
-// AsString returns attribute value as a string
+// asString returns attribute value as a string
 func (object *Object) asString(tag uint32, index int) (string, error) {
 	attribute, err := object.find(tag)
 	if err != nil {
