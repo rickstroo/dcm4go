@@ -49,3 +49,16 @@ func readPDU(reader io.Reader) (*PDU, error) {
 
 	return &PDU{pduType, pduLength}, nil
 }
+
+func writePDU(writer io.Writer, pdu *PDU) error {
+	if err := writeByte(writer, pdu.pduType); err != nil {
+		return err
+	}
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+	if err := writeLong(writer, pdu.pduLength, binary.BigEndian); err != nil {
+		return err
+	}
+	return nil
+}

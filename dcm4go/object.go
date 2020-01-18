@@ -5,7 +5,7 @@ type Object struct {
 	attributes []*Attribute
 }
 
-// NewObject creates and initializes a new object
+// newObject creates and initializes a new object
 func newObject() *Object {
 	return &Object{make([]*Attribute, 0, 100)}
 }
@@ -55,6 +55,11 @@ func (object *Object) asShort(tag uint32, index int) (uint16, error) {
 	return attribute.asShort(index)
 }
 
+// AsShort returns attribute value as a short
+func (object *Object) AsShort(tag uint32, index int) (uint16, error) {
+	return object.asShort(tag, index)
+}
+
 // asLong returns attribute value as a long
 func (object *Object) asLong(tag uint32, index int) (uint32, error) {
 	attribute, err := object.find(tag)
@@ -71,4 +76,16 @@ func (object *Object) asString(tag uint32, index int) (string, error) {
 		return "", err
 	}
 	return attribute.asString(index)
+}
+
+// addUID adds a UID attribute
+func (object *Object) addUID(tag uint32, value string) {
+	attribute := &Attribute{tag, "UI", uint32(len(value)), 0, []string{value}}
+	object.add(attribute)
+}
+
+// addShort adds a short attribute
+func (object *Object) addShort(tag uint32, vr string, value uint16) {
+	attribute := &Attribute{tag, vr, 0x02, 0, []uint16{value}}
+	object.add(attribute)
 }

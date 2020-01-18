@@ -49,3 +49,16 @@ func (pdv *PDV) isCommand() bool {
 func (pdv *PDV) isLast() bool {
 	return pdv.mch&0x02 == 0x02
 }
+
+func writePDV(writer io.Writer, pdv *PDV) error {
+	if err := writeLong(writer, pdv.pdvLength, binary.BigEndian); err != nil {
+		return err
+	}
+	if err := writeByte(writer, pdv.pcID); err != nil {
+		return err
+	}
+	if err := writeByte(writer, pdv.mch); err != nil {
+		return err
+	}
+	return nil
+}

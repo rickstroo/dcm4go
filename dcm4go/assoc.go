@@ -180,7 +180,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 
 // WriteResponse writes a response to the association
 func (assoc *Assoc) WriteResponse(writer io.Writer, message *Message) error {
-	return fmt.Errorf("WriteResponse: not implemented")
+	return writeMessage(assoc.conn, assoc, message)
 }
 
 // Close closes an association

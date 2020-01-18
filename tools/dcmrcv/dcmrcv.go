@@ -96,9 +96,11 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 			check(err)
 			break
 		}
+		fmt.Printf("request is %v\n", request)
 
 		response, err := handleRequest(request)
 		check(err)
+		fmt.Printf("response is %v\n", response)
 
 		err = assoc.WriteResponse(conn, response)
 		check(err)
@@ -117,7 +119,19 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 
 func handleRequest(request *dcm4go.Message) (*dcm4go.Message, error) {
 
-	//	command := request.Command()
+	commandField, err := request.Command().AsShort(dcm4go.CommandFieldTag, 0)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, fmt.Errorf("handleRequest: not implemented")
+	switch commandField {
+	case dcm4go.CEchoRQ:
+		return handleVerificationRequest(request)
+	}
+
+	return nil, fmt.Errorf("command field not recognized, 0x%02X", commandField)
+}
+
+func handleVerificationRequest(request *dcm4go.Message) (*dcm4go.Message, error) {
+	return dcm4go.NewCEchoResponse(request)
 }
