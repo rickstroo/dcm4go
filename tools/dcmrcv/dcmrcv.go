@@ -2,11 +2,9 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
-	"strings"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
 )
@@ -15,34 +13,14 @@ import (
 func check(err error) {
 	if err != nil {
 		fmt.Printf("panic: %v\n", err)
-		//		panic(err)
 	}
-}
-
-// parse the bind flag
-func parseBind(bind string) (string, string, error) {
-	atIndex := strings.Index(bind, "@")
-	if atIndex == -1 {
-		return "", "", fmt.Errorf("did not find @ separator")
-	}
-	aeTitle := bind[:atIndex]
-	address := bind[atIndex+1:]
-	return aeTitle, address, nil
 }
 
 // the main function
 func main() {
 
-	// get the binding
-	bind := flag.String("bind", "DCMRCV@localhost:4104", "AE Title, Host and Port to bind to")
-	flag.Parse()
-
-	aeTitle, address, err := parseBind(*bind)
-	check(err)
-	fmt.Printf("aeTitle is %q, address is %q\n", aeTitle, address)
-
 	// listen for incoming connections
-	listener, err := net.Listen("tcp", address)
+	listener, err := net.Listen("tcp", "localhost:4104")
 	check(err)
 	fmt.Printf("listening on %v\n", listener.Addr())
 
@@ -55,7 +33,7 @@ func main() {
 		dcm4go.ExplicitVRLittleEndianUID,
 		dcm4go.ExplicitVRBigEndianUID,
 	}
-	ae := dcm4go.NewAE(aeTitle)
+	ae := dcm4go.NewAE("DCMRCV")
 	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes)
 	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes)
 	fmt.Printf("ae:%v\n", ae)

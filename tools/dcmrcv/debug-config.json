@@ -3,7 +3,7 @@
     {
       "name": "dcmrcv",
       "mode": "debug",
-      "args": ["-bind", "DCMRCV@localhost:4104"]
+      "args": []
     }
   ]
 }
