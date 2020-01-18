@@ -42,6 +42,7 @@ func main() {
 	for {
 
 		// wait for connection
+		fmt.Printf("waiting for connection on %v\n", listener.Addr())
 		conn, err := listener.Accept()
 		check(err)
 		fmt.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
@@ -83,11 +84,6 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 		err = assoc.WriteResponse(conn, response)
 		check(err)
 	}
-
-	// close the association
-	err = assoc.Close()
-	check(err)
-	fmt.Printf("closed association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
 	// close the connection
 	err = conn.Close()

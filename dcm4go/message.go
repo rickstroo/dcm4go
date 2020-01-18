@@ -11,6 +11,10 @@ const (
 	CEchoRQ = 0x0030
 	// CEchoRSP is command field value for C-Recho response
 	CEchoRSP = 0x8030
+	// CStoreRQ is command field value for C-Store request
+	CStoreRQ = 0x0001
+	// CStoreRSP is command field value for C-Store response
+	CStoreRSP = 0x8001
 )
 
 // Message presents the requests and responses that are passed between AEs

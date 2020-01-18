@@ -188,8 +188,3 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 func (assoc *Assoc) WriteResponse(writer io.Writer, message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
-
-// Close closes an association
-func (assoc *Assoc) Close() error {
-	return nil
-}
