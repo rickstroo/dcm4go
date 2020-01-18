@@ -84,6 +84,7 @@ func readCommand(reader io.Reader, assoc *Assoc) (byte, *Object, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+	fmt.Printf("pdv is %v\n", pdv)
 
 	// check that this is a command pdv
 	if !pdv.isCommand() {
@@ -110,6 +111,7 @@ func readCommand(reader io.Reader, assoc *Assoc) (byte, *Object, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+	fmt.Printf("transfer syntax is %v\n", transferSyntax)
 
 	// read the data, assuming explicit VR and big endian for now
 	command, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
@@ -122,19 +124,54 @@ func readCommand(reader io.Reader, assoc *Assoc) (byte, *Object, error) {
 }
 
 // NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message
-func NewCEchoResponse(request *Message) (*Message, error) {
+func NewCEchoResponse(assoc *Assoc, request *Message) (*Message, error) {
+
+	// use the same pc id as the request
 	pcID := request.pcID
-	response := &Message{pcID, newObject(), nil}
-	response.Command().addUID(AffectedSOPClassUIDTag, VerificationUID)
-	response.Command().addShort(CommandFieldTag, "US", CEchoRSP)
+
+	// use the message id from the request as the message id responded to
 	messageID, err := request.Command().AsShort(MessageIDTag, 0)
 	if err != nil {
 		return nil, err
 	}
-	response.Command().addShort(MessageIDBeingRespondedToTag, "US", messageID)
-	response.Command().addShort(CommandDataSetTypeTag, "US", 0x0101)
-	response.Command().addShort(StatusTag, "US", 0x00)
-	return response, nil
+
+	// create a temporary object for what we know
+	temp := newObject()
+	temp.addUID(AffectedSOPClassUIDTag, VerificationUID)
+	temp.addShort(CommandFieldTag, "US", CEchoRSP)
+	temp.addShort(MessageIDBeingRespondedToTag, "US", messageID)
+	temp.addShort(CommandDataSetTypeTag, "US", 0x0101)
+	temp.addShort(StatusTag, "US", 0x00)
+
+	// create a buffer to write the temporary object to
+	buf := new(bytes.Buffer)
+
+	// create an encoder for writing objects
+	encoder := newEncoder()
+
+	// find the transfer syntax
+	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("transfer syntax is %v\n", transferSyntax)
+
+	// write the temporary to the buffer
+	if err := encoder.writeObject(buf, temp, transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
+		return nil, err
+	}
+
+	// now create the final command object
+	command := newObject()
+
+	// initialize it with the command group length attribute
+	command.addLong(CommandGroupLengthTag, "UL", uint32(buf.Len()))
+
+	// add the rest of the attributes from the temporary object
+	command.addAll(temp)
+
+	// construct and return a message
+	return &Message{pcID, command, nil}, nil
 }
 
 // WriteMessage writes the message
@@ -145,6 +182,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("transfer syntax is %v\n", transferSyntax)
 
 	// create a buffer to write the command object to
 	buf := new(bytes.Buffer)
@@ -156,17 +194,20 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	if err := encoder.writeObject(buf, message.Command(), transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
 		return err
 	}
+	fmt.Printf("buf.Len() is %v, buf.Bytes is %v\n", buf.Len(), buf.Bytes())
 
 	// create a PDV
 	pdv := &PDV{}
 	pdv.pcID = message.pcID               // same pc id as in the request
 	pdv.mch = 0x3                         // last and command
 	pdv.pdvLength = uint32(buf.Len() + 2) // need to add two bytes for the pcID and mch
+	fmt.Printf("pdv is %v\n", pdv)
 
 	// create a pdu
 	pdu := &PDU{}
 	pdu.pduType = pDataTFPDU
-	pdu.pduLength = uint32(buf.Len() + 6) // need to add two bytes for the pcID and mch and 4 bytes for the PDV header
+	pdu.pduLength = uint32(pdv.pdvLength + 4) // need to add four bytes for the PDV header
+	fmt.Printf("pdu is %v\n", pdu)
 
 	// write the pdu header
 	if err := writePDU(writer, pdu); err != nil {
@@ -178,7 +219,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 		return err
 	}
 
-	// write the bytes containing the object
+	// write the bytes containing the attribute
 	if err := writeBytes(writer, buf.Bytes()); err != nil {
 		return err
 	}

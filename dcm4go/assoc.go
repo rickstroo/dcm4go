@@ -158,6 +158,12 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 
 	// is this an association release request?
 	if pdu.pduType == aReleaseRQPDU {
+		if err := readReleaseRQPDU(assoc.conn); err != nil {
+			return nil, err
+		}
+		if err := writeReleaseRPPDU(assoc.conn); err != nil {
+			return nil, err
+		}
 		return nil, io.EOF
 	}
 

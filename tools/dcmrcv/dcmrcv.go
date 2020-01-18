@@ -98,7 +98,7 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 		}
 		fmt.Printf("request is %v\n", request)
 
-		response, err := handleRequest(request)
+		response, err := handleRequest(assoc, request)
 		check(err)
 		fmt.Printf("response is %v\n", response)
 
@@ -117,7 +117,7 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 	fmt.Printf("closed connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 }
 
-func handleRequest(request *dcm4go.Message) (*dcm4go.Message, error) {
+func handleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
 
 	commandField, err := request.Command().AsShort(dcm4go.CommandFieldTag, 0)
 	if err != nil {
@@ -126,12 +126,12 @@ func handleRequest(request *dcm4go.Message) (*dcm4go.Message, error) {
 
 	switch commandField {
 	case dcm4go.CEchoRQ:
-		return handleVerificationRequest(request)
+		return handleVerificationRequest(assoc, request)
 	}
 
 	return nil, fmt.Errorf("command field not recognized, 0x%02X", commandField)
 }
 
-func handleVerificationRequest(request *dcm4go.Message) (*dcm4go.Message, error) {
-	return dcm4go.NewCEchoResponse(request)
+func handleVerificationRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
+	return dcm4go.NewCEchoResponse(assoc, request)
 }
