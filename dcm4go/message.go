@@ -110,11 +110,8 @@ func readCommand(reader io.Reader, assoc *Assoc) (byte, *Object, error) {
 	// create a decoder to read the data
 	decoder := newDecoder(0)
 
-	// find the transfer syntax
-	transferSyntax, err := findAcceptedTransferSyntax(assoc, pdv.pcID)
-	if err != nil {
-		return 0, nil, err
-	}
+	// find the transfer syntax for commands, always implicit VR little endian
+	transferSyntax := ImplicitVRLittleEndianTS()
 	fmt.Printf("transfer syntax is %v\n", transferSyntax)
 
 	// read the data, assuming explicit VR and big endian for now
@@ -153,11 +150,8 @@ func NewCEchoResponse(assoc *Assoc, request *Message) (*Message, error) {
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
-	// find the transfer syntax
-	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
-	if err != nil {
-		return nil, err
-	}
+	// find the transfer syntax for commands, always implicit VR little endian
+	transferSyntax := ImplicitVRLittleEndianTS()
 	fmt.Printf("transfer syntax is %v\n", transferSyntax)
 
 	// write the temporary to the buffer
@@ -181,11 +175,8 @@ func NewCEchoResponse(assoc *Assoc, request *Message) (*Message, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
-	// find the transfer syntax
-	transferSyntax, err := findAcceptedTransferSyntax(assoc, message.pcID)
-	if err != nil {
-		return err
-	}
+	// find the transfer syntax for command, always implicit VR little endian
+	transferSyntax := ImplicitVRLittleEndianTS()
 	fmt.Printf("transfer syntax is %v\n", transferSyntax)
 
 	// create a buffer to write the command object to
@@ -198,7 +189,6 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	if err := encoder.writeObject(buf, message.Command(), transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
 		return err
 	}
-	fmt.Printf("buf.Len() is %v, buf.Bytes is %v\n", buf.Len(), buf.Bytes())
 
 	// create a PDV
 	pdv := &PDV{}
