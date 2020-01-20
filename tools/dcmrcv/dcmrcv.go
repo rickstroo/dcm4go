@@ -101,6 +101,8 @@ func handleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Messag
 	switch commandField {
 	case dcm4go.CEchoRQ:
 		return handleVerificationRequest(assoc, request)
+	case dcm4go.CStoreRQ:
+		return handleStoreRequest(assoc, request)
 	}
 
 	return nil, fmt.Errorf("command field not recognized, 0x%02X", commandField)
@@ -108,4 +110,11 @@ func handleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Messag
 
 func handleVerificationRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
 	return dcm4go.NewCEchoResponse(assoc, request)
+}
+
+func handleStoreRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
+
+	// for now, just read the data set
+
+	return dcm4go.NewCStoreResponse(assoc, request)
 }
