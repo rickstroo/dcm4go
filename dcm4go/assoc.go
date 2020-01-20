@@ -41,7 +41,7 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*Assoc, error) {
 
 	// is this an association request?
 	if pdu.pduType == aAssociateRQPDU {
-		assocRQPDU, err := readAssocRQPDU(io.LimitReader(conn, int64(pdu.pduLength)))
+		assocRQPDU, err := readAssocRQPDU(pdu)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +158,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 
 	// is this an association release request?
 	if pdu.pduType == aReleaseRQPDU {
-		if err := readReleaseRQPDU(assoc.conn); err != nil {
+		if err := readReleaseRQPDU(pdu); err != nil {
 			return nil, err
 		}
 		if err := writeReleaseRPPDU(assoc.conn); err != nil {
@@ -174,7 +174,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 
 	// is this a data transfer request?
 	if pdu.pduType == pDataTFPDU {
-		message, err := readMessage(io.LimitReader(reader, int64(pdu.pduLength)), assoc)
+		message, err := readMessage(pdu, assoc)
 		if err != nil {
 			return nil, err
 		}

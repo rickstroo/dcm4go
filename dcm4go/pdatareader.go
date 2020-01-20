@@ -10,40 +10,36 @@ import (
 // one or more PDUs.
 type PDataReader struct {
 	reader    io.Reader // the underlying reader
-	pduReader io.Reader // the reader for the PDU
-	pdvReader io.Reader // the reader for the PDV
-	lastPDV   *PDV      // the last PDV that was read
+	pdu       *PDU      // the PDU we are reading from
+	pdv       *PDV      // the PDV that we are reading from
+	isCommand bool      // are we reading a command or a data set?
 }
 
 // newPDataReader constructs and initializes a PDataReader
-func newPDataReader(reader io.Reader, pdu *PDU) (*PDataReader, error) {
-
-	// set up the pdu reader
-	// use a limited reader for the length of the PDU
-	pduReader := io.LimitReader(reader, int64(pdu.pduLength))
+// notice that we don't pass in a pdu, but a pdu reader
+// that's because a single pdu reader can be used to read a
+// sequence of command PDVs and a sequence of data set PDVs
+func newPDataReader(reader io.Reader, pdu *PDU, isCommand bool) (*PDataReader, error) {
 
 	// read the first PDV
-	pdv, err := readPDV(pduReader)
+	pdv, err := readPDV(pdu)
 	if err != nil {
 		return nil, err
 	}
-
-	// set up the pdv reader
-	// use a limited reader for the length of the PDV
-	// actually, we set it to the length less two to make up for the pcid and mch
-	// we should really fix that so that the pdv length field reflects that
-	// otherwise we have to remember that everywhere
-	pdvReader := io.LimitReader(reader, int64(pdv.pdvLength-2))
+	// check that the command or data match the last pdv
+	if err := checkCommand(isCommand, pdv); err != nil {
+		return nil, err
+	}
 
 	// construct a reader and return
-	return &PDataReader{reader, pduReader, pdvReader, pdv}, nil
+	return &PDataReader{reader, pdu, pdv, isCommand}, nil
 }
 
 // Read implements the Reader interface
 func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 
 	// attempt to read some bytes
-	num, err := pDataReader.pdvReader.Read(buf)
+	num, err := pDataReader.pdv.Read(buf)
 
 	// if we didn't ready an byte and if an error occured,
 	// we need lots of logic to handle it
@@ -56,7 +52,7 @@ func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 
 		// otherwise, check to see if this is the last PDV,
 		// and if it is, return EOF
-		if pDataReader.lastPDV.isLast() {
+		if pDataReader.pdv.isLast() {
 			return num, io.EOF
 		}
 
@@ -79,7 +75,7 @@ func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 func (pDataReader *PDataReader) nextPDV() error {
 
 	// it's not the last, so we read another pdv
-	pdv, err := readPDV(pDataReader.pduReader)
+	pdv, err := readPDV(pDataReader.pdu)
 
 	// again, need some logic to handle an error at this point
 	if err != nil {
@@ -103,39 +99,45 @@ func (pDataReader *PDataReader) nextPDV() error {
 			return fmt.Errorf("expecting a pdu of type %d, read a pdu of type %d", pDataTFPDU, pdu.pduType)
 		}
 
-		// reset the pdu reader
-		pDataReader.pduReader = io.LimitReader(pDataReader.reader, int64(pdu.pduLength))
+		// remember the pdu that we've read
+		pDataReader.pdu = pdu
 
 		// try again
 		return pDataReader.nextPDV()
 	}
 
 	// check that the presentation context ids match
-	if pdv.pcID != pDataReader.lastPDV.pcID {
+	if pdv.pcID != pDataReader.pdv.pcID {
 		return fmt.Errorf(
 			"presentation context id for next pdv, %d, does not match presentation id for last pdv, %d",
 			pdv.pcID,
-			pDataReader.lastPDV.pcID)
+			pDataReader.pdv.pcID)
 	}
 
 	// check that the command or data match the last pdv
-	if pdv.isCommand() {
-		if !pDataReader.lastPDV.isCommand() {
-			return fmt.Errorf(
-				"next PDV is a command while last PDV was a data set")
-		}
-	} else {
-		if pDataReader.lastPDV.isCommand() {
-			return fmt.Errorf(
-				"next PDV is a data set while last PDV was a command")
-		}
+	if err := checkCommand(pDataReader.isCommand, pdv); err != nil {
+		return err
 	}
 
 	// the new pdv is now the last pdv
-	pDataReader.lastPDV = pdv
+	pDataReader.pdv = pdv
 
-	// create a new limit reader
-	pDataReader.pdvReader = io.LimitReader(pDataReader.reader, int64(pdv.pdvLength-2))
+	// all is well
+	return nil
+}
+
+func checkCommand(isCommand bool, pdv *PDV) error {
+
+	// check that pdv type matches what is expected
+	if isCommand {
+		if !pdv.isCommand() {
+			return fmt.Errorf("received data set PDV while expecting a command PDV")
+		}
+	} else {
+		if pdv.isCommand() {
+			return fmt.Errorf("received command PDV while expecting a data set PDV")
+		}
+	}
 
 	// all is well
 	return nil

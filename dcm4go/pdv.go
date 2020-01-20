@@ -8,9 +8,15 @@ import (
 
 // PDV represents a DICOM protocol data value (i.e. PDV)
 type PDV struct {
-	pdvLength uint32
-	pcID      byte
-	mch       byte
+	pdvLength   uint32
+	pcID        byte
+	mch         byte
+	limitReader io.Reader
+}
+
+// Read implements the Reader interface
+func (pdv *PDV) Read(buf []byte) (int, error) {
+	return pdv.limitReader.Read(buf)
 }
 
 // String returns a string representation of a PDU
@@ -39,7 +45,19 @@ func readPDV(reader io.Reader) (*PDV, error) {
 		return nil, err
 	}
 
-	return &PDV{pdvLength, pcID, mch}, nil
+	// set up the pdv reader
+	// use a limited reader for the length of the PDV
+	// actually, we set it to the length less two to make up for the pcid and mch
+	// we should really fix that so that the pdv length field reflects that
+	// otherwise we have to remember that everywhere
+	// in the end, decided to make the PDV a reader so that we could encapsulate
+	// the length logic here.  also, makes it easy to just pass the PDV around
+	// in other parts of the code instead of passing the PDV and PDV reader
+	// separately.
+	limitReader := io.LimitReader(reader, int64(pdvLength-2))
+
+	// construct and return a PDV
+	return &PDV{pdvLength, pcID, mch, limitReader}, nil
 }
 
 func (pdv *PDV) isCommand() bool {

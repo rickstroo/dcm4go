@@ -8,8 +8,9 @@ import (
 
 // PDU represents a DICOM protocol data unit (i.e. PDU)
 type PDU struct {
-	pduType   byte
-	pduLength uint32
+	pduType     byte
+	pduLength   uint32
+	limitReader io.Reader
 }
 
 const (
@@ -21,6 +22,11 @@ const (
 	aReleaseRPPDU   = 0x06
 	aAbortPDU       = 0x07
 )
+
+// Read implements the Reader interface
+func (pdu *PDU) Read(buf []byte) (int, error) {
+	return pdu.limitReader.Read(buf)
+}
 
 // String returns a string representation of a PDU
 func (pdu *PDU) String() string {
@@ -47,7 +53,11 @@ func readPDU(reader io.Reader) (*PDU, error) {
 		return nil, err
 	}
 
-	return &PDU{pduType, pduLength}, nil
+	// set up the a reader for the bytes of the pdu
+	limitReader := io.LimitReader(reader, int64(pduLength))
+
+	// construct and return a PDU
+	return &PDU{pduType, pduLength, limitReader}, nil
 }
 
 func writePDU(writer io.Writer, pdu *PDU) error {
