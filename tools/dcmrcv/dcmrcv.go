@@ -34,8 +34,8 @@ func main() {
 		dcm4go.ExplicitVRBigEndianUID,
 	}
 	ae := dcm4go.NewAE("DCMRCV")
-	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes)
-	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes)
+	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes, &CEchoRequestHandler{})
+	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreRequestHandler{})
 	fmt.Printf("ae:%v\n", ae)
 
 	// listen for connections
@@ -77,7 +77,8 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 		}
 		fmt.Printf("request is %v\n", request)
 
-		response, err := handleRequest(assoc, request)
+		//		response, err := handleRequest(assoc, request)
+		response, err := assoc.HandleRequest(request)
 		check(err)
 		fmt.Printf("response is %v\n", response)
 
@@ -91,22 +92,22 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 	fmt.Printf("closed connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 }
 
-func handleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
-
-	commandField, err := request.Command().AsShort(dcm4go.CommandFieldTag, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	switch commandField {
-	case dcm4go.CEchoRQ:
-		return handleVerificationRequest(assoc, request)
-	case dcm4go.CStoreRQ:
-		return handleStoreRequest(assoc, request)
-	}
-
-	return nil, fmt.Errorf("command field not recognized, 0x%02X", commandField)
-}
+// func handleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
+//
+// 	commandField, err := request.Command().AsShort(dcm4go.CommandFieldTag, 0)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	switch commandField {
+// 	case dcm4go.CEchoRQ:
+// 		return handleVerificationRequest(assoc, request)
+// 	case dcm4go.CStoreRQ:
+// 		return handleStoreRequest(assoc, request)
+// 	}
+//
+// 	return nil, fmt.Errorf("command field not recognized, 0x%02X", commandField)
+// }
 
 func handleVerificationRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
 	return dcm4go.NewCEchoResponse(assoc, request)
@@ -116,5 +117,25 @@ func handleStoreRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.M
 
 	// for now, just read the data set
 
+	return dcm4go.NewCStoreResponse(assoc, request)
+}
+
+// CEchoRequestHandler is a handler for C-Echo requests
+type CEchoRequestHandler struct {
+}
+
+// HandleRequest handles a C-Echo request
+func (handler *CEchoRequestHandler) HandleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
+	fmt.Printf("CEchoRequestHandler\n")
+	return dcm4go.NewCEchoResponse(assoc, request)
+}
+
+// CStoreRequestHandler is a handler for C-Store requests
+type CStoreRequestHandler struct {
+}
+
+// HandleRequest handles a C-Echo request
+func (handler *CStoreRequestHandler) HandleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
+	fmt.Printf("CStoreRequestHandler\n")
 	return dcm4go.NewCStoreResponse(assoc, request)
 }

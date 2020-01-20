@@ -10,6 +10,7 @@ import (
 // Assoc represents a DICOM association
 type Assoc struct {
 	conn       net.Conn
+	ae         *AE
 	assocRQPDU *AssocRQPDU
 	assocACPDU *AssocACPDU
 }
@@ -57,7 +58,7 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*Assoc, error) {
 			return nil, err
 		}
 
-		return &Assoc{conn, assocRQPDU, assocACPDU}, nil
+		return &Assoc{conn, ae, assocRQPDU, assocACPDU}, nil
 	}
 
 	return nil, fmt.Errorf("unrecognized pdu type: %d", pdu.pduType)
@@ -182,6 +183,31 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 	}
 
 	return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+}
+
+// HandleRequest handles a request by calling the appropriate handler
+func (assoc *Assoc) HandleRequest(request *Message) (*Message, error) {
+
+	// find the affected sop class uid
+	affectedSOPClassUID, err := request.Command().asString(AffectedSOPClassUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// find the handler
+	handler, ok := assoc.ae.handlers[affectedSOPClassUID]
+	if !ok {
+		return nil, fmt.Errorf("no handler found for SOP Class UID %q", affectedSOPClassUID)
+	}
+
+	// call the handler
+	response, err := handler.HandleRequest(assoc, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// all is well, return the response
+	return response, nil
 }
 
 // WriteResponse writes a response to the association
