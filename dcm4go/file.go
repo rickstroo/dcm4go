@@ -84,3 +84,27 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	// return the groups
 	return object, nil
 }
+
+// WriteFile writes a DICOM file
+func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
+
+	// write the leading 128 zeroes
+	var zeros [128]byte
+	if err := writeBytes(writer, zeros[:]); err != nil {
+		return err
+	}
+
+	// write the DICM prefix
+	if err := writeText(writer, "DICM"); err != nil {
+		return err
+	}
+
+	// copy the data
+	_, err := io.Copy(writer, reader)
+	if err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}

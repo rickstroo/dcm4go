@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 // simple error management
@@ -154,15 +152,37 @@ type CStoreCommandHandler struct {
 func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byte, command *dcm4go.Object, pDataReader *dcm4go.PDataReader) (*dcm4go.Object, error) {
 	fmt.Printf("CStoreCommandHandler\n")
 
-	// discard the data
-	num, err := io.Copy(ioutil.Discard, pDataReader)
+	// construct the file meta information
+	fmi, err := assoc.CreateFileMetaInfo(pcID, command)
 	if err != nil {
 		return nil, err
 	}
-	p := message.NewPrinter(language.English)
-	p.Printf("discarded %d bytes of data\n", num)
+
+	// open a new file
+	file, err := os.Create("image.dcm.tmp")
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure the file is closed when we are finished
+	defer file.Close()
+
+	// write the file meta information
+	if err := dcm4go.WriteFile(file, fmi, pDataReader); err != nil {
+		return nil, err
+	}
+
+	// close file
+	if err := file.Close(); err != nil {
+		return nil, err
+	}
+
+	// rename the file
+	if err := os.Rename("image.dcm.tmp", "image.dcm"); err != nil {
+		return nil, err
+	}
 
 	// return success
-	// it's okay to return nil for data if we discard it
+	// it's okay to return nil for data if we manage it
 	return nil, nil
 }

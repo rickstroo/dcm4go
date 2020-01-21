@@ -1,6 +1,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -216,4 +217,59 @@ func (assoc *Assoc) HandleRequest(request *Message) (*Message, error) {
 // WriteResponse writes a response to the association
 func (assoc *Assoc) WriteResponse(writer io.Writer, message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
+}
+
+// CreateFileMetaInfo creates the file meta information for a Part 10 file
+func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, error) {
+
+	// get the required information from the command
+	sopClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+	sopInstanceUID, err := command.asString(AffectedSOPInstanceUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// find the transfer syntax used
+	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a temporary object for what we know
+	temp := newObject()
+	temp.addShort(FileMetaInformationVersionTag, "US", 0x0001)
+	temp.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
+	temp.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
+	temp.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
+	temp.addUID(ImplementationClassUIDTag, "1.2.40.0.13.1.3") // borrowed from dcm4che for now
+	temp.addText(ImplementationVersionNameTag, "SH", "dcm4go")
+	temp.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.aeTitle)
+	temp.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
+	temp.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
+
+	// create a buffer to write the temporary object to
+	buf := new(bytes.Buffer)
+
+	// create an encoder for writing objects
+	encoder := newEncoder()
+
+	// write the temporary to the buffer
+	if err := encoder.writeObject(buf, temp, ImplicitVRLittleEndianTS().explicitVR, ImplicitVRLittleEndianTS().byteOrder); err != nil {
+		return nil, err
+	}
+
+	// now create the final file meta information
+	fmi := newObject()
+
+	// initialize it with the command group length attribute
+	fmi.addLong(FileMetaInformationGroupLengthTag, "UL", uint32(buf.Len()))
+
+	// add the rest of the attributes from the temporary object
+	fmi.addAll(temp)
+
+	// return the file meta information
+	return fmi, nil
 }

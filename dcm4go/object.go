@@ -92,13 +92,27 @@ func (object *Object) addUID(tag uint32, uid string) {
 	object.add(attribute)
 }
 
+func padText(text string) string {
+	if isOdd(len(text)) {
+		return text + string(" ")
+	}
+	return text
+}
+
+// addUID adds a text attribute
+func (object *Object) addText(tag uint32, vr string, text string) {
+	paddedText := padText(text)
+	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), 0, []string{paddedText}}
+	object.add(attribute)
+}
+
 // addShort adds a short attribute
 func (object *Object) addShort(tag uint32, vr string, value uint16) {
 	attribute := &Attribute{tag, vr, 0x02, 0, []uint16{value}}
 	object.add(attribute)
 }
 
-// addShort adds a long attribute
+// addLong adds a long attribute
 func (object *Object) addLong(tag uint32, vr string, value uint32) {
 	attribute := &Attribute{tag, vr, 0x04, 0, []uint32{value}}
 	object.add(attribute)
