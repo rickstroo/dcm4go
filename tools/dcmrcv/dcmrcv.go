@@ -37,7 +37,6 @@ func main() {
 	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes, &CEchoRequestHandler{})
 	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreRequestHandler{})
 	ae.AddSupportedPresentationContext(dcm4go.GeneralECGWaveformStorageUID, defaultTransferSyntaxes, &CStoreRequestHandler{})
-
 	fmt.Printf("ae:%v\n", ae)
 
 	// listen for connections

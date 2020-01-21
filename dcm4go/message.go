@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 const (
@@ -82,12 +86,25 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 			return nil, err
 		}
 
-		data, err := readData(dataReader, assoc, pcID)
+		// data, err := readData(dataReader, assoc, pcID)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		//
+		// return &Message{pcID, command, data}, nil
+
+		// for now, we are simply going to throw away the data
+		// because we've create a reader for PDVs,
+		// we can the copy function from the io package
+		num, err := io.Copy(ioutil.Discard, dataReader)
 		if err != nil {
 			return nil, err
 		}
 
-		return &Message{pcID, command, data}, nil
+		p := message.NewPrinter(language.English)
+		p.Printf("discarded %d bytes of data\n", num)
+
+		return &Message{pcID, command, nil}, nil
 	}
 
 	return &Message{pcID, command, nil}, nil
