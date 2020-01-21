@@ -141,12 +141,8 @@ func readCommand(reader io.Reader, assoc *Assoc) (*Object, error) {
 	// create a decoder to read the data
 	decoder := newDecoder(0)
 
-	// find the transfer syntax for commands, always implicit VR little endian
-	transferSyntax := ImplicitVRLittleEndianTS()
-	fmt.Printf("transfer syntax for request command is %v\n", transferSyntax)
-
 	// read the data, assuming explicit VR and big endian for now
-	command, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -183,10 +179,6 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
-	// find the transfer syntax for command, always implicit VR little endian
-	transferSyntax := ImplicitVRLittleEndianTS()
-	fmt.Printf("transfer syntax for the response command is %v\n", transferSyntax)
-
 	// create a buffer to write the command object to
 	buf := new(bytes.Buffer)
 
@@ -194,7 +186,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	encoder := newEncoder()
 
 	// write the object to the buffer
-	if err := encoder.writeObjectWithGroupLength(buf, 0x0000, message.Command(), transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
+	if err := encoder.writeObjectWithGroupLength(buf, 0x0000, message.Command(), ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder); err != nil {
 		return err
 	}
 
