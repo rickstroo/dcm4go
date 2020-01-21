@@ -195,9 +195,12 @@ func (assoc *Assoc) HandleRequest(request *Message) (*Message, error) {
 	}
 
 	// find the handler
-	handler, ok := assoc.ae.handlers[affectedSOPClassUID]
+	handler, ok := assoc.ae.requestHandlers[affectedSOPClassUID]
 	if !ok {
 		return nil, fmt.Errorf("no handler found for SOP Class UID %q", affectedSOPClassUID)
+	}
+	if handler == nil {
+		return nil, fmt.Errorf("nil handler found for SOP Class UID %q", affectedSOPClassUID)
 	}
 
 	// call the handler

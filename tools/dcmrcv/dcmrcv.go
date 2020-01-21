@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // simple error management
@@ -34,9 +37,9 @@ func main() {
 		dcm4go.ExplicitVRBigEndianUID,
 	}
 	ae := dcm4go.NewAE("DCMRCV")
-	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes, &CEchoRequestHandler{})
-	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreRequestHandler{})
-	ae.AddSupportedPresentationContext(dcm4go.GeneralECGWaveformStorageUID, defaultTransferSyntaxes, &CStoreRequestHandler{})
+	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes, nil, &CEchoRequestHandler{})
+	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{}, &CStoreRequestHandler{})
+	ae.AddSupportedPresentationContext(dcm4go.GeneralECGWaveformStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{}, &CStoreRequestHandler{})
 	fmt.Printf("ae:%v\n", ae)
 
 	// listen for connections
@@ -68,6 +71,8 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 
 	// handle the requests
 	for {
+
+		// read a request and call handlers as appropriate
 		request, err := assoc.ReadRequest(conn)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -131,12 +136,33 @@ func (handler *CEchoRequestHandler) HandleRequest(assoc *dcm4go.Assoc, request *
 	return dcm4go.NewCEchoResponse(assoc, request)
 }
 
-// CStoreRequestHandler is a handler for C-Store requests
+// CStoreRequestHandler is a handler for C-Store commands
 type CStoreRequestHandler struct {
 }
 
-// HandleRequest handles a C-Echo request
+// HandleRequest handles a C-Store request
 func (handler *CStoreRequestHandler) HandleRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.Message, error) {
 	fmt.Printf("CStoreRequestHandler\n")
 	return dcm4go.NewCStoreResponse(assoc, request)
+}
+
+// CStoreCommandHandler is a handler for C-Store commands
+type CStoreCommandHandler struct {
+}
+
+// HandleCommand handles a C-Echo request
+func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byte, command *dcm4go.Object, pDataReader *dcm4go.PDataReader) (*dcm4go.Object, error) {
+	fmt.Printf("CStoreCommandHandler\n")
+
+	// discard the data
+	num, err := io.Copy(ioutil.Discard, pDataReader)
+	if err != nil {
+		return nil, err
+	}
+	p := message.NewPrinter(language.English)
+	p.Printf("discarded %d bytes of data\n", num)
+
+	// return success
+	// it's okay to return nil for data if we discard it
+	return nil, nil
 }

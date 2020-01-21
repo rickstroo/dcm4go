@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
-
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 const (
@@ -53,6 +49,11 @@ func (message *Message) Data() *Object {
 	return message.data
 }
 
+// PCID returns the presentation context id of the message
+func (message *Message) PCID() byte {
+	return message.pcID
+}
+
 func isDataSetPresent(commandDataSetType uint16) bool {
 	return commandDataSetType != 0x0101
 }
@@ -68,11 +69,13 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 	// get the presentation context id from the reader
 	pcID := commandReader.pdv.pcID
 
+	// read the command
 	command, err := readCommand(commandReader, assoc)
 	if err != nil {
 		return nil, err
 	}
 
+	// get the command data set
 	commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
 	if err != nil {
 		return nil, err
@@ -86,27 +89,38 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 			return nil, err
 		}
 
-		// data, err := readData(dataReader, assoc, pcID)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		//
-		// return &Message{pcID, command, data}, nil
-
-		// for now, we are simply going to throw away the data
-		// because we've create a reader for PDVs,
-		// we can the copy function from the io package
-		num, err := io.Copy(ioutil.Discard, dataReader)
+		// find the affected sop class uid
+		affectedSOPClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
 		if err != nil {
 			return nil, err
 		}
 
-		p := message.NewPrinter(language.English)
-		p.Printf("discarded %d bytes of data\n", num)
+		// if there is a handler for this command, call it
+		commandHandler, ok := assoc.ae.commandHandlers[affectedSOPClassUID]
+		if ok && (commandHandler != nil) {
 
-		return &Message{pcID, command, nil}, nil
+			// call the handler, which will return the data, which may be potentially nil
+			// if the handler decides to consume the data itself
+			data, err := commandHandler.HandleCommand(assoc, pcID, command, dataReader)
+			if err != nil {
+				return nil, err
+			}
+
+			// return the request with command and data
+			return &Message{pcID, command, data}, nil
+		}
+
+		// if no handler, read the data ourselves
+		data, err := readData(dataReader, assoc, pcID)
+		if err != nil {
+			return nil, err
+		}
+
+		// return the request with command and data
+		return &Message{pcID, command, data}, nil
 	}
 
+	// return the request with command and no data
 	return &Message{pcID, command, nil}, nil
 }
 
