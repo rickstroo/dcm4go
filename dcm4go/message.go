@@ -194,7 +194,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	encoder := newEncoder()
 
 	// write the object to the buffer
-	if err := encoder.writeObject(buf, message.Command(), transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
+	if err := encoder.writeObjectWithGroupLength(buf, 0x0000, message.Command(), transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
 		return err
 	}
 
