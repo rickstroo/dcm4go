@@ -41,6 +41,8 @@ func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 	// attempt to read some bytes
 	num, err := pDataReader.pdv.Read(buf)
 
+	//	fmt.Printf("after read, num is %d and err is %v\n", num, err)
+
 	// if we didn't ready an byte and if an error occured,
 	// we need lots of logic to handle it
 	if num == 0 && err != nil {
@@ -53,8 +55,11 @@ func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 		// otherwise, check to see if this is the last PDV,
 		// and if it is, return EOF
 		if pDataReader.pdv.isLast() {
+			//			fmt.Printf("reached EOF on last PDV, so we are done\n")
 			return num, io.EOF
 		}
+
+		//		fmt.Printf("reached EOF on PDV, not last, so we need to read another PDV\n")
 
 		// it's not the last, so we read another pdv
 		if err := pDataReader.nextPDV(); err != nil {
@@ -77,22 +82,34 @@ func (pDataReader *PDataReader) nextPDV() error {
 	// it's not the last, so we read another pdv
 	pdv, err := readPDV(pDataReader.pdu)
 
+	//	fmt.Printf("after readPDV, err is %v\n", err)
+
 	// again, need some logic to handle an error at this point
 	if err != nil {
 
 		// if the error is not eof, return it
 		if err != io.EOF {
+
+			//			fmt.Printf("hmm, err was not EOF, that's a problem\n")
+
 			return err
 		}
 
+		//		fmt.Printf("need to read another pdu\n")
+
 		// otherwise, it means that we've reached the end of the PDU
-		// and we need to read another one
+		// and we need to read another one from the underlying reader
 		pdu, err := readPDU(pDataReader.reader)
+
+		//		fmt.Printf("after readPDU, err is %v\n", err)
 
 		// not expecting any errors at this point
 		if err != nil {
+			//		fmt.Printf("hmm, err was %v, that's a problem\n", err)
 			return err
 		}
+
+		//	fmt.Printf("after readPDU, pdu is %v\n", pdu)
 
 		// check that it is data PDU
 		if pdu.pduType != pDataTFPDU {
@@ -102,9 +119,13 @@ func (pDataReader *PDataReader) nextPDV() error {
 		// remember the pdu that we've read
 		pDataReader.pdu = pdu
 
+		//	fmt.Printf("and we will try the read again")
+
 		// try again
 		return pDataReader.nextPDV()
 	}
+
+	//	fmt.Printf("after reading PDV, pdv is %v\n", pdv)
 
 	// check that the presentation context ids match
 	if pdv.pcID != pDataReader.pdv.pcID {

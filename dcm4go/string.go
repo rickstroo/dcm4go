@@ -30,7 +30,7 @@ func attributeToString(attribute *Attribute, prefix string) string {
 		switch v := attribute.value.(type) {
 		case []byte:
 			buf := attribute.value.([]byte)
-			if len(buf) > 0 {
+			if len(buf) > 0 && len(buf) < 1024 {
 				s += fmt.Sprintf(" value=[%s]\n", base64.StdEncoding.EncodeToString(buf))
 			} else {
 				s += "\n"

@@ -53,9 +53,18 @@ func isDataSetPresent(commandDataSetType uint16) bool {
 	return commandDataSetType != 0x0101
 }
 
-func readMessage(reader io.Reader, assoc *Assoc) (*Message, error) {
+func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 
-	pcid, command, err := readCommand(reader, assoc)
+	// create a reader for the command
+	commandReader, err := newPDataReader(reader, pdu, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the presentation context id from the reader
+	pcID := commandReader.pdv.pcID
+
+	command, err := readCommand(commandReader, assoc)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +75,22 @@ func readMessage(reader io.Reader, assoc *Assoc) (*Message, error) {
 	}
 
 	if isDataSetPresent(commandDataSet) {
-		return nil, fmt.Errorf("readMessage: read of data set not implemented")
+
+		// create a reader for the data
+		dataReader, err := newPDataReader(reader, pdu, false)
+		if err != nil {
+			return nil, err
+		}
+
+		data, err := readData(dataReader, assoc, pcID)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Message{pcID, command, data}, nil
 	}
 
-	return &Message{pcid, command, nil}, nil
+	return &Message{pcID, command, nil}, nil
 }
 
 func findAcceptedTransferSyntax(assoc *Assoc, pcid byte) (*TransferSyntax, error) {
@@ -81,47 +102,51 @@ func findAcceptedTransferSyntax(assoc *Assoc, pcid byte) (*TransferSyntax, error
 	return nil, fmt.Errorf("no supported transfer syntax found for presentation context id %d", pcid)
 }
 
-func readCommand(reader io.Reader, assoc *Assoc) (byte, *Object, error) {
-
-	// read the initial PDV
-	pdv, err := readPDV(reader)
-	if err != nil {
-		return 0, nil, err
-	}
-	fmt.Printf("pdv is %v\n", pdv)
-
-	// check that this is a command pdv
-	if !pdv.isCommand() {
-		return 0, nil, fmt.Errorf("not a command pdv")
-	}
-
-	// check that this is the last pdv
-	// later we will implement support for multiple pdu pdvs
-	if !pdv.isLast() {
-		return 0, nil, fmt.Errorf("not the last fragment")
-	}
-
-	// create a reader for the rest of the pdv, less two bytes for the pcid and msh
-	limitReader := io.LimitReader(reader, int64(pdv.pdvLength)-2)
+func readCommand(reader io.Reader, assoc *Assoc) (*Object, error) {
 
 	// create a counting reader
-	countingReader := newCountingReader(limitReader)
+	countingReader := newCountingReader(reader)
 
 	// create a decoder to read the data
 	decoder := newDecoder(0)
 
 	// find the transfer syntax for commands, always implicit VR little endian
 	transferSyntax := ImplicitVRLittleEndianTS()
-	fmt.Printf("transfer syntax is %v\n", transferSyntax)
+	fmt.Printf("transfer syntax for request command is %v\n", transferSyntax)
 
 	// read the data, assuming explicit VR and big endian for now
 	command, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	// return the command and transfer syntax used to read the command
-	return pdv.pcID, command, nil
+	return command, nil
+}
+
+func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
+
+	// create a counting reader
+	countingReader := newCountingReader(reader)
+
+	// create a decoder to read the data
+	decoder := newDecoder(1024)
+
+	// find the negotiated transfer syntax for the data
+	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("transfer syntax for request data is %v\n", transferSyntax)
+
+	// read the data, assuming the negotiated transfer syntax
+	data, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	if err != nil {
+		return nil, err
+	}
+
+	// return the data
+	return data, nil
 }
 
 // WriteMessage writes the message
@@ -129,7 +154,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
 	// find the transfer syntax for command, always implicit VR little endian
 	transferSyntax := ImplicitVRLittleEndianTS()
-	fmt.Printf("transfer syntax is %v\n", transferSyntax)
+	fmt.Printf("transfer syntax for the response command is %v\n", transferSyntax)
 
 	// create a buffer to write the command object to
 	buf := new(bytes.Buffer)

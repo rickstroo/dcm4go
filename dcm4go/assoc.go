@@ -175,7 +175,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 
 	// is this a data transfer request?
 	if pdu.pduType == pDataTFPDU {
-		message, err := readMessage(pdu, assoc)
+		message, err := readMessage(assoc.conn, assoc, pdu)
 		if err != nil {
 			return nil, err
 		}

@@ -11,6 +11,9 @@ const (
 	// VerificationUID is the SOP class UID for verification
 	VerificationUID = "1.2.840.10008.1.1"
 
-	// EnhancedXAImageStorageUID is the SOP class UID for enhanced XA Image Storage
+	// EnhancedXAImageStorageUID is the SOP class UID for enhanced XA image storage
 	EnhancedXAImageStorageUID = "1.2.840.10008.5.1.4.1.1.12.1.1"
+
+	// GeneralECGWaveformStorageUID is the SOP class UID for general ECG waveform storage
+	GeneralECGWaveformStorageUID = "1.2.840.10008.5.1.4.1.1.9.1.2"
 )

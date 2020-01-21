@@ -28,8 +28,8 @@ func NewCStoreResponse(assoc *Assoc, request *Message) (*Message, error) {
 	temp.addUID(AffectedSOPClassUIDTag, affectedSOPClassUID)
 	temp.addShort(CommandFieldTag, "US", CStoreRSP)
 	temp.addShort(MessageIDBeingRespondedToTag, "US", messageID)
-	temp.addShort(CommandDataSetTypeTag, "US", 0x0101)
-	temp.addShort(StatusTag, "US", 0x00)
+	temp.addShort(CommandDataSetTypeTag, "US", 0x0101) // no data
+	temp.addShort(StatusTag, "US", 0x00)               // success
 
 	// create a buffer to write the temporary object to
 	buf := new(bytes.Buffer)
