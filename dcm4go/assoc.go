@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -232,43 +231,23 @@ func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, err
 		return nil, err
 	}
 
-	// find the transfer syntax used
+	// find the transfer syntax used to receive the object
 	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
 	if err != nil {
 		return nil, err
 	}
 
-	// create a temporary object for what we know
-	temp := newObject()
-	temp.addShort(FileMetaInformationVersionTag, "US", 0x0100)
-	temp.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
-	temp.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
-	temp.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
-	temp.addUID(ImplementationClassUIDTag, "1.2.40.0.13.1.3") // borrowed from dcm4che for now
-	temp.addText(ImplementationVersionNameTag, "SH", "dcm4go")
-	temp.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.aeTitle)
-	temp.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
-	temp.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
-
-	// create a buffer to write the temporary object to
-	buf := new(bytes.Buffer)
-
-	// create an encoder for writing objects
-	encoder := newEncoder()
-
-	// write the temporary to the buffer
-	if err := encoder.writeObject(buf, temp, ImplicitVRLittleEndianTS().explicitVR, ImplicitVRLittleEndianTS().byteOrder); err != nil {
-		return nil, err
-	}
-
-	// now create the final file meta information
+	// create the fmi
 	fmi := newObject()
-
-	// initialize it with the command group length attribute
-	fmi.addLong(FileMetaInformationGroupLengthTag, "UL", uint32(buf.Len()))
-
-	// add the rest of the attributes from the temporary object
-	fmi.addAll(temp)
+	fmi.addShort(FileMetaInformationVersionTag, "US", 0x0100)
+	fmi.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
+	fmi.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
+	fmi.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
+	fmi.addUID(ImplementationClassUIDTag, "1.2.40.0.13.1.3") // borrowed from dcm4che for now
+	fmi.addText(ImplementationVersionNameTag, "SH", "dcm4go")
+	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.aeTitle)
+	fmi.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
+	fmi.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
 
 	// return the file meta information
 	return fmi, nil

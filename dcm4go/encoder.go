@@ -1,6 +1,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -23,6 +24,42 @@ func (encoder *Encoder) writeObject(writer io.Writer, object *Object, explicitVR
 			return err
 		}
 	}
+	return nil
+}
+
+// writeObjectWithGroupLength writes an object to a writer, along with the
+// group length for that group.  checks that all attributes are for that group
+func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint16, object *Object, explicitVR bool, byteOrder binary.ByteOrder) error {
+
+	// create a buffer to write the temporary object to
+	buf := new(bytes.Buffer)
+
+	for _, attribute := range object.attributes {
+
+		// check that this attribute is in this group
+		if toGroup(attribute.tag) != group {
+			return fmt.Errorf("while writing object with group length, found attribute %s that is not in group %d", tagToString(attribute.tag), group)
+		}
+
+		if err := encoder.writeAttribute(buf, attribute, explicitVR, byteOrder); err != nil {
+			return err
+		}
+	}
+
+	// create an attribute for the group length
+	attribute := &Attribute{toTag(group, 0x00), "UL", 4, 0, []uint32{uint32(buf.Len())}}
+
+	// write the attribute to the underlying writer
+	if err := encoder.writeAttribute(writer, attribute, explicitVR, byteOrder); err != nil {
+		return err
+	}
+
+	// write the bytes containing the group to the underlying writer
+	if err := writeBytes(writer, buf.Bytes()); err != nil {
+		return err
+	}
+
+	// all is well
 	return nil
 }
 

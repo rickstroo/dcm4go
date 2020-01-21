@@ -103,7 +103,7 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 	encoder := newEncoder()
 
 	// write the fmi
-	if err := encoder.writeObject(writer, fmi, ImplicitVRLittleEndianTS().explicitVR, ImplicitVRLittleEndianTS().byteOrder); err != nil {
+	if err := encoder.writeObjectWithGroupLength(writer, 0x0002, fmi, ImplicitVRLittleEndianTS().explicitVR, ImplicitVRLittleEndianTS().byteOrder); err != nil {
 		return err
 	}
 

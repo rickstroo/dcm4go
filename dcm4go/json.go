@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+// these functions are used to create JSON representations of DICOM objects
+// i had played around with using some of the builting JSON marshalling
+// tools, but found i was having to jump through lots of hoops to make
+// the output follow the DICOM specification.  one of the articles that i
+// found useful is at http://choly.ca/post/go-json-marshalling/
+
 func encapsulatedToJSON(path string, encapsulated *Encapsulated) string {
 	s := ",\"DataFragment\":["
 	for _, fragment := range encapsulated.fragments {
