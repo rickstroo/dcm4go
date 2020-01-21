@@ -6,7 +6,9 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rickstroo/dcm4go/dcm4go"
 )
 
@@ -158,8 +160,11 @@ func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byt
 		return nil, err
 	}
 
+	// create a unique file name
+	path := "tmp/" + uuid.New().String() + ".dcm" + ".tmp"
+
 	// open a new file
-	file, err := os.Create("image.dcm.tmp")
+	file, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +183,7 @@ func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byt
 	}
 
 	// rename the file
-	if err := os.Rename("image.dcm.tmp", "image.dcm"); err != nil {
+	if err := os.Rename(path, strings.TrimSuffix(path, ".tmp")); err != nil {
 		return nil, err
 	}
 

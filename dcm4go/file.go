@@ -99,6 +99,14 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 		return err
 	}
 
+	// create an encoder for writing objects
+	encoder := newEncoder()
+
+	// write the fmi
+	if err := encoder.writeObject(writer, fmi, ImplicitVRLittleEndianTS().explicitVR, ImplicitVRLittleEndianTS().byteOrder); err != nil {
+		return err
+	}
+
 	// copy the data
 	_, err := io.Copy(writer, reader)
 	if err != nil {

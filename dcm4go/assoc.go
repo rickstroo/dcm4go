@@ -240,7 +240,7 @@ func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, err
 
 	// create a temporary object for what we know
 	temp := newObject()
-	temp.addShort(FileMetaInformationVersionTag, "US", 0x0001)
+	temp.addShort(FileMetaInformationVersionTag, "US", 0x0100)
 	temp.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
 	temp.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
 	temp.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
