@@ -181,6 +181,20 @@ func NewElement(row Row) Element {
 
 type elements map[uint32]Element
 
+func NewUID(row Row) UID {
+	return UID{
+		uidValue: row.Cells[0].GetValue(),
+		uidName:  row.Cells[1].GetValue(),
+	}
+}
+
+type uids map[string]UID
+
+type UID struct {
+	uidValue string
+	uidName  string
+}
+
 // DownloadFile will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.
 func DownloadFile(filepath string, url string) error {
@@ -208,22 +222,37 @@ func DownloadFile(filepath string, url string) error {
 // TODO: flag to automatically fetch latest spec
 func main() {
 
-	if err := DownloadFile("part06.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part06/part06.xml"); err != nil {
-		panic(err)
-	}
-	if err := DownloadFile("part07.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part07/part07.xml"); err != nil {
-		panic(err)
-	}
+	// fmt.Printf("Downloading part06.xml...\n")
+	// if err := DownloadFile("part06.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part06/part06.xml"); err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Printf("Downloading part07.xml...\n")
+	// if err := DownloadFile("part07.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part07/part07.xml"); err != nil {
+	// 	panic(err)
+	// }
 
 	elements := make(elements)
+	fmt.Printf("Parsing part06...\n")
 	parseStandard("part06.xml", elements, "6", "7", "8")
+	fmt.Printf("Parsing part07...\n")
 	parseStandard("part07.xml", elements, "E")
 
+	fmt.Printf("Writing tags...\n")
 	writeTags(elements)
 	//writeDictionary(elements)
+	fmt.Printf("Writing vrs...\n")
 	writeVRs(elements)
 
+	fmt.Printf("Writing sample test data...\n")
 	writeSampleTestData("GENECG.dcm")
+
+	uids := make(uids)
+	fmt.Printf("Parsing part06 for UIDs...\n")
+	parseStandardForUIDs("part06.xml", uids, "A")
+	fmt.Printf("Writing uids...\n")
+	writeUIDs(uids)
+
+	fmt.Printf("Done.\n")
 }
 
 func parseStandard(filename string, elements elements, chapters ...string) {
@@ -262,6 +291,38 @@ func parseStandard(filename string, elements elements, chapters ...string) {
 	}
 }
 
+func parseStandardForUIDs(filename string, uids uids, chapters ...string) {
+	stream, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stream.Close()
+
+	decoder := xml.NewDecoder(stream)
+	var book Book
+	err = decoder.Decode(&book)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tagChapters := NewSet(chapters...)
+
+	for _, chapter := range book.Chapters {
+		if !tagChapters.Contains(chapter.Label) {
+			continue
+		}
+
+		for _, table := range chapter.GetTables() {
+			for _, row := range table.Rows {
+				uid := NewUID(row)
+				uids[uid.uidValue] = uid
+				//				break
+			}
+		}
+	}
+}
+
 func forEach(elements elements, f func(element Element)) {
 	keys := make(tagSlice, 0, len(elements))
 	for key := range elements {
@@ -275,7 +336,7 @@ func forEach(elements elements, f func(element Element)) {
 }
 
 func writeTags(elements elements) {
-	out, err := os.Create("tags.go")
+	out, err := os.Create("../tmp/tags.go")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -330,7 +391,7 @@ func writeTags(elements elements) {
 // }
 
 func writeVRs(elements elements) {
-	out, err := os.Create("vrs.go")
+	out, err := os.Create("../tmp/vrs.go")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -354,41 +415,80 @@ func writeVRs(elements elements) {
 	fmt.Fprintln(out, "}")
 }
 
-func writeDictionary(elements elements) {
-	out, err := os.Create("stddict.go")
+func forEachUID(uids uids, f func(uid UID)) {
+	keys := make(uidSlice, 0, len(uids))
+	for key := range uids {
+		keys = append(keys, key)
+	}
+	sort.Sort(keys)
+
+	for _, tag := range keys {
+		f(uids[tag])
+	}
+}
+
+func writeUIDs(uids uids) {
+	out, err := os.Create("../tmp/uids.go")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer out.Close()
 
-	fmt.Fprintf(out, stddictHeader)
+	fmt.Fprintln(out, "package dcm4go")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "// auto-generated, do not edit")
+	fmt.Fprintln(out)
+	fmt.Fprint(out, "const (\n")
 
-	forEach(elements, func(element Element) {
-		// TODO: support for multi-tag elements
-		// - either define a single value and map it multiple times
-		// - or enhance datadict.go to search for these somehow...
-		fmt.Fprintf(out, "\t\t"+elementSpecPattern+"\n",
-			*element.GetTagLowValue(),
-			*element.GetTagLowValue(),
-			*element.GetTagHighValue(),
-			element.GetVR(),
-			element.Retired,
-			element.Desc,
-			element.GetKeyword(),
-		)
+	forEachUID(uids, func(uid UID) {
+		if uid.uidName != "" && !strings.Contains(uid.uidName, "(Retired)") {
+			name := strings.ReplaceAll(uid.uidName, " ", "")
+			name = strings.ReplaceAll(name, "-", "")
+			name = strings.ReplaceAll(name, "/", "")
+			name = strings.ReplaceAll(name, ".", "")
+			value := strings.ReplaceAll(uid.uidValue, "\u200b", "")
+			fmt.Fprintf(out, "// %sUID is uid for %s\n"+"%sUID = %q\n", name, value, name, value)
+		}
 	})
 
-	fmt.Fprintf(out, "\t})\n")
+	fmt.Fprintln(out, ")")
 }
 
-const stddictHeader = `package main
-// auto-generated, do not edit
-var stddict = NewDataDictionary("",
-	map[Tag]ElementSpec{
-`
-
-const elementSpecPattern = `Tag(0x%08X): {tag: Tag(0x%08X), ` +
-	`maxValue: Tag(0x%08X), vr: %s, retired: %t, desc: "%s", keyword: "%s"},`
+// func writeDictionary(elements elements) {
+// 	out, err := os.Create("stddict.go")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer out.Close()
+//
+// 	fmt.Fprintf(out, stddictHeader)
+//
+// 	forEach(elements, func(element Element) {
+// 		// TODO: support for multi-tag elements
+// 		// - either define a single value and map it multiple times
+// 		// - or enhance datadict.go to search for these somehow...
+// 		fmt.Fprintf(out, "\t\t"+elementSpecPattern+"\n",
+// 			*element.GetTagLowValue(),
+// 			*element.GetTagLowValue(),
+// 			*element.GetTagHighValue(),
+// 			element.GetVR(),
+// 			element.Retired,
+// 			element.Desc,
+// 			element.GetKeyword(),
+// 		)
+// 	})
+//
+// 	fmt.Fprintf(out, "\t})\n")
+// }
+//
+// const stddictHeader = `package main
+// // auto-generated, do not edit
+// var stddict = NewDataDictionary("",
+// 	map[Tag]ElementSpec{
+// `
+//
+// const elementSpecPattern = `Tag(0x%08X): {tag: Tag(0x%08X), ` +
+// 	`maxValue: Tag(0x%08X), vr: %s, retired: %t, desc: "%s", keyword: "%s"},`
 
 // dumb util for set membership check
 type Set map[string]*struct{}
@@ -412,8 +512,15 @@ func (p tagSlice) Len() int           { return len(p) }
 func (p tagSlice) Less(i, j int) bool { return p[i] < p[j] }
 func (p tagSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+// for sorting of uids
+type uidSlice []string
+
+func (p uidSlice) Len() int           { return len(p) }
+func (p uidSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p uidSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
 func writeSampleTestData(path string) {
-	out, err := os.Create("sample.go")
+	out, err := os.Create("../tmp/sample.go")
 	if err != nil {
 		log.Fatal(err)
 	}
