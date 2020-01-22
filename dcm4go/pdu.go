@@ -30,7 +30,7 @@ func (pdu *PDU) Read(buf []byte) (int, error) {
 
 // String returns a string representation of a PDU
 func (pdu *PDU) String() string {
-	return fmt.Sprintf("pduType: %v, pduLength: %v", pdu.pduType, pdu.pduLength)
+	return fmt.Sprintf("{pduType:%v,pduLength:%v}", pdu.pduType, pdu.pduLength)
 }
 
 // readPDU reads a PDU from a reader

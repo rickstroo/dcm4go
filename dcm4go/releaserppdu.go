@@ -8,6 +8,7 @@ import (
 // writeReleaseRPPdu writes a release response PDU to a writer
 func writeReleaseRPPDU(writer io.Writer) error {
 
+	// construct a pdu
 	pdu := &PDU{aReleaseRPPDU, 0x04, nil}
 
 	// write the pdu header

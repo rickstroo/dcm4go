@@ -25,7 +25,7 @@ type Message struct {
 }
 
 func (message *Message) String() string {
-	s := fmt.Sprintf("pcID:%d", message.pcID)
+	s := fmt.Sprintf("{pcID:%v", message.pcID)
 	if message.command != nil {
 		s += fmt.Sprintf(",command:%s", message.command)
 	} else {
@@ -36,6 +36,7 @@ func (message *Message) String() string {
 	} else {
 		s += fmt.Sprintf(",data:nil")
 	}
+	s += "}"
 	return s
 }
 

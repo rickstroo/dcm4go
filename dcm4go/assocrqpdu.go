@@ -21,12 +21,13 @@ type AssocRQPDU struct {
 // String returns a string representation of a AssocRQPDU
 func (pdu *AssocRQPDU) String() string {
 	return fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s",
+		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s,userInfo:%s}",
 		pdu.protocol,
 		strings.TrimSpace(pdu.calledAETitle),
 		strings.TrimSpace(pdu.callingAETitle),
 		pdu.appContextName,
-		pdu.presContexts)
+		pdu.presContexts,
+		pdu.userInfo)
 }
 
 // readAssocRQPDU reads an AssocRQPDU from a reader

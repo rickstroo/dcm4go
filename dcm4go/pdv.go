@@ -21,7 +21,7 @@ func (pdv *PDV) Read(buf []byte) (int, error) {
 
 // String returns a string representation of a PDU
 func (pdv *PDV) String() string {
-	return fmt.Sprintf("pdvLength: %v, pcID: %v, mch: 0x%1X", pdv.pdvLength, pdv.pcID, pdv.mch)
+	return fmt.Sprintf("{pdvLength:%v,pcID:%v,mch:0x%1X}", pdv.pdvLength, pdv.pcID, pdv.mch)
 }
 
 // readPDV reads a PDV from a reader
