@@ -2,7 +2,6 @@ package dcm4go
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 )
 
@@ -26,7 +25,6 @@ func newPDataWriter(writer io.Writer, pcID byte, isCommand bool, maxLen uint32) 
 
 // Write implements the Writer inferface
 func (pDataWriter *PDataWriter) Write(buf []byte) (int, error) {
-	fmt.Printf("len(buf) is %d, pDataWriter.buf.Len() is %d, pDataWriter.buf.Cap() is %d\n", len(buf), pDataWriter.buf.Len(), pDataWriter.buf.Cap())
 
 	// calculate how much is remaining
 	remaining := pDataWriter.buf.Cap() - pDataWriter.buf.Len()
@@ -35,8 +33,6 @@ func (pDataWriter *PDataWriter) Write(buf []byte) (int, error) {
 	// write what we can, flush, and then write the remainder
 
 	if len(buf) > remaining {
-
-		fmt.Printf("not enough capacity, will write %d bytes and then flush\n", remaining)
 
 		// write what we can
 		num, err := pDataWriter.Write(buf[:remaining])
@@ -48,8 +44,6 @@ func (pDataWriter *PDataWriter) Write(buf []byte) (int, error) {
 		if err := pDataWriter.Flush(false); err != nil {
 			return num, err
 		}
-
-		fmt.Printf("and now, we will write the remainder\n")
 
 		// write the remainder
 		nextNum, err := pDataWriter.Write(buf[remaining:])
@@ -75,13 +69,11 @@ func (pDataWriter *PDataWriter) Flush(isLast bool) error {
 		pdv.mch = pdv.mch | 0x2
 	}
 	pdv.pdvLength = uint32(pDataWriter.buf.Len() + 2) // need to add two bytes for the pcID and mch
-	fmt.Printf("pdv to write is is %v\n", pdv)
 
 	// create a pdu
 	pdu := &PDU{}
 	pdu.pduType = pDataTFPDU
 	pdu.pduLength = uint32(pdv.pdvLength + 4) // need to add four bytes for the PDV length
-	fmt.Printf("pdu to write is %v\n", pdu)
 
 	// we always write a pdv and pdu
 	// while it is possible pack multiple pdvs into a single pdu

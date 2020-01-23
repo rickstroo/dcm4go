@@ -26,6 +26,7 @@ func newPDataReader(reader io.Reader, pdu *PDU, isCommand bool) (*PDataReader, e
 	if err != nil {
 		return nil, err
 	}
+
 	// check that the command or data match the last pdv
 	if err := checkCommand(isCommand, pdv); err != nil {
 		return nil, err
