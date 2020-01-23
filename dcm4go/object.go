@@ -88,7 +88,7 @@ func padUID(uid string) string {
 // addUID adds a UID attribute
 func (object *Object) addUID(tag uint32, uid string) {
 	paddedUID := padUID(uid)
-	attribute := &Attribute{tag, "UI", uint32(len(paddedUID)), 0, []string{paddedUID}}
+	attribute := &Attribute{tag, "UI", uint32(len(paddedUID)), []string{paddedUID}}
 	object.add(attribute)
 }
 
@@ -102,18 +102,18 @@ func padText(text string) string {
 // addUID adds a text attribute
 func (object *Object) addText(tag uint32, vr string, text string) {
 	paddedText := padText(text)
-	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), 0, []string{paddedText}}
+	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), []string{paddedText}}
 	object.add(attribute)
 }
 
 // addShort adds a short attribute
 func (object *Object) addShort(tag uint32, vr string, value uint16) {
-	attribute := &Attribute{tag, vr, 0x02, 0, []uint16{value}}
+	attribute := &Attribute{tag, vr, 0x02, []uint16{value}}
 	object.add(attribute)
 }
 
 // addLong adds a long attribute
 func (object *Object) addLong(tag uint32, vr string, value uint32) {
-	attribute := &Attribute{tag, vr, 0x04, 0, []uint32{value}}
+	attribute := &Attribute{tag, vr, 0x04, []uint32{value}}
 	object.add(attribute)
 }

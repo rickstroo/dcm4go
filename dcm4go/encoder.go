@@ -47,7 +47,7 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 	}
 
 	// create an attribute for the group length
-	attribute := &Attribute{toTag(group, 0x00), "UL", 4, 0, []uint32{uint32(buf.Len())}}
+	attribute := &Attribute{toTag(group, 0x00), "UL", 4, []uint32{uint32(buf.Len())}}
 
 	// write the attribute to the underlying writer
 	if err := encoder.writeAttribute(writer, attribute, explicitVR, byteOrder); err != nil {

@@ -13,7 +13,7 @@ func lengthToString(length uint32) string {
 }
 
 func attributeToString(attribute *Attribute, prefix string) string {
-	s := fmt.Sprintf("%stag=%s vr=%s off=%d len=%s", prefix, tagToString(attribute.tag), attribute.vr, attribute.offset, lengthToString(attribute.length))
+	s := fmt.Sprintf("%stag=%s vr=%s len=%s", prefix, tagToString(attribute.tag), attribute.vr, lengthToString(attribute.length))
 	if attribute.length == 0 {
 		return s + "\n"
 	}

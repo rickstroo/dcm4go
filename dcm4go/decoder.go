@@ -71,12 +71,12 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 	// remember the offset of this attribute's value
 	offset := uint32(reader.BytesRead())
 
-	value, err := decoder.readValue(reader, explicitVR, byteOrder, vr, length)
+	value, err := decoder.readValue(reader, explicitVR, byteOrder, vr, offset, length)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Attribute{tag, vr, length, offset, value}, nil
+	return &Attribute{tag, vr, length, value}, nil
 }
 
 // reads the vr of an attribute
@@ -144,7 +144,7 @@ func isShortLength(vr string) bool {
 }
 
 // reads the value of an attribute
-func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, length uint32) (interface{}, error) {
+func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, offset uint32, length uint32) (interface{}, error) {
 	switch vr {
 	// these VRs support multiple text values
 	case "AE", "AS", "CS", "DA", "DS", "DT", "IS", "LO", "PN", "SH", "TM", "UC":
@@ -159,7 +159,7 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 	case "LT", "ST", "UT", "UR":
 		return readPaddedText(reader, length)
 	case "OB", "OL", "OV", "OW", "UN":
-		return decoder.readPixelData(reader, length, byteOrder)
+		return decoder.readPixelData(reader, offset, length, byteOrder)
 	case "SL", "UL":
 		return decoder.readLongs(reader, length, byteOrder)
 	case "SQ":
@@ -396,18 +396,18 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, 
 }
 
 // parses and reads pixel data, in native or encapsulated formats
-func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, byteOrder binary.ByteOrder) (interface{}, error) {
+func (decoder *Decoder) readPixelData(reader CounterReader, length uint32, offset uint32, byteOrder binary.ByteOrder) (interface{}, error) {
 
 	// if undefined length, read the pixel data  using the provided reader knowing that there will be a deer item
 	if length == UndefinedLength {
 		return decoder.readEncapsulatedPixelData(reader, byteOrder)
 	}
 
-	return decoder.readNativePixelData(reader, length)
+	return decoder.readNativePixelData(reader, length, offset)
 }
 
 // read native pixel data
-func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32) ([]byte, error) {
+func (decoder *Decoder) readNativePixelData(reader CounterReader, offset uint32, length uint32) (interface{}, error) {
 
 	// if too long, skip the bytes and return empty
 	if decoder.bulkDataThreshold > 0 && length > decoder.bulkDataThreshold {
@@ -415,7 +415,9 @@ func (decoder *Decoder) readNativePixelData(reader CounterReader, length uint32)
 			return nil, err
 		}
 
-		return nil, nil
+		// create a fragment for the pixel data to
+		// encapsulate the offset and the length
+		return &Fragment{offset, length}, nil
 	}
 
 	// otherwise, read the bytes

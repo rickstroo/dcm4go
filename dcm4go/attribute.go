@@ -5,7 +5,6 @@ type Attribute struct {
 	tag    uint32
 	vr     string
 	length uint32
-	offset uint32
 	value  interface{}
 }
 

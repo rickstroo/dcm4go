@@ -5,7 +5,7 @@ import (
 )
 
 func newAttribute(tag uint32) *Attribute {
-	return &Attribute{tag, "", 0, 0, nil}
+	return &Attribute{tag, "", 0, nil}
 }
 
 func TestAddAttribute(t *testing.T) {
@@ -27,7 +27,7 @@ func TestNotFindAttribute(t *testing.T) {
 func TestToString(t *testing.T) {
 	object := newObject()
 	object.add(newAttribute(0x00080001))
-	if err := testStringEquals(object.String(), "tag=(0008,0001) vr= off=0 len=0\n"); err != nil {
+	if err := testStringEquals(object.String(), "tag=(0008,0001) vr= len=0\n"); err != nil {
 		t.Error(err)
 	}
 }

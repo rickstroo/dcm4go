@@ -111,10 +111,9 @@ func pixelDataToJSON(path string, attribute *Attribute) string {
 	case *Encapsulated:
 		return encapsulatedToJSON(path, v)
 	case []byte:
-		if v == nil {
-			return fmt.Sprintf(",\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"", path, attribute.offset, attribute.length)
-		}
 		return fmt.Sprintf(",\"InlineBinary\":\"%s\"", base64.StdEncoding.EncodeToString(v))
+	case *Fragment:
+		return fmt.Sprintf(",\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"", path, v.offset, v.length)
 	default:
 		return ""
 	}
