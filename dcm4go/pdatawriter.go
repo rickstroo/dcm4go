@@ -51,11 +51,14 @@ func (pDataWriter *PDataWriter) Write(buf []byte) (int, error) {
 
 		fmt.Printf("and now, we will write the remainder\n")
 
-		// write the remaidner
-		return pDataWriter.Write(buf[remaining:])
+		// write the remainder
+		nextNum, err := pDataWriter.Write(buf[remaining:])
+
+		// return the result, including the sum of the num bytes written
+		return num + nextNum, err
 	}
 
-	// otherwise, just write bytes
+	// otherwise, just write bytes and return the result
 	return pDataWriter.buf.Write(buf)
 }
 
