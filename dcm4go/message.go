@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 )
@@ -180,42 +179,20 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
-	// create a buffer to write the command object to
-	buf := new(bytes.Buffer)
+	// create a writer to write the data to
+	pDataWriter := newPDataWriter(writer, message.pcID, true, assoc.assocACPDU.userInfo.maxLenReceived)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
-	// write the object to the buffer
-	if err := encoder.writeObjectWithGroupLength(buf, 0x0000, message.Command(), ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder); err != nil {
+	// write the command to the buffer
+	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, message.Command(), ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder); err != nil {
 		return err
 	}
 
-	// create a PDV
-	pdv := &PDV{}
-	pdv.pcID = message.pcID               // same pc id as in the request
-	pdv.mch = 0x3                         // last and command
-	pdv.pdvLength = uint32(buf.Len() + 2) // need to add two bytes for the pcID and mch
-	fmt.Printf("pdv is %v\n", pdv)
-
-	// create a pdu
-	pdu := &PDU{}
-	pdu.pduType = pDataTFPDU
-	pdu.pduLength = uint32(pdv.pdvLength + 4) // need to add four bytes for the PDV header
-	fmt.Printf("pdu is %v\n", pdu)
-
-	// write the pdu header
-	if err := writePDU(writer, pdu); err != nil {
-		return err
-	}
-
-	// write the pdv header
-	if err := writePDV(writer, pdv); err != nil {
-		return err
-	}
-
-	// write the bytes containing the attribute
-	if err := writeBytes(writer, buf.Bytes()); err != nil {
+	// flush to the underlying writer
+	// passing true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
 		return err
 	}
 
