@@ -14,7 +14,7 @@ type AssocRQPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	presContexts   []*RQPresContext
+	presContexts   []*PresContext
 	userInfo       *UserInfo
 }
 
@@ -65,7 +65,7 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 	var appContextName string
 
 	// initialize a list of presentation contexts
-	presContexts := make([]*RQPresContext, 0, 5)
+	presContexts := make([]*PresContext, 0, 5)
 
 	// initialize the user info
 	var userInfo *UserInfo
@@ -176,7 +176,12 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 			}
 
 			// create the presentation context
-			presContext := &RQPresContext{id, abstractSyntax, transferSyntaxes}
+			presContext := &PresContext{
+				id,               // the pc id
+				abstractSyntax,   // the abstract syntax
+				transferSyntaxes, // the transfer syntaxes
+				0x00,             // no reason
+			}
 
 			// add it to the list of requested presentation contexts
 			presContexts = append(presContexts, presContext)

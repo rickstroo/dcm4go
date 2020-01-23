@@ -128,7 +128,7 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 func findAcceptedTransferSyntax(assoc *Assoc, pcid byte) (*TransferSyntax, error) {
 	for _, presContext := range assoc.assocACPDU.presContexts {
 		if presContext.id == pcid {
-			return findTransferSyntax(presContext.transferSyntax)
+			return findTransferSyntax(presContext.transferSyntaxes[0])
 		}
 	}
 	return nil, fmt.Errorf("no supported transfer syntax found for presentation context id %d", pcid)

@@ -90,17 +90,19 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 	return assocACPDU, nil
 }
 
-func negotiatePresContext(rqPresContext *RQPresContext, spPresContexts []*SPPresContext) (*ACPresContext, error) {
+func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresContext) (*PresContext, error) {
 
 	// look for a supported presentation context for this abstract syntax
 	spPresContext, found := findSupportedPresContext(rqPresContext.abstractSyntax, spPresContexts)
 
 	// if we don't find out, return a failure for this requested presentation context
 	if !found {
-		acPresContext := &ACPresContext{
+		acPresContext := &PresContext{
 			rqPresContext.id,             // the id
+			"",                           // no abstract syntax
+			nil,                          // no transfer syntaxes
 			pcAbstractSyntaxNotSupported, // failure
-			""}
+		}
 		return acPresContext, nil
 	}
 
@@ -108,23 +110,27 @@ func negotiatePresContext(rqPresContext *RQPresContext, spPresContexts []*SPPres
 	for _, rqTansferSyntax := range rqPresContext.transferSyntaxes {
 		spTransferSyntax, found := findSupportedTransferSyntax(rqTansferSyntax, spPresContext.transferSyntaxes)
 		if found {
-			acPresContext := &ACPresContext{
-				rqPresContext.id, // the id
-				pcAcceptance,     // success
-				spTransferSyntax}
+			acPresContext := &PresContext{
+				rqPresContext.id,           // the id
+				"",                         // no abstract syntax
+				[]string{spTransferSyntax}, // the transfer syntax
+				pcAcceptance,               // success
+			}
 			return acPresContext, nil
 		}
 	}
 
 	// we didn't find a matching transfer syntax, so return a failed acceptance presentation context
-	acPresContext := &ACPresContext{
+	acPresContext := &PresContext{
 		rqPresContext.id,               // the id
+		"",                             // no abstract syntax
+		nil,                            // no transfer syntaxes
 		pcTransferSyntaxesNotSupported, // failure
-		""}
+	}
 	return acPresContext, nil
 }
 
-func findSupportedPresContext(abstractSyntax string, spPresContexts []*SPPresContext) (*SPPresContext, bool) {
+func findSupportedPresContext(abstractSyntax string, spPresContexts []*PresContext) (*PresContext, bool) {
 	for _, spPresContext := range spPresContexts {
 		if abstractSyntax == spPresContext.abstractSyntax {
 			return spPresContext, true

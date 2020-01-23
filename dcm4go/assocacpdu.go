@@ -14,7 +14,7 @@ type AssocACPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	presContexts   []*ACPresContext
+	presContexts   []*PresContext
 	userInfo       *UserInfo
 }
 
@@ -33,11 +33,11 @@ func (pdu *AssocACPDU) String() string {
 // create a new association acceptance PDU
 func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
 	return &AssocACPDU{
-		0x01,                         // protocol version, as per the standard
-		assocRQPDU.calledAETitle,     // copy from the request, as per the standard
-		assocRQPDU.callingAETitle,    // copy from the request, as per the standard
-		"1.2.840.10008.3.1.1.1",      // app context name, as per the standard
-		make([]*ACPresContext, 0, 5), // empty pres context list
+		0x01,                       // protocol version, as per the standard
+		assocRQPDU.calledAETitle,   // copy from the request, as per the standard
+		assocRQPDU.callingAETitle,  // copy from the request, as per the standard
+		"1.2.840.10008.3.1.1.1",    // app context name, as per the standard
+		make([]*PresContext, 0, 5), // empty pres context list
 		&UserInfo{
 			16378,             // max length received, need to figure out why dcm4che uses this number
 			"1.2.40.0.13.1.3", // implementation class uid, need to get a root, borrowing dcm4che for now
@@ -166,7 +166,7 @@ func writeACPresContexts(writer io.Writer, assocACPDU *AssocACPDU) error {
 	return nil
 }
 
-func writeACPresContext(writer io.Writer, presContext *ACPresContext) error {
+func writeACPresContext(writer io.Writer, presContext *PresContext) error {
 
 	// write item type
 	if err := writeByte(writer, 0x21); err != nil {
@@ -202,7 +202,7 @@ func writeACPresContext(writer io.Writer, presContext *ACPresContext) error {
 	}
 
 	// write the transfer syntax
-	if err := writeTransferSyntax(byteWriter, presContext.transferSyntax); err != nil {
+	if err := writeTransferSyntax(byteWriter, presContext.transferSyntaxes[0]); err != nil {
 		return err
 	}
 
