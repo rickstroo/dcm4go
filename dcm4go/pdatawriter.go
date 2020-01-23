@@ -11,7 +11,6 @@ type PDataWriter struct {
 	writer    io.Writer     // the underlying writer
 	pcID      byte          // the presentation context id
 	isCommand bool          // is this a command or a data set?
-	maxLen    uint32        // the maximum length of a PDU that we will write
 	buf       *bytes.Buffer // a buffer to stage into
 }
 
@@ -21,7 +20,6 @@ func newPDataWriter(writer io.Writer, pcID byte, isCommand bool, maxLen uint32) 
 		writer,
 		pcID,
 		isCommand,
-		maxLen,
 		bytes.NewBuffer(make([]byte, 0, maxLen-6)), // need to reserve 6 bytes for the PDV
 	}
 }
