@@ -6,25 +6,32 @@ import (
 	"io"
 )
 
+// AssocACPDU borrows from AssocACRQPDU
+type AssocACPDU struct {
+	AssocACRQPDU
+}
+
 // create a new association acceptance PDU
-func newAssocACPDU(assocRQPDU *AssocACRQPDU) *AssocACRQPDU {
-	return &AssocACRQPDU{
-		0x01,                       // protocol version, as per the standard
-		assocRQPDU.calledAETitle,   // copy from the request, as per the standard
-		assocRQPDU.callingAETitle,  // copy from the request, as per the standard
-		"1.2.840.10008.3.1.1.1",    // app context name, as per the standard
-		make([]*PresContext, 0, 5), // empty pres context list
-		&UserInfo{
-			16378,             // max length received, need to figure out why dcm4che uses this number
-			"1.2.40.0.13.1.3", // implementation class uid, need to get a root, borrowing dcm4che for now
-			"dcm4go-1.0",      // implementation class name
-			0,                 // max num ops invoked
-			0,                 // max num ops performed
+func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
+	return &AssocACPDU{
+		AssocACRQPDU{
+			0x01,                       // protocol version, as per the standard
+			assocRQPDU.calledAETitle,   // copy from the request, as per the standard
+			assocRQPDU.callingAETitle,  // copy from the request, as per the standard
+			"1.2.840.10008.3.1.1.1",    // app context name, as per the standard
+			make([]*PresContext, 0, 5), // empty pres context list
+			&UserInfo{
+				16378,             // max length received, need to figure out why dcm4che uses this number
+				"1.2.40.0.13.1.3", // implementation class uid, need to get a root, borrowing dcm4che for now
+				"dcm4go-1.0",      // implementation class name
+				0,                 // max num ops invoked
+				0,                 // max num ops performed
+			},
 		},
 	}
 }
 
-func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACRQPDU) error {
+func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
 
 	// write pdu type
 	if err := writeByte(writer, 0x02); err != nil {
@@ -85,7 +92,7 @@ func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 	return nil
 }
 
-func writeVariableItems(writer io.Writer, assocACPDU *AssocACRQPDU) error {
+func writeVariableItems(writer io.Writer, assocACPDU *AssocACPDU) error {
 
 	if err := writeAppContextName(writer, assocACPDU); err != nil {
 		return err
@@ -102,7 +109,7 @@ func writeVariableItems(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 	return nil
 }
 
-func writeAppContextName(writer io.Writer, assocACPDU *AssocACRQPDU) error {
+func writeAppContextName(writer io.Writer, assocACPDU *AssocACPDU) error {
 
 	// write item type
 	if err := writeByte(writer, 0x10); err != nil {
@@ -127,7 +134,7 @@ func writeAppContextName(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 	return nil
 }
 
-func writeACPresContexts(writer io.Writer, assocACPDU *AssocACRQPDU) error {
+func writeACPresContexts(writer io.Writer, assocACPDU *AssocACPDU) error {
 
 	// for each of the accepted presentation contexts
 	for _, presContext := range assocACPDU.presContexts {

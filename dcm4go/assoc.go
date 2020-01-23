@@ -11,8 +11,8 @@ import (
 type Assoc struct {
 	conn       net.Conn
 	ae         *AE
-	assocRQPDU *AssocACRQPDU
-	assocACPDU *AssocACRQPDU
+	assocRQPDU *AssocRQPDU
+	assocACPDU *AssocACPDU
 }
 
 // CalledAETitle returns called ae title from the association request
@@ -72,12 +72,12 @@ const (
 	pcTransferSyntaxesNotSupported = 0x04
 )
 
-func negotiateAssoc(assocRQPDU *AssocACRQPDU, ae *AE) (*AssocACRQPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)
 
-	// implement a simple acceptanace of the presentation contexts
+	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.presContexts {
 		acPresContext, err := negotiatePresContext(rqPresContext, ae.presContexts)
 		if err != nil {
@@ -86,7 +86,6 @@ func negotiateAssoc(assocRQPDU *AssocACRQPDU, ae *AE) (*AssocACRQPDU, error) {
 		assocACPDU.presContexts = append(assocACPDU.presContexts, acPresContext)
 	}
 
-	// return the association accept pdu
 	return assocACPDU, nil
 }
 
@@ -95,7 +94,7 @@ func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresCont
 	// look for a supported presentation context for this abstract syntax
 	spPresContext, found := findSupportedPresContext(rqPresContext.abstractSyntax, spPresContexts)
 
-	// if we don't find out, return a failure for this requested presentation context
+	// if we don't find one, return a failure for this requested presentation context
 	if !found {
 		acPresContext := &PresContext{
 			rqPresContext.id,             // the id
@@ -163,7 +162,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 	}
 	fmt.Printf("pdu is %v\n", pdu)
 
-	// is this an association release request?
+	// is this an association release request?  if so, write response and return EOF
 	if pdu.pduType == aReleaseRQPDU {
 		if err := readReleaseRQPDU(pdu); err != nil {
 			return nil, err
@@ -174,7 +173,7 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 		return nil, io.EOF
 	}
 
-	// is this an abort request?
+	// is this an abort request?  if so, just return EOF
 	if pdu.pduType == aAbortPDU {
 		return nil, io.EOF
 	}

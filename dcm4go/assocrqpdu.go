@@ -7,8 +7,13 @@ import (
 	"io"
 )
 
+// AssocRQPDU borrows from the AssocACRQPDU
+type AssocRQPDU struct {
+	AssocACRQPDU
+}
+
 // readAssocRQPDU reads an AssocRQPDU from a reader
-func readAssocRQPDU(reader io.Reader) (*AssocACRQPDU, error) {
+func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 	// read the protocol
 	protocol, err := readShort(reader, binary.BigEndian)
@@ -145,11 +150,8 @@ func readAssocRQPDU(reader io.Reader) (*AssocACRQPDU, error) {
 					transferSyntaxes = append(transferSyntaxes, uid)
 
 				} else { // unrecgonized item
-
 					return nil, fmt.Errorf("unrecognized presentation context sub item type: 0x%02X", subItemType)
-
 				}
-
 			}
 
 			// create the presentation context
@@ -175,12 +177,20 @@ func readAssocRQPDU(reader io.Reader) (*AssocACRQPDU, error) {
 			}
 
 		} else {
-
 			// unrecognized item
 			return nil, fmt.Errorf("unrecognized item type: 0x%02X", itemType)
 		}
-
 	}
 
-	return &AssocACRQPDU{protocol, calledAETitle, callingAETitle, appContextName, presContexts, userInfo}, nil
+	// construct and return an association request pdu
+	return &AssocRQPDU{
+			AssocACRQPDU{
+				protocol,
+				calledAETitle,
+				callingAETitle,
+				appContextName,
+				presContexts,
+				userInfo},
+		},
+		nil
 }
