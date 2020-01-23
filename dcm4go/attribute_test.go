@@ -7,7 +7,7 @@ import (
 
 func TestAttributeToString(t *testing.T) {
 	attribute := &Attribute{FileMetaInformationGroupLengthTag, "UL", 4, []uint32{0x04}}
-	if err := testStringEquals(attribute.String(), "tag=(0002,0000) vr=UL len=4 value=[4]\n"); err != nil {
+	if err := testStringEquals("{tag:0x00020000,vr:UL,len:4,val:[4]}", attribute.String()); err != nil {
 		t.Error(err)
 	}
 }

@@ -27,7 +27,7 @@ func TestNotFindAttribute(t *testing.T) {
 func TestToString(t *testing.T) {
 	object := newObject()
 	object.add(newAttribute(0x00080001))
-	if err := testStringEquals(object.String(), "tag=(0008,0001) vr= len=0\n"); err != nil {
+	if err := testStringEquals("[{tag:0x00080001,vr:,len:0}]", object.String()); err != nil {
 		t.Error(err)
 	}
 }
