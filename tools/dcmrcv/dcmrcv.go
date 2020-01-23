@@ -40,8 +40,8 @@ func main() {
 	}
 	ae := dcm4go.NewAE("DCMRCV")
 	ae.AddSupportedPresentationContext(dcm4go.VerificationUID, defaultTransferSyntaxes, nil)
-	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{})
-	ae.AddSupportedPresentationContext(dcm4go.GeneralECGWaveformStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{})
+	ae.AddSupportedPresentationContext(dcm4go.EnhancedXAImageStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{"tmp/"})
+	ae.AddSupportedPresentationContext(dcm4go.GeneralECGWaveformStorageUID, defaultTransferSyntaxes, &CStoreCommandHandler{"tmp/"})
 	fmt.Printf("ae:%v\n", ae)
 
 	// listen for connections
@@ -125,7 +125,9 @@ func handleStoreRequest(assoc *dcm4go.Assoc, request *dcm4go.Message) (*dcm4go.M
 }
 
 // CStoreCommandHandler is a handler for C-Store commands
-type CStoreCommandHandler struct{}
+type CStoreCommandHandler struct {
+	folder string
+}
 
 // HandleCommand handles a C-Echo request
 func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byte, command *dcm4go.Object, pDataReader *dcm4go.PDataReader) (*dcm4go.Object, error) {
@@ -137,7 +139,7 @@ func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byt
 	}
 
 	// create a unique file name
-	path := "tmp/" + uuid.New().String() + ".dcm" + ".tmp"
+	path := handler.folder + uuid.New().String() + ".dcm" + ".tmp"
 
 	// open a new file
 	file, err := os.Create(path)
