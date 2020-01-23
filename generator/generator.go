@@ -222,14 +222,14 @@ func DownloadFile(filepath string, url string) error {
 // TODO: flag to automatically fetch latest spec
 func main() {
 
-	// fmt.Printf("Downloading part06.xml...\n")
-	// if err := DownloadFile("part06.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part06/part06.xml"); err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("Downloading part07.xml...\n")
-	// if err := DownloadFile("part07.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part07/part07.xml"); err != nil {
-	// 	panic(err)
-	// }
+	fmt.Printf("Downloading part06.xml...\n")
+	if err := DownloadFile("part06.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part06/part06.xml"); err != nil {
+		panic(err)
+	}
+	fmt.Printf("Downloading part07.xml...\n")
+	if err := DownloadFile("part07.xml", "http://dicom.nema.org/medical/dicom/current/source/docbook/part07/part07.xml"); err != nil {
+		panic(err)
+	}
 
 	elements := make(elements)
 	fmt.Printf("Parsing part06...\n")
@@ -243,14 +243,14 @@ func main() {
 	fmt.Printf("Writing vrs...\n")
 	writeVRs(elements)
 
-	fmt.Printf("Writing sample test data...\n")
-	writeSampleTestData("GENECG.dcm")
-
-	uids := make(uids)
-	fmt.Printf("Parsing part06 for UIDs...\n")
-	parseStandardForUIDs("part06.xml", uids, "A")
-	fmt.Printf("Writing uids...\n")
-	writeUIDs(uids)
+	// fmt.Printf("Writing sample test data...\n")
+	// writeSampleTestData("GENECG.dcm")
+	//
+	// uids := make(uids)
+	// fmt.Printf("Parsing part06 for UIDs...\n")
+	// parseStandardForUIDs("part06.xml", uids, "A")
+	// fmt.Printf("Writing uids...\n")
+	// writeUIDs(uids)
 
 	fmt.Printf("Done.\n")
 }
@@ -401,8 +401,9 @@ func writeVRs(elements elements) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "// auto-generated, do not edit")
 	fmt.Fprintln(out)
-	fmt.Fprint(out, "var vrs = map[uint32]string{")
+	fmt.Fprint(out, "var vrs = map[uint32]string{\n")
 
+	i := 0
 	forEach(elements, func(element Element) {
 		// TODO: add comments with other attributes
 		if element.GetKeyword() != "" {
@@ -410,9 +411,13 @@ func writeVRs(elements elements) {
 				*element.GetTagLowValue(),
 				element.GetVR())
 		}
+		i++
+		if i%4 == 0 {
+			fmt.Fprintf(out, "\n")
+		}
 	})
 
-	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out, "\n}")
 }
 
 func forEachUID(uids uids, f func(uid UID)) {
