@@ -180,7 +180,7 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, message.pcID, true, assoc.assocACPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(writer, message.pcID, true, assoc.assocRQPDU.userInfo.maxLenReceived)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
