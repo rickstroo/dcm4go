@@ -3,36 +3,12 @@ package dcm4go
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
-	"strings"
 )
 
-// AssocACPDU presents an Association Accept PDU
-type AssocACPDU struct {
-	protocol       uint16
-	calledAETitle  string
-	callingAETitle string
-	appContextName string
-	presContexts   []*PresContext
-	userInfo       *UserInfo
-}
-
-// String returns a string representation of a AssocRQPDU
-func (pdu *AssocACPDU) String() string {
-	return fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s,userInfo:%s}",
-		pdu.protocol,
-		strings.TrimSpace(pdu.calledAETitle),
-		strings.TrimSpace(pdu.callingAETitle),
-		pdu.appContextName,
-		pdu.presContexts,
-		pdu.userInfo)
-}
-
 // create a new association acceptance PDU
-func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
-	return &AssocACPDU{
+func newAssocACPDU(assocRQPDU *AssocACRQPDU) *AssocACRQPDU {
+	return &AssocACRQPDU{
 		0x01,                       // protocol version, as per the standard
 		assocRQPDU.calledAETitle,   // copy from the request, as per the standard
 		assocRQPDU.callingAETitle,  // copy from the request, as per the standard
@@ -48,7 +24,7 @@ func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
 	}
 }
 
-func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
+func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 
 	// write pdu type
 	if err := writeByte(writer, 0x02); err != nil {
@@ -109,7 +85,7 @@ func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
 	return nil
 }
 
-func writeVariableItems(writer io.Writer, assocACPDU *AssocACPDU) error {
+func writeVariableItems(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 
 	if err := writeAppContextName(writer, assocACPDU); err != nil {
 		return err
@@ -126,7 +102,7 @@ func writeVariableItems(writer io.Writer, assocACPDU *AssocACPDU) error {
 	return nil
 }
 
-func writeAppContextName(writer io.Writer, assocACPDU *AssocACPDU) error {
+func writeAppContextName(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 
 	// write item type
 	if err := writeByte(writer, 0x10); err != nil {
@@ -151,7 +127,7 @@ func writeAppContextName(writer io.Writer, assocACPDU *AssocACPDU) error {
 	return nil
 }
 
-func writeACPresContexts(writer io.Writer, assocACPDU *AssocACPDU) error {
+func writeACPresContexts(writer io.Writer, assocACPDU *AssocACRQPDU) error {
 
 	// for each of the accepted presentation contexts
 	for _, presContext := range assocACPDU.presContexts {

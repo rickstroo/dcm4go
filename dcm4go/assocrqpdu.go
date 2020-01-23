@@ -5,33 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 )
 
-// AssocRQPDU presents an Association Request PDU
-type AssocRQPDU struct {
-	protocol       uint16
-	calledAETitle  string
-	callingAETitle string
-	appContextName string
-	presContexts   []*PresContext
-	userInfo       *UserInfo
-}
-
-// String returns a string representation of a AssocRQPDU
-func (pdu *AssocRQPDU) String() string {
-	return fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s,userInfo:%s}",
-		pdu.protocol,
-		strings.TrimSpace(pdu.calledAETitle),
-		strings.TrimSpace(pdu.callingAETitle),
-		pdu.appContextName,
-		pdu.presContexts,
-		pdu.userInfo)
-}
-
 // readAssocRQPDU reads an AssocRQPDU from a reader
-func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
+func readAssocRQPDU(reader io.Reader) (*AssocACRQPDU, error) {
 
 	// read the protocol
 	protocol, err := readShort(reader, binary.BigEndian)
@@ -205,5 +182,5 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 	}
 
-	return &AssocRQPDU{protocol, calledAETitle, callingAETitle, appContextName, presContexts, userInfo}, nil
+	return &AssocACRQPDU{protocol, calledAETitle, callingAETitle, appContextName, presContexts, userInfo}, nil
 }

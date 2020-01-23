@@ -11,8 +11,8 @@ import (
 type Assoc struct {
 	conn       net.Conn
 	ae         *AE
-	assocRQPDU *AssocRQPDU
-	assocACPDU *AssocACPDU
+	assocRQPDU *AssocACRQPDU
+	assocACPDU *AssocACRQPDU
 }
 
 // CalledAETitle returns called ae title from the association request
@@ -72,7 +72,7 @@ const (
 	pcTransferSyntaxesNotSupported = 0x04
 )
 
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocACRQPDU, ae *AE) (*AssocACRQPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)
