@@ -2,10 +2,9 @@ package dcm4go
 
 // Attribute contains all the properties of a DICOM attribute
 type Attribute struct {
-	tag    uint32
-	vr     string
-	length uint32
-	value  interface{}
+	tag   uint32
+	vr    string
+	value interface{}
 }
 
 // String returns attribute as a string

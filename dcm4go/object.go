@@ -80,26 +80,24 @@ func (object *Object) asString(tag uint32, index int) (string, error) {
 
 // addUID adds a UID attribute
 func (object *Object) addUID(tag uint32, uid string) {
-	attribute := &Attribute{tag, "UI", uint32(len(uid)), []string{uid}}
+	attribute := &Attribute{tag, "UI", []string{uid}}
 	object.add(attribute)
 }
 
 // addText adds a text attribute
 func (object *Object) addText(tag uint32, vr string, text string) {
-	//	paddedText := padText(text)
-	//	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), []string{paddedText}}
-	attribute := &Attribute{tag, "UI", uint32(len(text)), []string{text}}
+	attribute := &Attribute{tag, "UI", []string{text}}
 	object.add(attribute)
 }
 
 // addShort adds a short attribute
 func (object *Object) addShort(tag uint32, vr string, value uint16) {
-	attribute := &Attribute{tag, vr, 0x02, []uint16{value}}
+	attribute := &Attribute{tag, vr, []uint16{value}}
 	object.add(attribute)
 }
 
 // addLong adds a long attribute
 func (object *Object) addLong(tag uint32, vr string, value uint32) {
-	attribute := &Attribute{tag, vr, 0x04, []uint32{value}}
+	attribute := &Attribute{tag, vr, []uint32{value}}
 	object.add(attribute)
 }

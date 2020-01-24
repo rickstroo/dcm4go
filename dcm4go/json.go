@@ -78,7 +78,7 @@ func cleanUpNumberStrings(ins []string) []string {
 
 func attributeToJSON(path string, attribute *Attribute) string {
 	s := fmt.Sprintf("\"%08X\":{\"vr\":\"%s\"", attribute.tag, attribute.vr)
-	if attribute.length > 0 {
+	if attribute.value != nil {
 		switch attribute.vr {
 		case "AE", "AS", "CS", "DA", "DT", "LO", "SH", "TM", "UC", "UI", "UR":
 			s += fmt.Sprintf(",\"Value\":[%s]", valuesToJSON(attribute, "%q"))
