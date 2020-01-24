@@ -49,12 +49,11 @@ func (decoder *Decoder) readAttribute(reader CounterReader, transferSyntax *Tran
 	if tag == ItemDelimitationItemTag {
 
 		// need to consume the length
-		_, err := readLong(reader, transferSyntax.byteOrder)
-		if err != nil {
+		if _, err := readLong(reader, transferSyntax.byteOrder); err != nil {
 			return nil, err
 		}
 
-		// let the call know that there are no more attributes
+		// return EOF to indicate that there are no more attributes
 		return nil, io.EOF
 	}
 
@@ -81,6 +80,8 @@ func (decoder *Decoder) readAttribute(reader CounterReader, transferSyntax *Tran
 
 // reads the vr of an attribute
 func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool) (string, error) {
+
+	// if explicit vr, we read the vr from the reader
 	if explicitVR {
 		vr, err := readText(reader, 2)
 		if err != nil {
@@ -88,6 +89,8 @@ func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool
 		}
 		return vr, nil
 	}
+
+	// otherwise, we look it up in the dictionary
 	vr, err := findVR(tag)
 	if err != nil {
 		return "", err
@@ -372,7 +375,7 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, transferSyntax *T
 		return nil, err
 	}
 
-	// sequence deation item
+	// sequence delimitation item
 	if tag == SequenceDelimitationItemTag {
 		return nil, io.EOF
 	}
@@ -395,7 +398,6 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, transferSyntax *T
 		return nil, err
 	}
 	return object, nil
-
 }
 
 // parses and reads pixel data, in native or encapsulated formats
