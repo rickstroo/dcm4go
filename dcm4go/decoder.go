@@ -145,6 +145,9 @@ func isShortLength(vr string) bool {
 
 // reads the value of an attribute
 func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, offset uint32, length uint32) (interface{}, error) {
+	if length == 0 {
+		return nil, nil
+	}
 	switch vr {
 	// these VRs support multiple text values
 	case "AE", "AS", "CS", "DA", "DS", "DT", "IS", "LO", "PN", "SH", "TM", "UC":
