@@ -76,7 +76,7 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 		return nil, err
 	}
 
-	return &Attribute{tag, vr, length, value}, nil
+	return &Attribute{tag, vr, 0, value}, nil
 }
 
 // reads the vr of an attribute

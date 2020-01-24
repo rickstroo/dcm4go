@@ -76,8 +76,14 @@ func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *Attribute, e
 		return err
 	}
 
+	// prepare the value
+	length, err := encoder.prepareValue(attribute)
+	if err != nil {
+		return err
+	}
+
 	// write length
-	if err := encoder.writeLength(writer, attribute, explicitVR, byteOrder); err != nil {
+	if err := encoder.writeLength(writer, attribute, length, explicitVR, byteOrder); err != nil {
 		return err
 	}
 
@@ -108,13 +114,13 @@ func (encoder *Encoder) writeVR(writer io.Writer, attribute *Attribute, explicit
 	return nil
 }
 
-func (encoder *Encoder) writeLength(writer io.Writer, attribute *Attribute, explicitVR bool, byteOrder binary.ByteOrder) error {
+func (encoder *Encoder) writeLength(writer io.Writer, attribute *Attribute, length uint32, explicitVR bool, byteOrder binary.ByteOrder) error {
 
 	if explicitVR {
 
 		// if explicit vr and short length, write the length as a short
 		if isShortLength(attribute.vr) {
-			return writeShort(writer, uint16(attribute.length), byteOrder)
+			return writeShort(writer, uint16(length), byteOrder)
 		}
 
 		// if explicit vr but not short length, need to write a short zero before writing length as a long
@@ -124,7 +130,7 @@ func (encoder *Encoder) writeLength(writer io.Writer, attribute *Attribute, expl
 	}
 
 	// if not explicit vr or explicit vr but not short length, write length as a long
-	if err := writeLong(writer, attribute.length, byteOrder); err != nil {
+	if err := writeLong(writer, length, byteOrder); err != nil {
 		return err
 	}
 
@@ -138,12 +144,12 @@ func (encoder *Encoder) writeValue(writer io.Writer, attribute *Attribute, byteO
 		return encoder.writeShorts(writer, value, byteOrder)
 	case []uint32:
 		return encoder.writeLongs(writer, value, byteOrder)
-	case []string:
+	case string:
 		switch attribute.vr {
 		case "UI":
-			return encoder.writeUIDs(writer, value)
+			return writeUID(writer, value)
 		default:
-			return fmt.Errorf("Encoder.writeValue: not implemented for value %v and VR %s", attribute.value, attribute.vr)
+			return writeText(writer, value)
 		}
 	default:
 		return fmt.Errorf("Encoder.writeValue: not implemented for value %v", attribute.value)
@@ -168,22 +174,48 @@ func (encoder *Encoder) writeLongs(writer io.Writer, longs []uint32, byteOrder b
 	return nil
 }
 
-func convertToMultiValueUID(uids []string) string {
-	mvUID := ""
-	for _, uid := range uids {
-		mvUID += uid + "\\"
+func (encoder *Encoder) prepareValue(attribute *Attribute) (uint32, error) {
+	var length int
+	switch value := attribute.value.(type) {
+	case []uint16:
+		length = len(value) * 2
+	case []uint32:
+		length = len(value) * 4
+	case []float32:
+		length = len(value) * 4
+	case []float64:
+		length = len(value) * 8
+	case []string:
+		switch attribute.vr {
+		case "UI":
+			s := flattenString(value, byte(0x00))
+			length = len(s)
+			attribute.value = s
+		default:
+			s := flattenString(value, byte(' '))
+			length = len(s)
+			attribute.value = s
+		}
+	default:
+		return 0, fmt.Errorf("Encoder.prepareValue: not implemented for value %v", attribute.value)
 	}
-	mvUID = strings.TrimSuffix(mvUID, "\\")
-	if isOdd(len(mvUID)) {
-		mvUID += string(byte(0x00))
-	}
-	return mvUID
+
+	return uint32(length), nil
 }
 
-func (encoder *Encoder) writeUIDs(writer io.Writer, uids []string) error {
-	mvUID := convertToMultiValueUID(uids)
-	if err := writeUID(writer, mvUID); err != nil {
-		return err
+func flattenString(values []string, padding byte) string {
+	s := ""
+	for _, value := range values {
+		s += value + "\\"
 	}
-	return nil
+	s = strings.TrimSuffix(s, "\\")
+	if isOdd(len(s)) {
+		s += string(padding)
+	}
+	return s
+}
+
+// isOdd returns true if num is odd
+func isOdd(num int) bool {
+	return num&0x01 != 0
 }

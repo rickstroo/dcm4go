@@ -78,31 +78,17 @@ func (object *Object) asString(tag uint32, index int) (string, error) {
 	return attribute.asString(index)
 }
 
-func padUID(uid string) string {
-	if isOdd(len(uid)) {
-		return uid + string(byte(0x0))
-	}
-	return uid
-}
-
 // addUID adds a UID attribute
 func (object *Object) addUID(tag uint32, uid string) {
-	paddedUID := padUID(uid)
-	attribute := &Attribute{tag, "UI", uint32(len(paddedUID)), []string{paddedUID}}
+	attribute := &Attribute{tag, "UI", uint32(len(uid)), []string{uid}}
 	object.add(attribute)
 }
 
-func padText(text string) string {
-	if isOdd(len(text)) {
-		return text + string(" ")
-	}
-	return text
-}
-
-// addUID adds a text attribute
+// addText adds a text attribute
 func (object *Object) addText(tag uint32, vr string, text string) {
-	paddedText := padText(text)
-	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), []string{paddedText}}
+	//	paddedText := padText(text)
+	//	attribute := &Attribute{tag, "UI", uint32(len(paddedText)), []string{paddedText}}
+	attribute := &Attribute{tag, "UI", uint32(len(text)), []string{text}}
 	object.add(attribute)
 }
 
