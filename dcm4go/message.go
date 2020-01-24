@@ -142,7 +142,7 @@ func readCommand(reader io.Reader, assoc *Assoc) (*Object, error) {
 	decoder := newDecoder(0)
 
 	// read the data, assuming explicit VR and big endian for now
-	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder)
+	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 	fmt.Printf("transfer syntax for request data is %v\n", transferSyntax)
 
 	// read the data, assuming the negotiated transfer syntax
-	data, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	data, err := decoder.readObject(countingReader, transferSyntax)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 	encoder := newEncoder()
 
 	// write the command to the buffer
-	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, message.Command(), ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder); err != nil {
+	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, message.Command(), ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
 

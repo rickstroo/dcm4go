@@ -18,12 +18,12 @@ func newDecoder(bulkDataThreshold uint32) *Decoder {
 }
 
 // readObject reads a DICOM object from a reader
-func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
+func (decoder *Decoder) readObject(reader CounterReader, transferSyntax *TransferSyntax) (*Object, error) {
 
 	object := newObject()
 
 	for {
-		attribute, err := decoder.readAttribute(reader, explicitVR, byteOrder)
+		attribute, err := decoder.readAttribute(reader, transferSyntax)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -38,9 +38,9 @@ func (decoder *Decoder) readObject(reader CounterReader, explicitVR bool, byteOr
 }
 
 // readAttribute reads a DICOM attribute from a reader
-func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Attribute, error) {
+func (decoder *Decoder) readAttribute(reader CounterReader, transferSyntax *TransferSyntax) (*Attribute, error) {
 
-	tag, err := decoder.readTag(reader, byteOrder)
+	tag, err := decoder.readTag(reader, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 	if tag == ItemDelimitationItemTag {
 
 		// need to consume the length
-		_, err := readLong(reader, byteOrder)
+		_, err := readLong(reader, transferSyntax.byteOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -58,12 +58,12 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 		return nil, io.EOF
 	}
 
-	vr, err := decoder.readVR(reader, tag, explicitVR)
+	vr, err := decoder.readVR(reader, tag, transferSyntax.explicitVR)
 	if err != nil {
 		return nil, err
 	}
 
-	length, err := decoder.readLength(reader, explicitVR, byteOrder, vr)
+	length, err := decoder.readLength(reader, transferSyntax.explicitVR, transferSyntax.byteOrder, vr)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (decoder *Decoder) readAttribute(reader CounterReader, explicitVR bool, byt
 	// remember the offset of this attribute's value
 	offset := uint32(reader.BytesRead())
 
-	value, err := decoder.readValue(reader, explicitVR, byteOrder, vr, offset, length)
+	value, err := decoder.readValue(reader, transferSyntax, vr, offset, length)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func isShortLength(vr string) bool {
 }
 
 // reads the value of an attribute
-func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder, vr string, offset uint32, length uint32) (interface{}, error) {
+func (decoder *Decoder) readValue(reader CounterReader, transferSyntax *TransferSyntax, vr string, offset uint32, length uint32) (interface{}, error) {
 	if length == 0 {
 		return nil, nil
 	}
@@ -153,24 +153,24 @@ func (decoder *Decoder) readValue(reader CounterReader, explicitVR bool, byteOrd
 	case "AE", "AS", "CS", "DA", "DS", "DT", "IS", "LO", "PN", "SH", "TM", "UC":
 		return decoder.readTexts(reader, length)
 	case "AT":
-		return decoder.readTags(reader, length, byteOrder)
+		return decoder.readTags(reader, length, transferSyntax.byteOrder)
 	case "FD", "OD":
-		return decoder.readDoubles(reader, length, byteOrder)
+		return decoder.readDoubles(reader, length, transferSyntax.byteOrder)
 	case "FL", "OF":
-		return decoder.readFloats(reader, length, byteOrder)
+		return decoder.readFloats(reader, length, transferSyntax.byteOrder)
 		// these VRs support single text values
 	case "LT", "ST", "UT", "UR":
 		return readPaddedText(reader, length)
 	case "OB", "OL", "OV", "OW", "UN":
-		return decoder.readPixelData(reader, offset, length, byteOrder)
+		return decoder.readPixelData(reader, offset, length, transferSyntax.byteOrder)
 	case "SL", "UL":
-		return decoder.readLongs(reader, length, byteOrder)
+		return decoder.readLongs(reader, length, transferSyntax.byteOrder)
 	case "SQ":
-		return decoder.readSequence(reader, length, explicitVR, byteOrder)
+		return decoder.readSequence(reader, length, transferSyntax)
 	case "SS", "US":
-		return decoder.readShorts(reader, length, byteOrder)
+		return decoder.readShorts(reader, length, transferSyntax.byteOrder)
 	case "SV", "UV":
-		return decoder.readVeryLongs(reader, length, byteOrder)
+		return decoder.readVeryLongs(reader, length, transferSyntax.byteOrder)
 	case "UI":
 		return decoder.readUIDs(reader, length)
 	}
@@ -324,19 +324,19 @@ func (decoder *Decoder) readTexts(reader CounterReader, length uint32) ([]string
 const UndefinedLength = 0xFFFFFFFF
 
 // parses and reads a sequence
-func (decoder *Decoder) readSequence(reader CounterReader, length uint32, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
+func (decoder *Decoder) readSequence(reader CounterReader, length uint32, transferSyntax *TransferSyntax) (*Sequence, error) {
 
 	// if undefined length, read the sequence  using the provided reader knowing that there will be a deer item
 	if length == UndefinedLength {
-		return decoder.readSequenceItems(reader, explicitVR, byteOrder)
+		return decoder.readSequenceItems(reader, transferSyntax)
 	}
 
 	// otherwise, read the sequence using a limited reader for the length of sequence
-	return decoder.readSequenceItems(newLimitedCountingReader(reader, int64(length)), explicitVR, byteOrder)
+	return decoder.readSequenceItems(newLimitedCountingReader(reader, int64(length)), transferSyntax)
 }
 
 // reads the items of a sequence
-func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Sequence, error) {
+func (decoder *Decoder) readSequenceItems(reader CounterReader, transferSyntax *TransferSyntax) (*Sequence, error) {
 
 	// create a sequence
 	sequence := newSequence()
@@ -344,7 +344,7 @@ func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool,
 	// read the sequence items
 	for {
 
-		object, err := decoder.readSequenceItem(reader, explicitVR, byteOrder)
+		object, err := decoder.readSequenceItem(reader, transferSyntax)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -360,14 +360,14 @@ func (decoder *Decoder) readSequenceItems(reader CounterReader, explicitVR bool,
 }
 
 // reads a single item of a sequence
-func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, byteOrder binary.ByteOrder) (*Object, error) {
+func (decoder *Decoder) readSequenceItem(reader CounterReader, transferSyntax *TransferSyntax) (*Object, error) {
 
-	tag, err := decoder.readTag(reader, byteOrder)
+	tag, err := decoder.readTag(reader, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, err
 	}
 
-	length, err := readLong(reader, byteOrder)
+	length, err := readLong(reader, transferSyntax.byteOrder)
 	if err != nil {
 		return nil, err
 	}
@@ -383,14 +383,14 @@ func (decoder *Decoder) readSequenceItem(reader CounterReader, explicitVR bool, 
 	}
 
 	if length == UndefinedLength {
-		object, err := decoder.readObject(reader, explicitVR, byteOrder)
+		object, err := decoder.readObject(reader, transferSyntax)
 		if err != nil {
 			return nil, err
 		}
 		return object, nil
 	}
 
-	object, err := decoder.readObject(newLimitedCountingReader(reader, int64(length)), explicitVR, byteOrder)
+	object, err := decoder.readObject(newLimitedCountingReader(reader, int64(length)), transferSyntax)
 	if err != nil {
 		return nil, err
 	}

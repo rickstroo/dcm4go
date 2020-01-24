@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -32,7 +31,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	decoder := newDecoder(bulkDataThreshold)
 
 	// read the group 2 length attribute
-	groupTwoLength, err := decoder.readAttribute(countingReader, true, binary.LittleEndian)
+	groupTwoLength, err := decoder.readAttribute(countingReader, ExplicitVRLittleEndianTS)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	limitCountingReader := newLimitedCountingReader(countingReader, int64(groupTwoLengthValue))
 
 	// read the remainder of the group two attribute
-	groupTwo, err := decoder.readObject(limitCountingReader, true, binary.LittleEndian)
+	groupTwo, err := decoder.readObject(limitCountingReader, ExplicitVRLittleEndianTS)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	}
 
 	// read the remainder of the attributes from the file using the provided transfer syntax
-	otherGroups, err := decoder.readObject(countingReader, transferSyntax.explicitVR, transferSyntax.byteOrder)
+	otherGroups, err := decoder.readObject(countingReader, transferSyntax)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +102,7 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 	encoder := newEncoder()
 
 	// write the fmi
-	if err := encoder.writeObjectWithGroupLength(writer, 0x0002, fmi, ImplicitVRLittleEndianTS.explicitVR, ImplicitVRLittleEndianTS.byteOrder); err != nil {
+	if err := encoder.writeObjectWithGroupLength(writer, 0x0002, fmi, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
 

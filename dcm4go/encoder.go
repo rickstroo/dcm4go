@@ -18,9 +18,9 @@ func newEncoder() *Encoder {
 }
 
 // writeObject writes an object to a writer
-func (encoder *Encoder) writeObject(writer io.Writer, object *Object, explicitVR bool, byteOrder binary.ByteOrder) error {
+func (encoder *Encoder) writeObject(writer io.Writer, object *Object, transferSyntax *TransferSyntax) error {
 	for _, attribute := range object.attributes {
-		if err := encoder.writeAttribute(writer, attribute, explicitVR, byteOrder); err != nil {
+		if err := encoder.writeAttribute(writer, attribute, transferSyntax); err != nil {
 			return err
 		}
 	}
@@ -29,7 +29,7 @@ func (encoder *Encoder) writeObject(writer io.Writer, object *Object, explicitVR
 
 // writeObjectWithGroupLength writes an object to a writer, along with the
 // group length for that group.  checks that all attributes are for that group
-func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint16, object *Object, explicitVR bool, byteOrder binary.ByteOrder) error {
+func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint16, object *Object, transferSyntax *TransferSyntax) error {
 
 	// create a buffer to write the temporary object to
 	buf := new(bytes.Buffer)
@@ -41,7 +41,7 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 			return fmt.Errorf("while writing object with group length, found attribute %s that is not in group %d", tagToString(attribute.tag), group)
 		}
 
-		if err := encoder.writeAttribute(buf, attribute, explicitVR, byteOrder); err != nil {
+		if err := encoder.writeAttribute(buf, attribute, transferSyntax); err != nil {
 			return err
 		}
 	}
@@ -50,7 +50,7 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 	attribute := &Attribute{toTag(group, 0x00), "UL", []uint32{uint32(buf.Len())}}
 
 	// write the attribute to the underlying writer
-	if err := encoder.writeAttribute(writer, attribute, explicitVR, byteOrder); err != nil {
+	if err := encoder.writeAttribute(writer, attribute, transferSyntax); err != nil {
 		return err
 	}
 
@@ -64,15 +64,15 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 }
 
 // writeAttributes writes an object to a writer
-func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *Attribute, explicitVR bool, byteOrder binary.ByteOrder) error {
+func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *Attribute, transferSyntax *TransferSyntax) error {
 
 	// write tag
-	if err := encoder.writeTag(writer, attribute, byteOrder); err != nil {
+	if err := encoder.writeTag(writer, attribute, transferSyntax.byteOrder); err != nil {
 		return err
 	}
 
 	// write vr
-	if err := encoder.writeVR(writer, attribute, explicitVR); err != nil {
+	if err := encoder.writeVR(writer, attribute, transferSyntax.explicitVR); err != nil {
 		return err
 	}
 
@@ -83,12 +83,12 @@ func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *Attribute, e
 	}
 
 	// write length
-	if err := encoder.writeLength(writer, attribute, length, explicitVR, byteOrder); err != nil {
+	if err := encoder.writeLength(writer, attribute, length, transferSyntax.explicitVR, transferSyntax.byteOrder); err != nil {
 		return err
 	}
 
 	// write value
-	if err := encoder.writeValue(writer, attribute, byteOrder); err != nil {
+	if err := encoder.writeValue(writer, attribute, transferSyntax.byteOrder); err != nil {
 		return err
 	}
 
