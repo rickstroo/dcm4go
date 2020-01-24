@@ -109,7 +109,7 @@ func (encoder *Encoder) writeTag(writer io.Writer, tag uint32, byteOrder binary.
 
 func (encoder *Encoder) writeVR(writer io.Writer, attribute *Attribute, explicitVR bool) error {
 	if explicitVR {
-		if err := writeText(writer, attribute.vr); err != nil {
+		if err := writeString(writer, attribute.vr); err != nil {
 			return err
 		}
 	}
@@ -174,23 +174,15 @@ func (encoder *Encoder) writeValue(writer io.Writer, attribute *Attribute, trans
 }
 
 func (encoder *Encoder) writePaddedTexts(writer io.Writer, texts []string) error {
-	text := flattenTexts(texts)
+	text := flattenStrings(texts)
 	if err := encoder.writePaddedText(writer, text); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (encoder *Encoder) writePaddedText(writer io.Writer, text string) error {
-	paddedText := padText(text)
-	if err := writeText(writer, paddedText); err != nil {
-		return err
-	}
-	return nil
-}
-
-// flattenTexts converts an array of strings into a single string with separataor character
-func flattenTexts(texts []string) string {
+// flattenStrings converts an array of strings into a single string with separataor character
+func flattenStrings(texts []string) string {
 	t := ""
 	for _, text := range texts {
 		t += text + "\\"
@@ -199,12 +191,20 @@ func flattenTexts(texts []string) string {
 	return t
 }
 
-// padText returns a string that is even length padded with a space if required
-func padText(text string) string {
-	if isOdd(len(text)) {
-		return text + " "
+func (encoder *Encoder) writePaddedText(writer io.Writer, text string) error {
+	paddedText := padString(text, string(byte(' ')))
+	if err := writeString(writer, paddedText); err != nil {
+		return err
 	}
-	return text
+	return nil
+}
+
+// padString returns a string that is padded
+func padString(str string, padding string) string {
+	if isOdd(len(str)) {
+		return str + padding
+	}
+	return str
 }
 
 // isOdd returns true if num is odd
@@ -213,7 +213,7 @@ func isOdd(num int) bool {
 }
 
 func (encoder *Encoder) writePaddedUIDs(writer io.Writer, uids []string) error {
-	uid := flattenUIDs(uids)
+	uid := flattenStrings(uids)
 	if err := encoder.writePaddedUID(writer, uid); err != nil {
 		return err
 	}
@@ -221,29 +221,11 @@ func (encoder *Encoder) writePaddedUIDs(writer io.Writer, uids []string) error {
 }
 
 func (encoder *Encoder) writePaddedUID(writer io.Writer, uid string) error {
-	paddedUID := padUID(uid)
-	if err := writeUID(writer, paddedUID); err != nil {
+	paddedUID := padString(uid, string(byte(0x00)))
+	if err := writeString(writer, paddedUID); err != nil {
 		return err
 	}
 	return nil
-}
-
-// flattenUIDs converts an array of strings into a single string with separataor character
-func flattenUIDs(uids []string) string {
-	u := ""
-	for _, uid := range uids {
-		u += uid + "\\"
-	}
-	u = strings.TrimSuffix(u, "\\")
-	return u
-}
-
-// padUID returns a string that is even length padded with a zero byte if required
-func padUID(uid string) string {
-	if isOdd(len(uid)) {
-		return uid + string(byte(0))
-	}
-	return uid
 }
 
 // writes tags

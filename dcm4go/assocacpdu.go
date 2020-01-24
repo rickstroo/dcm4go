@@ -57,12 +57,12 @@ func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
 	}
 
 	// write the called ae title
-	if err := writeText(byteWriter, assocACPDU.calledAETitle); err != nil {
+	if err := writeString(byteWriter, assocACPDU.calledAETitle); err != nil {
 		return err
 	}
 
 	// write the calling ae title
-	if err := writeText(byteWriter, assocACPDU.callingAETitle); err != nil {
+	if err := writeString(byteWriter, assocACPDU.callingAETitle); err != nil {
 		return err
 	}
 
@@ -126,7 +126,7 @@ func writeAppContextName(writer io.Writer, assocACPDU *AssocACPDU) error {
 	}
 
 	// write the application context name
-	if err := writeUID(writer, assocACPDU.appContextName); err != nil {
+	if err := writeString(writer, assocACPDU.appContextName); err != nil {
 		return err
 	}
 
@@ -222,7 +222,7 @@ func writeTransferSyntax(writer io.Writer, transferSyntax string) error {
 	}
 
 	// write the application context name
-	if err := writeUID(writer, transferSyntax); err != nil {
+	if err := writeString(writer, transferSyntax); err != nil {
 		return err
 	}
 

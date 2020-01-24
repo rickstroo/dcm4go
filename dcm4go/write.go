@@ -76,18 +76,9 @@ func writeDouble(writer io.Writer, double float64, byteOrder binary.ByteOrder) e
 	return nil
 }
 
-// writeText writes a single text
-func writeText(writer io.Writer, text string) error {
-	buf := []byte(text)
-	if err := writeBytes(writer, buf); err != nil {
-		return err
-	}
-	return nil
-}
-
-// writeUID writes a single UID
-func writeUID(writer io.Writer, text string) error {
-	buf := []byte(text)
+// writeString writes a string
+func writeString(writer io.Writer, str string) error {
+	buf := []byte(str)
 	if err := writeBytes(writer, buf); err != nil {
 		return err
 	}

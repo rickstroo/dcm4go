@@ -94,7 +94,7 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 	}
 
 	// write the DICM prefix
-	if err := writeText(writer, "DICM"); err != nil {
+	if err := writeString(writer, "DICM"); err != nil {
 		return err
 	}
 
