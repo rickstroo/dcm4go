@@ -29,3 +29,9 @@ func (ae *AE) AddSupportedPresentationContext(abstractSyntax string, transferSyn
 	ae.presContexts = append(ae.presContexts, presContext)
 	ae.commandHandlers[abstractSyntax] = commandHandler
 }
+
+// AddRequestedPresentationContext adds a presentation context that is requested by this AE
+func (ae *AE) AddRequestedPresentationContext(abstractSyntax string, transferSyntaxes []string) {
+	presContext := &PresContext{0, abstractSyntax, transferSyntaxes, 0}
+	ae.presContexts = append(ae.presContexts, presContext)
+}

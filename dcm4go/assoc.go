@@ -229,3 +229,38 @@ func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, err
 	// return the file meta information
 	return fmi, nil
 }
+
+// RequestAssoc requests an association
+func RequestAssoc(conn net.Conn, ae *AE, calledAETitle string) (*Assoc, error) {
+
+	// put together an association request pdu
+	assocRQPDU := newAssocRQPDU(ae.aeTitle, calledAETitle, ae.presContexts)
+
+	// write the pdu
+
+	// read the response
+
+	// parse the esponse
+	assocACPDU := &AssocACPDU{}
+
+	// create an association from the response
+	assoc := &Assoc{
+		conn,
+		ae,
+		assocRQPDU,
+		assocACPDU,
+	}
+
+	// return assoc
+	return assoc, nil
+}
+
+// RequestRelease requests release from an association
+func (assoc *Assoc) RequestRelease() error {
+	return fmt.Errorf("Assoc.RequestRelease: not implemented")
+}
+
+// RequestVerification sends a verification request
+func (assoc *Assoc) RequestVerification() error {
+	return fmt.Errorf("Assoc.RequestVerification: not implemented")
+}

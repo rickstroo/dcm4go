@@ -1,6 +1,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,6 +11,26 @@ import (
 // AssocRQPDU borrows from the AssocACRQPDU
 type AssocRQPDU struct {
 	AssocACRQPDU
+}
+
+// newAssocRQPDU creates a new association request PDU
+func newAssocRQPDU(calledAETitle string, callingAETitle string, presContexts []*PresContext) *AssocRQPDU {
+	return &AssocRQPDU{
+		AssocACRQPDU{
+			0x01,                    // protocol version, as per the standard
+			calledAETitle,           // title of the called, as per the standard
+			callingAETitle,          // title of the caller, as per the standard
+			"1.2.840.10008.3.1.1.1", // app context name, as per the standard
+			presContexts,            // pres context list
+			&UserInfo{
+				16378,             // max length received, need to figure out why dcm4che uses this number
+				"1.2.40.0.13.1.3", // implementation class uid, need to get a root, borrowing dcm4che for now
+				"dcm4go-1.0",      // implementation class name
+				0,                 // max num ops invoked
+				0,                 // max num ops performed
+			},
+		},
+	}
 }
 
 // readAssocRQPDU reads an AssocRQPDU from a reader
@@ -193,4 +214,65 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 				userInfo},
 		},
 		nil
+}
+
+func writeAssocRQPDU(writer io.Writer, assocRQPDU *AssocRQPDU) error {
+
+	// write pdu type
+	if err := writeByte(writer, 0x02); err != nil {
+		return err
+	}
+
+	// write a zero as per the standard
+	if err := writeByte(writer, 0x00); err != nil {
+		return err
+	}
+
+	// create a byte array output stream so we can calculate the length of the rest of the PDU
+	byteWriter := new(bytes.Buffer)
+
+	// write the protocol version
+	if err := writeShort(byteWriter, assocRQPDU.protocol, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write a short zero
+	if err := writeShort(byteWriter, 0x00, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the called ae title
+	if err := writeString(byteWriter, assocRQPDU.calledAETitle); err != nil {
+		return err
+	}
+
+	// write the calling ae title
+	if err := writeString(byteWriter, assocRQPDU.callingAETitle); err != nil {
+		return err
+	}
+
+	// write thirty two zeroes, zero is the initial value for arrays, so this works
+	var zeros [32]byte
+	if err := writeBytes(byteWriter, zeros[:]); err != nil {
+		return err
+	}
+
+	// write the variable items
+	if err := writeVariableItems(byteWriter, assocRQPDU.appContextName, assocRQPDU.presContexts, 0x20, assocRQPDU.userInfo); err != nil {
+		return err
+	}
+
+	// write the length to the original writer
+	if err := writeLong(writer, uint32(byteWriter.Len()), binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the byte array to the original writer
+	if err := writeBytes(writer, byteWriter.Bytes()); err != nil {
+		return err
+
+	}
+
+	// all is good
+	return nil
 }
