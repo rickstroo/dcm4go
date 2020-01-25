@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
 )
@@ -11,6 +12,7 @@ import (
 func check(err error) {
 	if err != nil {
 		fmt.Printf("panic: %v\n", err)
+		os.Exit(0)
 	}
 }
 

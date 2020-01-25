@@ -95,7 +95,7 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 			return nil, err
 		}
 
-		if itemType == 0x10 { // application context name
+		if itemType == appContextItemType { // application context name
 
 			// read the application context name
 			appContextName, err = readUID(reader, uint32(length))
@@ -103,90 +103,21 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 				return nil, err
 			}
 
-		} else if itemType == 0x021 { // presentation context for assoc accept
+		} else if itemType == acPresContextItemType || itemType == rqPresContextItemType { // presentation context for assoc accept or assoc request
 
 			// create a limited reader for the requested presentation contextx
 			limitedReader := io.LimitReader(reader, int64(length))
 
-			// read the presentation context id
-			id, err := readByte(limitedReader)
+			// read the presentation context
+			presContext, err := readPresContext(limitedReader, itemType)
 			if err != nil {
 				return nil, err
-			}
-
-			// skip a byte, as per the standrd
-			if err := skipBytes(limitedReader, 3); err != nil {
-				return nil, err
-			}
-
-			// initialize the abstract syntax name
-			var abstractSyntax string
-
-			// initialize the list of transfer syntaxes
-			transferSyntaxes := make([]string, 0, 5)
-
-			// read the abstract syntax and transfer syntax items
-			for {
-
-				// read a sub item
-				subItemType, err := readByte(limitedReader)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					return nil, err
-				}
-
-				// skip a byte, as per the standard
-				if err := skipByte(limitedReader); err != nil {
-					return nil, err
-				}
-
-				// read the length
-				length, err := readShort(limitedReader, binary.BigEndian)
-				if err != nil {
-					return nil, err
-				}
-
-				if subItemType == 0x30 { // abstract syntax
-
-					// read the uid
-					uid, err := readUID(limitedReader, uint32(length))
-					if err != nil {
-						return nil, err
-					}
-
-					// assign it to the abstract syntax
-					abstractSyntax = uid
-
-				} else if subItemType == 0x40 { // transfer syntax
-
-					// read the transfer syntax
-					uid, err := readUID(limitedReader, uint32(length))
-					if err != nil {
-						return nil, err
-					}
-
-					// add it to the list of transfer syntaxes
-					transferSyntaxes = append(transferSyntaxes, uid)
-
-				} else { // unrecgonized item
-					return nil, fmt.Errorf("unrecognized presentation context sub item type: 0x%02X", subItemType)
-				}
-			}
-
-			// create the presentation context
-			presContext := &PresContext{
-				id,               // the pc id
-				abstractSyntax,   // the abstract syntax
-				transferSyntaxes, // the transfer syntaxes
-				0x00,             // no reason
 			}
 
 			// add it to the list of requested presentation contexts
 			presContexts = append(presContexts, presContext)
 
-		} else if itemType == 0x050 { // user info
+		} else if itemType == userInfoItemType { // user info
 
 			// create a limited reader for the user info
 			limitedReader := io.LimitReader(reader, int64(length))
@@ -219,7 +150,7 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
 
 	// write pdu type
-	if err := writeByte(writer, 0x02); err != nil {
+	if err := writeByte(writer, aAssociateACPDU); err != nil {
 		return err
 	}
 
@@ -258,7 +189,7 @@ func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
 	}
 
 	// write the variable items
-	if err := writeVariableItems(byteWriter, assocACPDU.appContextName, assocACPDU.presContexts, 0x21, assocACPDU.userInfo); err != nil {
+	if err := writeVariableItems(byteWriter, assocACPDU.appContextName, assocACPDU.presContexts, acPresContextItemType, assocACPDU.userInfo); err != nil {
 		return err
 	}
 
