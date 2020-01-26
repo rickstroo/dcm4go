@@ -159,10 +159,10 @@ func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU
 }
 
 // writeAssocACRQPDU writes an associate request or accept
-func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, presContextItemType byte) error {
+func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, pduType byte, presContextItemType byte) error {
 
 	// write pdu type
-	if err := writeByte(writer, aAssociateACPDU); err != nil {
+	if err := writeByte(writer, pduType); err != nil {
 		return err
 	}
 
@@ -185,12 +185,12 @@ func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, presContext
 	}
 
 	// write the called ae title
-	if err := writeString(byteWriter, assocACRQPDU.calledAETitle); err != nil {
+	if err := writeString(byteWriter, padAETitle(assocACRQPDU.calledAETitle)); err != nil {
 		return err
 	}
 
 	// write the calling ae title
-	if err := writeString(byteWriter, assocACRQPDU.callingAETitle); err != nil {
+	if err := writeString(byteWriter, padAETitle(assocACRQPDU.callingAETitle)); err != nil {
 		return err
 	}
 
@@ -213,11 +213,14 @@ func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, presContext
 	// write the byte array to the original writer
 	if err := writeBytes(writer, byteWriter.Bytes()); err != nil {
 		return err
-
 	}
 
 	// all is good
 	return nil
+}
+
+func padAETitle(aeTitle string) string {
+	return fmt.Sprintf("%-16s", aeTitle)
 }
 
 func writeVariableItems(writer io.Writer, assocACRQPDU *AssocACRQPDU, itemType byte) error {

@@ -43,5 +43,5 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 }
 
 func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
-	return writeAssocACRQPDU(writer, &assocACPDU.AssocACRQPDU, acPresContextItemType)
+	return writeAssocACRQPDU(writer, &assocACPDU.AssocACRQPDU, aAssociateACPDU, acPresContextItemType)
 }

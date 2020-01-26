@@ -234,25 +234,59 @@ func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, err
 func RequestAssoc(conn net.Conn, ae *AE, calledAETitle string) (*Assoc, error) {
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(ae.aeTitle, calledAETitle, ae.presContexts)
+	assocRQPDU := newAssocRQPDU(calledAETitle, ae.aeTitle, ae.presContexts)
+	fmt.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
-
-	// read the response
-
-	// parse the esponse
-	assocACPDU := &AssocACPDU{}
-
-	// create an association from the response
-	assoc := &Assoc{
-		conn,
-		ae,
-		assocRQPDU,
-		assocACPDU,
+	if err := writeAssocRQPDU(conn, assocRQPDU); err != nil {
+		return nil, err
 	}
 
-	// return assoc
-	return assoc, nil
+	// read the response
+	pdu, err := readPDU(conn)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("pdu is %v\n", pdu)
+
+	// is this an association accept?
+	if pdu.pduType == aAssociateACPDU {
+		assocACPDU, err := readAssocACPDU(pdu)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("assocACPDU is %v\n", assocACPDU)
+
+		// create an association from the response
+		assoc := &Assoc{
+			conn,
+			ae,
+			assocRQPDU,
+			assocACPDU,
+		}
+
+		// return assoc
+		return assoc, nil
+	}
+
+	if pdu.pduType == aAssociateRJPDU {
+		fmt.Printf("received a rejection\n")
+		assocRJPDU, err := readAssocRJPDU(pdu)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("assocRJPDU is %v\n", assocRJPDU)
+
+		return nil, fmt.Errorf("associate request rejected, %s", assocRJPDU)
+	}
+
+	// is this an abort request?  if so, just return EOF
+	if pdu.pduType == aAbortPDU {
+		fmt.Printf("received an abort\n")
+		return nil, io.EOF
+	}
+
+	return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
 // RequestRelease requests release from an association
