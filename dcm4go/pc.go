@@ -88,7 +88,7 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 			return nil, err
 		}
 
-		if subItemType == 0x30 { // abstract syntax
+		if subItemType == abstractSyntaxItemType { // abstract syntax
 
 			// read the uid
 			uid, err := readUID(reader, uint32(length))
@@ -99,7 +99,7 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 			// assign it to the abstract syntax
 			abstractSyntax = uid
 
-		} else if subItemType == 0x40 { // transfer syntax
+		} else if subItemType == transferSyntaxItemType { // transfer syntax
 
 			// read the transfer syntax
 			uid, err := readUID(reader, uint32(length))
@@ -185,7 +185,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 
 	// write the abstract syntax if requested presentation context
 	if itemType == rqPresContextItemType {
-		if err := writeSyntax(byteWriter, presContext.abstractSyntax, abstractSyntaxItemType); err != nil {
+		if err := writeAbstractSyntax(byteWriter, presContext.abstractSyntax); err != nil {
 			return err
 		}
 	}
@@ -194,7 +194,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	// requested presentation contexts can have multiple transfer syntaxes
 	// accepted presentation contexts should only have one
 	for _, transferSyntax := range presContext.transferSyntaxes {
-		if err := writeSyntax(byteWriter, transferSyntax, transferSyntaxItemType); err != nil {
+		if err := writeTransferSyntax(byteWriter, transferSyntax); err != nil {
 			return err
 		}
 	}
@@ -212,6 +212,14 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 
 	// all is good
 	return nil
+}
+
+func writeAbstractSyntax(writer io.Writer, abstractSyntax string) error {
+	return writeSyntax(writer, abstractSyntax, abstractSyntaxItemType)
+}
+
+func writeTransferSyntax(writer io.Writer, transferSyntax string) error {
+	return writeSyntax(writer, transferSyntax, transferSyntaxItemType)
 }
 
 func writeSyntax(writer io.Writer, syntax string, itemType byte) error {

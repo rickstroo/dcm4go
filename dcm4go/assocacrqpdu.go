@@ -1,7 +1,9 @@
 package dcm4go
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -43,17 +45,192 @@ func (pdu *AssocACRQPDU) String() string {
 		pdu.userInfo)
 }
 
-func writeVariableItems(writer io.Writer, appContextName string, presContexts []*PresContext, itemType byte, userInfo *UserInfo) error {
+// readAssocRACQPDU reads an association accept or request from the reader
+func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU, error) {
 
-	if err := writeAppContextName(writer, appContextName); err != nil {
+	// read the protocol
+	protocol, err := readShort(reader, binary.BigEndian)
+	if err != nil {
+		return nil, err
+	}
+
+	// skip two bytes, as per the standard
+	if err := skipBytes(reader, 2); err != nil {
+		return nil, err
+	}
+
+	// read the called AE title
+	calledAETitle, err := readText(reader, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the calling AE title
+	callingAETitle, err := readText(reader, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	// skip thirty two bytes as per the standard
+	if err := skipBytes(reader, 32); err != nil {
+		return nil, err
+	}
+
+	// initialize the application context name
+	var appContextName string
+
+	// initialize a list of presentation contexts
+	presContexts := make([]*PresContext, 0, 5)
+
+	// initialize the user info
+	var userInfo *UserInfo
+
+	for {
+
+		// read an item
+		itemType, err := readByte(reader)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+
+		// skip a byte, as per the standard
+		if err := skipByte(reader); err != nil {
+			return nil, err
+		}
+
+		// read the length
+		length, err := readShort(reader, binary.BigEndian)
+		if err != nil {
+			return nil, err
+		}
+
+		if itemType == appContextItemType { // application context name
+
+			// read the application context name
+			appContextName, err = readUID(reader, uint32(length))
+			if err != nil {
+				return nil, err
+			}
+
+		} else if itemType == presContextItemType { // presentation context item type
+
+			// create a limited reader for the requested presentation contextx
+			limitedReader := io.LimitReader(reader, int64(length))
+
+			// read the presentation context
+			presContext, err := readPresContext(limitedReader, itemType)
+			if err != nil {
+				return nil, err
+			}
+
+			// add it to the list of requested presentation contexts
+			presContexts = append(presContexts, presContext)
+
+		} else if itemType == 0x050 { // user info
+
+			// create a limited reader for the user info
+			limitedReader := io.LimitReader(reader, int64(length))
+
+			// read the user info sub items
+			userInfo, err = readUserInfo(limitedReader)
+			if err != nil {
+				return nil, err
+			}
+
+		} else {
+			// unrecognized item
+			return nil, fmt.Errorf("unrecognized item type: 0x%02X", itemType)
+		}
+	}
+
+	// construct and return an association request pdu
+	return &AssocACRQPDU{
+			protocol,
+			calledAETitle,
+			callingAETitle,
+			appContextName,
+			presContexts,
+			userInfo,
+		},
+		nil
+}
+
+// writeAssocACRQPDU writes an associate request or accept
+func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, presContextItemType byte) error {
+
+	// write pdu type
+	if err := writeByte(writer, aAssociateACPDU); err != nil {
 		return err
 	}
 
-	if err := writePresContexts(writer, presContexts, itemType); err != nil {
+	// write a zero as per the standard
+	if err := writeByte(writer, 0x00); err != nil {
 		return err
 	}
 
-	if err := writeUserInfo(writer, userInfo); err != nil {
+	// create a byte array output stream so we can calculate the length of the rest of the PDU
+	byteWriter := new(bytes.Buffer)
+
+	// write the protocol version
+	if err := writeShort(byteWriter, assocACRQPDU.protocol, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write a short zero
+	if err := writeShort(byteWriter, 0x00, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the called ae title
+	if err := writeString(byteWriter, assocACRQPDU.calledAETitle); err != nil {
+		return err
+	}
+
+	// write the calling ae title
+	if err := writeString(byteWriter, assocACRQPDU.callingAETitle); err != nil {
+		return err
+	}
+
+	// write thirty two zeroes, zero is the initial value for arrays, so this works
+	var zeros [32]byte
+	if err := writeBytes(byteWriter, zeros[:]); err != nil {
+		return err
+	}
+
+	// write the variable items
+	if err := writeVariableItems(byteWriter, assocACRQPDU, presContextItemType); err != nil {
+		return err
+	}
+
+	// write the length to the original writer
+	if err := writeLong(writer, uint32(byteWriter.Len()), binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the byte array to the original writer
+	if err := writeBytes(writer, byteWriter.Bytes()); err != nil {
+		return err
+
+	}
+
+	// all is good
+	return nil
+}
+
+func writeVariableItems(writer io.Writer, assocACRQPDU *AssocACRQPDU, itemType byte) error {
+
+	if err := writeAppContextName(writer, assocACRQPDU.appContextName); err != nil {
+		return err
+	}
+
+	if err := writePresContexts(writer, assocACRQPDU.presContexts, itemType); err != nil {
+		return err
+	}
+
+	if err := writeUserInfo(writer, assocACRQPDU.userInfo); err != nil {
 		return err
 	}
 
@@ -63,7 +240,7 @@ func writeVariableItems(writer io.Writer, appContextName string, presContexts []
 func writeAppContextName(writer io.Writer, appContextName string) error {
 
 	// write item type
-	if err := writeByte(writer, 0x10); err != nil {
+	if err := writeByte(writer, appContextItemType); err != nil {
 		return err
 	}
 
