@@ -190,8 +190,18 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 	return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
+// ReadResponse reads a response from the association
+func (assoc *Assoc) ReadResponse(reader io.Reader) (*Message, error) {
+	return assoc.ReadRequest(reader)
+}
+
 // WriteResponse writes a response to the association
 func (assoc *Assoc) WriteResponse(writer io.Writer, message *Message) error {
+	return writeMessage(assoc.conn, assoc, message)
+}
+
+// WriteRequest writes a request to the association
+func (assoc *Assoc) WriteRequest(writer io.Writer, message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
@@ -291,10 +301,94 @@ func RequestAssoc(conn net.Conn, ae *AE, calledAETitle string) (*Assoc, error) {
 
 // RequestRelease requests release from an association
 func (assoc *Assoc) RequestRelease() error {
-	return fmt.Errorf("Assoc.RequestRelease: not implemented")
+
+	// write a request release pdu
+	if err := writeReleaseRQPDU(assoc.conn); err != nil {
+		return err
+	}
+	fmt.Printf("wrote a release request\n")
+
+	// read the response
+	pdu, err := readPDU(assoc.conn)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("pdu is %v\n", pdu)
+
+	if pdu.pduType == aReleaseRPPDU {
+		fmt.Printf("received a release response\n")
+		if err := readReleaseRPPDU(pdu); err != nil {
+			return err
+		}
+
+		// all is well
+		return nil
+	}
+
+	// is this an abort request?  if so, just return EOF
+	if pdu.pduType == aAbortPDU {
+		fmt.Printf("received an abort\n")
+		// all is well
+		return nil
+	}
+
+	return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
-// RequestVerification sends a verification request
-func (assoc *Assoc) RequestVerification() error {
-	return fmt.Errorf("Assoc.RequestVerification: not implemented")
+func (assoc *Assoc) findAcceptedTransferSyntax(abstractSyntax string) (byte, *TransferSyntax, error) {
+
+	// find the abstract syntax from the requested presentation contexts
+	for _, rqPresContext := range assoc.assocRQPDU.presContexts {
+		if rqPresContext.abstractSyntax == abstractSyntax {
+			// now, look for the accepted presentation context for the same pcID that was accepted
+			for _, acPresContext := range assoc.assocACPDU.presContexts {
+				if rqPresContext.id == acPresContext.id && acPresContext.result == pcAcceptance {
+					// now, look for the transfer syntax
+					transferSyntax, _ := findTransferSyntax(acPresContext.transferSyntaxes[0])
+					if transferSyntax != nil {
+						return rqPresContext.id, transferSyntax, nil
+					}
+				}
+			}
+		}
+	}
+
+	// we didn't find anything
+	return 0, nil, fmt.Errorf("did not find accepted presentation context for abstract syntax %q", abstractSyntax)
+}
+
+// Verify sends a verification request
+func (assoc *Assoc) Verify() error {
+
+	// create a verification request
+	request, err := NewCEchoRequest(assoc)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("c-echo request is %v\n", request)
+
+	// write the verification request
+	if err := assoc.WriteRequest(assoc.conn, request); err != nil {
+		return err
+	}
+
+	// read the response
+	response, err := assoc.ReadResponse(assoc.conn)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("c-echo response is %v\n", response)
+
+	// get the status
+	status, err := response.command.asShort(StatusTag, 0)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("status is %d\n", status)
+
+	if status != 0 {
+		return fmt.Errorf("status was %d", status)
+	}
+
+	return nil
 }

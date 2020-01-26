@@ -23,6 +23,13 @@ type Message struct {
 	data    *Object
 }
 
+var messageID uint16
+
+func nextMessageID() uint16 {
+	messageID := messageID + 1
+	return messageID
+}
+
 func (message *Message) String() string {
 	s := fmt.Sprintf("{pcID:%v", message.pcID)
 	if message.command != nil {

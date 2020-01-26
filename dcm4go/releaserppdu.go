@@ -5,7 +5,18 @@ import (
 	"io"
 )
 
-// writeReleaseRPPdu writes a release response PDU to a writer
+// readReleaseRPPDU reads an readReleaseRPPDU from a reader
+func readReleaseRPPDU(reader io.Reader) error {
+
+	// read and ignore the long
+	if _, err := readLong(reader, binary.BigEndian); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// writeReleaseRPPDU writes a release response PDU to a writer
 func writeReleaseRPPDU(writer io.Writer) error {
 
 	// construct a pdu

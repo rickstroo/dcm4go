@@ -41,9 +41,9 @@ func main() {
 	assoc, err := dcm4go.RequestAssoc(conn, ae, "DCMRCV")
 	check(err)
 
-	// ensure the association gets closed
-	defer assoc.RequestRelease()
-
 	// send a verification request
-	check(assoc.RequestVerification())
+	check(assoc.Verify())
+
+	// release association
+	check(assoc.RequestRelease())
 }

@@ -1,5 +1,25 @@
 package dcm4go
 
+// NewCEchoRequest constructs a C-Echo request message
+func NewCEchoRequest(assoc *Assoc) (*Message, error) {
+
+	// find the presentation context id that was negotiated for verification
+	pcID, _, err := assoc.findAcceptedTransferSyntax(VerificationUID)
+	if err != nil {
+		return nil, err
+	}
+
+	// construct a command
+	command := newObject()
+	command.addUID(AffectedSOPClassUIDTag, VerificationUID)
+	command.addShort(CommandFieldTag, "US", CEchoRQ)
+	command.addShort(MessageIDTag, "US", nextMessageID())
+	command.addShort(CommandDataSetTypeTag, "US", 0x0101)
+
+	// construct and return a message
+	return &Message{pcID, command, nil}, nil
+}
+
 // NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message
 func NewCEchoResponse(assoc *Assoc, request *Message) (*Message, error) {
 
