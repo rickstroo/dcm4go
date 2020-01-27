@@ -91,20 +91,19 @@ func (decoder *Decoder) readVR(reader CounterReader, tag uint32, explicitVR bool
 	}
 
 	// otherwise, we look it up in the dictionary
-	vr, err := findVR(tag)
-	if err != nil {
-		return "", err
-	}
+	vr := findVR(tag)
+
+	// return the vr
 	return vr, nil
 }
 
 // finds a vr in a dictionary
-func findVR(tag uint32) (string, error) {
+func findVR(tag uint32) string {
 	vr, ok := vrs[tag]
 	if !ok {
-		return "", ErrUnrecognizedVR
+		return "UN" // return the VR for unknown, UN
 	}
-	return vr, nil
+	return vr
 }
 
 // reads the length of an attribute
