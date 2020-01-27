@@ -75,7 +75,7 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 	for {
 
 		// read a request and call handlers as appropriate
-		request, err := assoc.ReadRequest(conn)
+		request, err := assoc.ReadRequest()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break

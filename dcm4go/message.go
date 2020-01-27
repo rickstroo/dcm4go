@@ -131,7 +131,8 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 	return &Message{pcID, command, nil}, nil
 }
 
-func findAcceptedTransferSyntax(assoc *Assoc, pcid byte) (*TransferSyntax, error) {
+// findAcceptedTransferSyntax
+func (assoc *Assoc) findAcceptedTransferSyntax(pcid byte) (*TransferSyntax, error) {
 	for _, presContext := range assoc.assocACPDU.presContexts {
 		if presContext.id == pcid {
 			return findTransferSyntax(presContext.transferSyntaxes[0])
@@ -167,7 +168,13 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 	decoder := newDecoder(1024)
 
 	// find the negotiated transfer syntax for the data
-	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
+	acPresContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+	if err != nil {
+		return nil, err
+	}
+
+	// now, find the transfer syntax
+	transferSyntax, err := findTransferSyntax(acPresContext.transferSyntaxes[0])
 	if err != nil {
 		return nil, err
 	}

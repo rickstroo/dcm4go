@@ -4,7 +4,7 @@ package dcm4go
 func NewCEchoRequest(assoc *Assoc) (*Message, error) {
 
 	// find the presentation context id that was negotiated for verification
-	pcID, _, err := assoc.findAcceptedTransferSyntax(VerificationUID)
+	presContext, err := assoc.findAcceptedPresContextByAbstractSyntax(VerificationUID)
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +17,7 @@ func NewCEchoRequest(assoc *Assoc) (*Message, error) {
 	command.addShort(CommandDataSetTypeTag, "US", 0x0101)
 
 	// construct and return a message
-	return &Message{pcID, command, nil}, nil
+	return &Message{presContext.id, command, nil}, nil
 }
 
 // NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message

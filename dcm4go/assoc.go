@@ -7,6 +7,15 @@ import (
 	"strings"
 )
 
+// associate negotiation results
+const (
+	pcAcceptance                   = 0x00
+	pcUserRejection                = 0x01
+	pcNoReason                     = 0x02
+	pcAbstractSyntaxNotSupported   = 0x03
+	pcTransferSyntaxesNotSupported = 0x04
+)
+
 // Assoc represents a DICOM association
 type Assoc struct {
 	conn       net.Conn
@@ -64,14 +73,9 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*Assoc, error) {
 	return nil, fmt.Errorf("unrecognized pdu type: %d", pdu.pduType)
 }
 
-const (
-	pcAcceptance                   = 0x00
-	pcUserRejection                = 0x01
-	pcNoReason                     = 0x02
-	pcAbstractSyntaxNotSupported   = 0x03
-	pcTransferSyntaxesNotSupported = 0x04
-)
-
+// negotiateAssoc determines what requested presentation contexts
+// are accepted based on the presentation contexts that are supported
+// by the ae
 func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
@@ -89,6 +93,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 	return assocACPDU, nil
 }
 
+// negotiationPresContext negotiates a single presentation context
 func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresContext) (*PresContext, error) {
 
 	// look for a supported presentation context for this abstract syntax
@@ -129,6 +134,8 @@ func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresCont
 	return acPresContext, nil
 }
 
+// findSupportedPresContext searches for a supported presentation context
+// for an abstract syntax
 func findSupportedPresContext(abstractSyntax string, spPresContexts []*PresContext) (*PresContext, bool) {
 	for _, spPresContext := range spPresContexts {
 		if abstractSyntax == spPresContext.abstractSyntax {
@@ -138,6 +145,8 @@ func findSupportedPresContext(abstractSyntax string, spPresContexts []*PresConte
 	return nil, false
 }
 
+// findSupportedTransferSyntax looks for a supported transfer syntax
+// that matches the requested transfer syntax
 func findSupportedTransferSyntax(rqTransferSyntax string, spTransferSyntaxes []string) (string, bool) {
 
 	// compare against all the supported transfer syntaxes
@@ -152,8 +161,59 @@ func findSupportedTransferSyntax(rqTransferSyntax string, spTransferSyntaxes []s
 	return "", false
 }
 
+// findAcceptedPresContextByAbstractSyntax searches for a presentation context
+// that was accepted for an abstract syntax.
+func (assoc *Assoc) findAcceptedPresContextByAbstractSyntax(abstractSyntax string) (*PresContext, error) {
+
+	// find the abstract syntax from the requested presentation contexts
+	for _, rqPresContext := range assoc.assocRQPDU.presContexts {
+		if rqPresContext.abstractSyntax == abstractSyntax {
+			// now, look for the accepted presentation context for the same pcID that was requested
+			for _, acPresContext := range assoc.assocACPDU.presContexts {
+				if rqPresContext.id == acPresContext.id {
+					// and make sure it was accepted
+					if acPresContext.result == pcAcceptance {
+						return acPresContext, nil
+					}
+				}
+			}
+		}
+	}
+
+	// we didn't find anything
+	return nil, fmt.Errorf("unable to find accepted presentation context for abstract syntax %q", abstractSyntax)
+}
+
+// findAcceptedPresContextByPCID searches for a presentation context
+// that was accepted for a presentation context id.
+func (assoc *Assoc) findAcceptedPresContextByPCID(pcid byte) (*PresContext, error) {
+	for _, acPresContext := range assoc.assocACPDU.presContexts {
+		// find the accepted presentation context for the presentation context id
+		if acPresContext.id == pcid {
+			if acPresContext.result == pcAcceptance {
+				return acPresContext, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("unable to find accepted presentation context for presentation context id %d", pcid)
+}
+
+// findAcceptedTransferSyntaxByPCID finds the transfer syntax for the presentation
+// context that was accepted for a presentation context id
+func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax, error) {
+	presContext, err := assoc.findAcceptedPresContextByPCID(pcid)
+	if err != nil {
+		return nil, err
+	}
+	transferSyntax, err := findTransferSyntax(presContext.transferSyntaxes[0])
+	if err != nil {
+		return nil, err
+	}
+	return transferSyntax, nil
+}
+
 // ReadRequest reads a request from the association
-func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
+func (assoc *Assoc) ReadRequest() (*Message, error) {
 
 	// read a pdu
 	pdu, err := readPDU(assoc.conn)
@@ -191,8 +251,8 @@ func (assoc *Assoc) ReadRequest(reader io.Reader) (*Message, error) {
 }
 
 // ReadResponse reads a response from the association
-func (assoc *Assoc) ReadResponse(reader io.Reader) (*Message, error) {
-	return assoc.ReadRequest(reader)
+func (assoc *Assoc) ReadResponse() (*Message, error) {
+	return assoc.ReadRequest()
 }
 
 // WriteResponse writes a response to the association
@@ -219,7 +279,7 @@ func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, err
 	}
 
 	// find the transfer syntax used to receive the object
-	transferSyntax, err := findAcceptedTransferSyntax(assoc, pcID)
+	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
 	if err != nil {
 		return nil, err
 	}
@@ -335,28 +395,6 @@ func (assoc *Assoc) RequestRelease() error {
 	return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
-func (assoc *Assoc) findAcceptedTransferSyntax(abstractSyntax string) (byte, *TransferSyntax, error) {
-
-	// find the abstract syntax from the requested presentation contexts
-	for _, rqPresContext := range assoc.assocRQPDU.presContexts {
-		if rqPresContext.abstractSyntax == abstractSyntax {
-			// now, look for the accepted presentation context for the same pcID that was accepted
-			for _, acPresContext := range assoc.assocACPDU.presContexts {
-				if rqPresContext.id == acPresContext.id && acPresContext.result == pcAcceptance {
-					// now, look for the transfer syntax
-					transferSyntax, _ := findTransferSyntax(acPresContext.transferSyntaxes[0])
-					if transferSyntax != nil {
-						return rqPresContext.id, transferSyntax, nil
-					}
-				}
-			}
-		}
-	}
-
-	// we didn't find anything
-	return 0, nil, fmt.Errorf("did not find accepted presentation context for abstract syntax %q", abstractSyntax)
-}
-
 // Verify sends a verification request
 func (assoc *Assoc) Verify() error {
 
@@ -373,7 +411,7 @@ func (assoc *Assoc) Verify() error {
 	}
 
 	// read the response
-	response, err := assoc.ReadResponse(assoc.conn)
+	response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
