@@ -78,6 +78,11 @@ func (object *Object) asString(tag uint32, index int) (string, error) {
 	return attribute.asString(index)
 }
 
+// AsString returns attribute value as a string
+func (object *Object) AsString(tag uint32, index int) (string, error) {
+	return object.asString(tag, index)
+}
+
 // addUID adds a UID attribute
 func (object *Object) addUID(tag uint32, uid string) {
 	attribute := &Attribute{tag, "UI", []string{uid}}

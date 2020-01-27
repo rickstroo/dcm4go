@@ -11,6 +11,48 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	// create a counting reader
 	countingReader := newCountingReader(reader)
 
+	// read the group two attributes
+	groupTwo, err := ReadGroupTwo(countingReader, bulkDataThreshold)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a decoder
+	decoder := newDecoder(bulkDataThreshold)
+
+	// need to find the transfer syntax uid
+	transferSyntaxUID, err := groupTwo.asString(TransferSyntaxUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// figure out the vr and endian of the remainder of the object
+	transferSyntax, err := findTransferSyntax(transferSyntaxUID)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the remainder of the attributes from the file using the provided transfer syntax
+	otherGroups, err := decoder.readObject(countingReader, transferSyntax)
+	if err != nil {
+		return nil, err
+	}
+
+	// concatenate the group two object and othe other groups object
+	object := newObject()
+	object.addAll(groupTwo)
+	object.addAll(otherGroups)
+
+	// return the groups
+	return object, nil
+}
+
+// ReadGroupTwo reads the group two attributes of a DICOM object from a reader of a Part 10 source
+func ReadGroupTwo(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
+
+	// create a counting reader
+	countingReader := newCountingReader(reader)
+
 	// skip the preamble
 	if err := skipBytes(countingReader, 128); err != nil {
 		return nil, err
@@ -56,31 +98,13 @@ func ReadFile(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 		return nil, err
 	}
 
-	// need to find the transfer syntax uid
-	transferSyntaxUID, err := groupTwo.asString(TransferSyntaxUIDTag, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// figure out the vr and endian of the remainder of the object
-	transferSyntax, err := findTransferSyntax(transferSyntaxUID)
-	if err != nil {
-		return nil, err
-	}
-
-	// read the remainder of the attributes from the file using the provided transfer syntax
-	otherGroups, err := decoder.readObject(countingReader, transferSyntax)
-	if err != nil {
-		return nil, err
-	}
-
-	// concatenate the group two length attribute, the group two object and othe other groups object
+	// create a new object with the group two length attribute
+	// followed by the rest of the group two attributes
 	object := newObject()
 	object.add(groupTwoLength)
 	object.addAll(groupTwo)
-	object.addAll(otherGroups)
 
-	// return the groups
+	// return the new object as the complete group two
 	return object, nil
 }
 

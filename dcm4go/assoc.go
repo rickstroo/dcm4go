@@ -399,3 +399,8 @@ func (assoc *Assoc) Verify() error {
 
 	return nil
 }
+
+// Send sends a store request
+func (assoc *Assoc) Send(reader io.Reader) error {
+	return fmt.Errorf("Assoc.Send: not implemented")
+}
