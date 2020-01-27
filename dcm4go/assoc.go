@@ -212,8 +212,8 @@ func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax
 	return transferSyntax, nil
 }
 
-// ReadRequest reads a request from the association
-func (assoc *Assoc) ReadRequest() (*Message, error) {
+// ReadRequestOrResponse reads a request from the association
+func (assoc *Assoc) ReadRequestOrResponse() (*Message, error) {
 
 	// read a pdu
 	pdu, err := readPDU(assoc.conn)
@@ -250,54 +250,24 @@ func (assoc *Assoc) ReadRequest() (*Message, error) {
 	return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
+// ReadRequest reads a request from the association
+func (assoc *Assoc) ReadRequest() (*Message, error) {
+	return assoc.ReadRequestOrResponse()
+}
+
 // ReadResponse reads a response from the association
 func (assoc *Assoc) ReadResponse() (*Message, error) {
-	return assoc.ReadRequest()
+	return assoc.ReadRequestOrResponse()
 }
 
 // WriteResponse writes a response to the association
-func (assoc *Assoc) WriteResponse(writer io.Writer, message *Message) error {
+func (assoc *Assoc) WriteResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
 // WriteRequest writes a request to the association
-func (assoc *Assoc) WriteRequest(writer io.Writer, message *Message) error {
+func (assoc *Assoc) WriteRequest(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
-}
-
-// CreateFileMetaInfo creates the file meta information for a Part 10 file
-func (assoc *Assoc) CreateFileMetaInfo(pcID byte, command *Object) (*Object, error) {
-
-	// get the required information from the command
-	sopClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
-	if err != nil {
-		return nil, err
-	}
-	sopInstanceUID, err := command.asString(AffectedSOPInstanceUIDTag, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// find the transfer syntax used to receive the object
-	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
-	if err != nil {
-		return nil, err
-	}
-
-	// create the fmi
-	fmi := newObject()
-	fmi.addShort(FileMetaInformationVersionTag, "US", 0x0100)
-	fmi.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
-	fmi.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
-	fmi.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
-	fmi.addUID(ImplementationClassUIDTag, "1.2.40.0.13.1.3") // borrowed from dcm4che for now
-	fmi.addText(ImplementationVersionNameTag, "SH", "dcm4go")
-	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.aeTitle)
-	fmi.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
-	fmi.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
-
-	// return the file meta information
-	return fmi, nil
 }
 
 // RequestAssoc requests an association
@@ -406,7 +376,7 @@ func (assoc *Assoc) Verify() error {
 	fmt.Printf("c-echo request is %v\n", request)
 
 	// write the verification request
-	if err := assoc.WriteRequest(assoc.conn, request); err != nil {
+	if err := assoc.WriteRequest(request); err != nil {
 		return err
 	}
 
@@ -422,10 +392,9 @@ func (assoc *Assoc) Verify() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("status is %d\n", status)
 
 	if status != 0 {
-		return fmt.Errorf("status was %d", status)
+		return fmt.Errorf("status was %d, not success", status)
 	}
 
 	return nil

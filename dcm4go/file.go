@@ -115,3 +115,38 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 	// all is well
 	return nil
 }
+
+// CreateFileMetaInfo creates the file meta information for a Part 10 file
+func CreateFileMetaInfo(assoc *Assoc, pcID byte, command *Object) (*Object, error) {
+
+	// get the required information from the command
+	sopClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+	sopInstanceUID, err := command.asString(AffectedSOPInstanceUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// find the transfer syntax used to receive the object
+	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
+	if err != nil {
+		return nil, err
+	}
+
+	// create the fmi
+	fmi := newObject()
+	fmi.addShort(FileMetaInformationVersionTag, "US", 0x0100)
+	fmi.addUID(MediaStorageSOPClassUIDTag, sopClassUID)
+	fmi.addUID(MediaStorageSOPInstanceUIDTag, sopInstanceUID)
+	fmi.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
+	fmi.addUID(ImplementationClassUIDTag, "1.2.40.0.13.1.3") // borrowed from dcm4che for now
+	fmi.addText(ImplementationVersionNameTag, "SH", "dcm4go")
+	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.aeTitle)
+	fmi.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
+	fmi.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
+
+	// return the file meta information
+	return fmi, nil
+}

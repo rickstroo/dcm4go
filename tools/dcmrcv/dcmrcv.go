@@ -89,7 +89,7 @@ func handleConnection(conn net.Conn, ae *dcm4go.AE) {
 		check(err)
 		fmt.Printf("response is %v\n", response)
 
-		err = assoc.WriteResponse(conn, response)
+		err = assoc.WriteResponse(response)
 		check(err)
 	}
 
@@ -133,7 +133,7 @@ type CStoreCommandHandler struct {
 func (handler *CStoreCommandHandler) HandleCommand(assoc *dcm4go.Assoc, pcID byte, command *dcm4go.Object, pDataReader *dcm4go.PDataReader) (*dcm4go.Object, error) {
 
 	// construct the file meta information
-	fmi, err := assoc.CreateFileMetaInfo(pcID, command)
+	fmi, err := dcm4go.CreateFileMetaInfo(assoc, pcID, command)
 	if err != nil {
 		return nil, err
 	}
