@@ -23,6 +23,11 @@ func (ae *AE) String() string {
 		ae.commandHandlers)
 }
 
+// AETitle returns the AE title of the AE
+func (ae *AE) AETitle() string {
+	return ae.aeTitle
+}
+
 // AddSupportedPresentationContext adds a presentation context that is supported by this AE
 func (ae *AE) AddSupportedPresentationContext(abstractSyntax string, transferSyntaxes []string, commandHandler CommandHandler) {
 	presContext := &PresContext{0, abstractSyntax, transferSyntaxes, 0}

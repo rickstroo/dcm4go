@@ -271,10 +271,10 @@ func (assoc *Assoc) WriteRequest(message *Message) error {
 }
 
 // RequestAssoc requests an association
-func RequestAssoc(conn net.Conn, ae *AE, calledAETitle string) (*Assoc, error) {
+func RequestAssoc(conn net.Conn, local *AE, remote *AE) (*Assoc, error) {
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(calledAETitle, ae.aeTitle, ae.presContexts)
+	assocRQPDU := newAssocRQPDU(remote.aeTitle, local.aeTitle, local.presContexts)
 	fmt.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
@@ -300,7 +300,7 @@ func RequestAssoc(conn net.Conn, ae *AE, calledAETitle string) (*Assoc, error) {
 		// create an association from the response
 		assoc := &Assoc{
 			conn,
-			ae,
+			local,
 			assocRQPDU,
 			assocACPDU,
 		}

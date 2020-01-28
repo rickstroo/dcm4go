@@ -11,8 +11,7 @@ import (
 // simple error management
 func check(err error) {
 	if err != nil {
-		fmt.Printf("panic: %v\n", err)
-		os.Exit(0)
+		panic(err)
 	}
 }
 
@@ -38,14 +37,18 @@ func main() {
 	// define an application entity for managing dicom connections
 	// request support for verification
 	// request support for storage for the type of object that we read
-	ae := dcm4go.NewAE("DCMSND")
-	ae.AddRequestedPresentationContext(dcm4go.VerificationUID, []string{dcm4go.ImplicitVRLittleEndianUID})
-	ae.AddRequestedPresentationContext(sopClassUID, []string{transferSyntaxUID})
+	local := dcm4go.NewAE("DCMSND")
+	local.AddRequestedPresentationContext(dcm4go.VerificationUID, []string{dcm4go.ImplicitVRLittleEndianUID})
+	local.AddRequestedPresentationContext(sopClassUID, []string{transferSyntaxUID})
+	fmt.Printf("local ae:%v\n", local)
 
-	fmt.Printf("ae:%v\n", ae)
+	// define the the remote ae
+	remote := dcm4go.NewAE("DCMRCV")
+	fmt.Printf("remote ae:%v\n", remote)
 
 	// request an association
-	assoc, err := dcm4go.RequestAssoc(conn, ae, "DCMRCV")
+	assoc, err := dcm4go.RequestAssoc(conn, local, remote)
+	fmt.Printf("negotated association from %s to %s\n", local.AETitle(), remote.AETitle())
 	check(err)
 
 	// send a verification request
@@ -87,13 +90,13 @@ func readGroupTwo(path string) (string, string, error) {
 	}
 	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
 
-	// all is well
+	// all is well, return the sop class uid and the transfer syntax uid
 	return sopClassUID, transferSyntaxUID, nil
 }
 
 func send(path string, assoc *dcm4go.Assoc) error {
 
-	// open the file, which returns a reader, defer a close
+	// open the file, which returns a reader
 	file, err := os.Open(path)
 	check(err)
 
