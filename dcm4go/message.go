@@ -193,14 +193,37 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
+	if err := writeCommand(writer, assoc, message.pcID, message.Command()); err != nil {
+		return err
+	}
+
+	if message.Data() == nil {
+		return nil
+	}
+
+	transferSyntax, err := assoc.findAcceptedTransferSyntax(message.pcID)
+	if err != nil {
+		return err
+	}
+
+	if err := writeData(writer, assoc, message.pcID, message.Command(), transferSyntax); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// writeCommand writes the command portion of the message
+func writeCommand(writer io.Writer, assoc *Assoc, pcID byte, command *Object) error {
+
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, message.pcID, true, assoc.assocRQPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(writer, pcID, true, assoc.assocRQPDU.userInfo.maxLenReceived)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
-	// write the command to the buffer
-	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, message.Command(), ImplicitVRLittleEndianTS); err != nil {
+	// write the command with group length
+	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, command, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
 
@@ -210,5 +233,30 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 		return err
 	}
 
+	// all is well
+	return nil
+}
+
+// // writeData writes the data portion of the message
+func writeData(writer io.Writer, assoc *Assoc, pcID byte, data *Object, transferSyntax *TransferSyntax) error {
+
+	// create a writer to write the data to
+	pDataWriter := newPDataWriter(writer, pcID, false, assoc.assocRQPDU.userInfo.maxLenReceived)
+
+	// create an encoder for writing objects
+	encoder := newEncoder()
+
+	// write the command to the buffer
+	if err := encoder.writeObject(pDataWriter, data, transferSyntax); err != nil {
+		return err
+	}
+
+	// flush to the underlying writer
+	// passing true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
+		return err
+	}
+
+	// all is well
 	return nil
 }

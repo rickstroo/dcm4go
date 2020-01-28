@@ -402,5 +402,66 @@ func (assoc *Assoc) Verify() error {
 
 // Send sends a store request
 func (assoc *Assoc) Send(reader io.Reader) error {
-	return fmt.Errorf("Assoc.Send: not implemented")
+
+	// read the group two attributes
+	groupTwo, err := ReadGroupTwo(reader, 0)
+	if err != nil {
+		return err
+	}
+
+	// get the sop class uid of the stored object
+	sopClassUID, err := groupTwo.AsString(MediaStorageSOPClassUIDTag, 0)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("sop class uid is %q\n", sopClassUID)
+
+	// get the sop class instance UID of the stored object
+	sopInstanceUID, err := groupTwo.AsString(MediaStorageSOPInstanceUIDTag, 0)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("sop class uid is %q\n", sopClassUID)
+
+	// get the transfer syntax used to store the file
+	transferSyntaxUID, err := groupTwo.AsString(TransferSyntaxUIDTag, 0)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
+
+	// create a group zero object
+	request, err := NewCStoreRequest(assoc, sopClassUID, sopInstanceUID, transferSyntaxUID)
+	if err != nil {
+		return err
+	}
+
+	// write the request, but no data
+	if err := assoc.WriteRequest(request); err != nil {
+		return err
+	}
+
+	// grab the pc id of the request
+	pcID := request.pcID
+
+	// create a pdatawriter to copy the data to
+	// it knows how to create pdus and pdvs as required
+	// since it implements a writer, we can then simply copy the data
+	pDataWriter := newPDataWriter(assoc.conn, pcID, false, assoc.assocRQPDU.userInfo.maxLenReceived)
+
+	// copy the data
+	num, err := io.Copy(pDataWriter, reader)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("copied %d bytes\n", num)
+
+	// flush to the underlying writer
+	// passing true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
 }
