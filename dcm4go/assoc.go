@@ -435,6 +435,7 @@ func (assoc *Assoc) Send(reader io.Reader) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("request is %v\n", request)
 
 	// write the request, but no data
 	if err := assoc.WriteRequest(request); err != nil {
@@ -460,6 +461,23 @@ func (assoc *Assoc) Send(reader io.Reader) error {
 	// passing true means we are done writing this object
 	if err := pDataWriter.Flush(true); err != nil {
 		return err
+	}
+
+	// read the response
+	response, err := assoc.ReadResponse()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("cstore response is %v\n", response)
+
+	// get the status
+	status, err := response.command.asShort(StatusTag, 0)
+	if err != nil {
+		return err
+	}
+
+	if status != 0 {
+		return fmt.Errorf("status was %d, not success", status)
 	}
 
 	// all is well
