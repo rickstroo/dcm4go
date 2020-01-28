@@ -14,8 +14,8 @@ const (
 // NewCStoreRequest constructs a C-Echo request message
 func NewCStoreRequest(assoc *Assoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string) (*Message, error) {
 
-	// find the presentation context that was negotiated for this transfer syntax
-	acPresContext, err := assoc.findAcceptedPresContextByAbstractSyntax(transferSyntaxUID)
+	// find the presentation context that was negotiated for this sop class
+	acPresContext, err := assoc.findAcceptedPresContextByAbstractSyntax(sopClassUID)
 	if err != nil {
 		return nil, err
 	}
