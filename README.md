@@ -79,3 +79,5 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Acknowledgments
 
 I'd like to acknowledge the work of Jeremy Huiskamp (https://github.com/jeremyhuiskamp).  I have been referencing his implementation of DICOM using Go for inspiration and learning.
+
+I'd also like to acknowledge the work of the dcm4che community.  The name of this project, dcm4go, is derived from dcm4che.  I've also used dcm4che many times over the years to get ideas about design and to learn about the details of DICOM.
