@@ -12,7 +12,7 @@ const (
 )
 
 // NewCStoreRequest constructs a C-Echo request message
-func NewCStoreRequest(assoc *Assoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string) (*Message, error) {
+func NewCStoreRequest(assoc *RequestorAssoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string) (*Message, error) {
 
 	// find the presentation context that was negotiated for this sop class
 	acPresContext, err := assoc.findAcceptedPresContextByAbstractSyntax(sopClassUID)

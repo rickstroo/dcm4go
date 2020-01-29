@@ -1,7 +1,7 @@
 package dcm4go
 
 // NewCEchoRequest constructs a C-Echo request message
-func NewCEchoRequest(assoc *Assoc) (*Message, error) {
+func NewCEchoRequest(assoc *RequestorAssoc) (*Message, error) {
 
 	// find the presentation context id that was negotiated for verification
 	presContext, err := assoc.findAcceptedPresContextByAbstractSyntax(VerificationUID)
