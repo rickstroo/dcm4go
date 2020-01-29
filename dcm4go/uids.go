@@ -27,4 +27,7 @@ const (
 
 	// GeneralECGWaveformStorageUID is the SOP class UID for general ECG waveform storage
 	GeneralECGWaveformStorageUID = "1.2.840.10008.5.1.4.1.1.9.1.2"
+
+	// ApplicationContextNameUID is the UID for the Application Context Name
+	ApplicationContextNameUID = "1.2.840.10008.3.1.1.1"
 )
