@@ -20,8 +20,8 @@ const (
 type Assoc struct {
 	conn       net.Conn
 	ae         *AE
-	assocRQPDU *AssocACRQPDU
-	assocACPDU *AssocACRQPDU
+	assocRQPDU *AssocRQPDU
+	assocACPDU *AssocACPDU
 }
 
 // CalledAETitle returns called ae title from the association request
@@ -76,7 +76,7 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*Assoc, error) {
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocACRQPDU, ae *AE) (*AssocACRQPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)
