@@ -5,21 +5,21 @@ import "fmt"
 // AE represents an application entity
 type AE struct {
 	aeTitle         string
-	presContexts    []*PresContext
+	capabilities    []*Capability
 	commandHandlers map[string]CommandHandler
 }
 
 // NewAE creates a new application entity
 func NewAE(aeTitle string) *AE {
-	return &AE{aeTitle, make([]*PresContext, 0, 5), make(map[string]CommandHandler)}
+	return &AE{aeTitle, make([]*Capability, 0, 5), make(map[string]CommandHandler)}
 }
 
 // String returns a string representation of an ae
 func (ae *AE) String() string {
 	return fmt.Sprintf(
-		"{aeTitle:%q,presContexts:%s,commandHandlers:%v}",
+		"{aeTitle:%q,capabilities:%v,commandHandlers:%v}",
 		ae.aeTitle,
-		ae.presContexts,
+		ae.capabilities,
 		ae.commandHandlers)
 }
 
@@ -28,15 +28,9 @@ func (ae *AE) AETitle() string {
 	return ae.aeTitle
 }
 
-// AddSupportedPresentationContext adds a presentation context that is supported by this AE
-func (ae *AE) AddSupportedPresentationContext(abstractSyntax string, transferSyntaxes []string, commandHandler CommandHandler) {
-	presContext := &PresContext{0, abstractSyntax, transferSyntaxes, 0}
-	ae.presContexts = append(ae.presContexts, presContext)
+// AddCapability adds a capability that is supported by this AE
+func (ae *AE) AddCapability(abstractSyntax string, transferSyntaxes []string, commandHandler CommandHandler) {
+	capability := &Capability{abstractSyntax, transferSyntaxes}
+	ae.capabilities = append(ae.capabilities, capability)
 	ae.commandHandlers[abstractSyntax] = commandHandler
-}
-
-// AddRequestedPresentationContext adds a presentation context that is requested by this AE
-func (ae *AE) AddRequestedPresentationContext(abstractSyntax string, transferSyntaxes []string) {
-	presContext := &PresContext{byte(len(ae.presContexts)*2 + 1), abstractSyntax, transferSyntaxes, 0}
-	ae.presContexts = append(ae.presContexts, presContext)
 }

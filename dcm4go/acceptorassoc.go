@@ -68,7 +68,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 
 	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, ae.presContexts)
+		acPresContext, err := negotiatePresContext(rqPresContext, ae.capabilities)
 		if err != nil {
 			return nil, err
 		}
@@ -79,10 +79,10 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresContext) (*PresContext, error) {
+func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability) (*PresContext, error) {
 
-	// look for a supported presentation context for this abstract syntax
-	spPresContext, found := findSupportedPresContext(rqPresContext.abstractSyntax, spPresContexts)
+	// look for a capability for this abstract syntax
+	capability, found := findCapability(rqPresContext.abstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
@@ -97,13 +97,12 @@ func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresCont
 
 	// if we found one, now we look for a matching transfer syntax
 	for _, rqTansferSyntax := range rqPresContext.transferSyntaxes {
-		spTransferSyntax, found := findSupportedTransferSyntax(rqTansferSyntax, spPresContext.transferSyntaxes)
-		if found {
+		if contains(capability.transferSyntaxes, rqTansferSyntax) {
 			acPresContext := &PresContext{
-				rqPresContext.id,           // the id
-				"",                         // no abstract syntax
-				[]string{spTransferSyntax}, // the transfer syntax
-				pcAcceptance,               // success
+				rqPresContext.id,          // the id
+				"",                        // no abstract syntax
+				[]string{rqTansferSyntax}, // the transfer syntax
+				pcAcceptance,              // success
 			}
 			return acPresContext, nil
 		}
@@ -119,31 +118,24 @@ func negotiatePresContext(rqPresContext *PresContext, spPresContexts []*PresCont
 	return acPresContext, nil
 }
 
-// findSupportedPresContext searches for a supported presentation context
-// for an abstract syntax
-func findSupportedPresContext(abstractSyntax string, spPresContexts []*PresContext) (*PresContext, bool) {
-	for _, spPresContext := range spPresContexts {
-		if abstractSyntax == spPresContext.abstractSyntax {
-			return spPresContext, true
+// findCapability searches for a capability for an abstract syntax
+func findCapability(abstractSyntax string, capabilities []*Capability) (*Capability, bool) {
+	for _, capability := range capabilities {
+		if abstractSyntax == capability.abstractSyntax {
+			return capability, true
 		}
 	}
 	return nil, false
 }
 
-// findSupportedTransferSyntax looks for a supported transfer syntax
-// that matches the requested transfer syntax
-func findSupportedTransferSyntax(rqTransferSyntax string, spTransferSyntaxes []string) (string, bool) {
-
-	// compare against all the supported transfer syntaxes
-	for _, spTransferSyntax := range spTransferSyntaxes {
-		// if found, return the transfer syntax and true
-		if rqTransferSyntax == spTransferSyntax {
-			return spTransferSyntax, true
+// contains looks for a string in a set of strings
+func contains(ses []string, t string) bool {
+	for _, s := range ses {
+		if s == t {
+			return true
 		}
 	}
-
-	// we didn't find anything
-	return "", false
+	return false
 }
 
 // ReadRequest reads a request from the association

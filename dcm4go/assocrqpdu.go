@@ -10,7 +10,10 @@ type AssocRQPDU struct {
 }
 
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, presContexts []*PresContext) *AssocRQPDU {
+func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*Capability) *AssocRQPDU {
+
+	presContexts := createPresContexts(capabilities)
+
 	return &AssocRQPDU{
 		&AssocACRQPDU{
 			0x01,                      // protocol version, as per the standard
@@ -27,6 +30,20 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, presContexts []*
 			},
 		},
 	}
+}
+
+func createPresContexts(capabilities []*Capability) []*PresContext {
+	presContexts := make([]*PresContext, 0, 5)
+	for i, capability := range capabilities {
+		presContext := &PresContext{
+			byte(i*2 + 1),
+			capability.abstractSyntax,
+			capability.transferSyntaxes,
+			byte(0),
+		}
+		presContexts = append(presContexts, presContext)
+	}
+	return presContexts
 }
 
 // readAssocRQPDU reads an associate request

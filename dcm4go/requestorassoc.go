@@ -15,7 +15,7 @@ type RequestorAssoc struct {
 func RequestAssoc(conn net.Conn, local *AE, remote *AE) (*RequestorAssoc, error) {
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remote.aeTitle, local.aeTitle, local.presContexts)
+	assocRQPDU := newAssocRQPDU(remote.aeTitle, local.aeTitle, local.capabilities)
 	fmt.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
