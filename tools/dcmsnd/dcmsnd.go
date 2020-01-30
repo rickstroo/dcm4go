@@ -38,8 +38,8 @@ func main() {
 	// request support for verification
 	// request support for storage for the type of object that we read
 	local := dcm4go.NewAE("DCMSND")
-	local.AddRequestedPresentationContext(dcm4go.VerificationUID, []string{dcm4go.ImplicitVRLittleEndianUID})
-	local.AddRequestedPresentationContext(sopClassUID, []string{transferSyntaxUID})
+	local.AddRequestedCapability(dcm4go.VerificationUID, []string{dcm4go.ImplicitVRLittleEndianUID})
+	local.AddRequestedCapability(sopClassUID, []string{transferSyntaxUID})
 	fmt.Printf("local ae:%v\n", local)
 
 	// define the the remote ae
@@ -94,7 +94,7 @@ func readGroupTwo(path string) (string, string, error) {
 	return sopClassUID, transferSyntaxUID, nil
 }
 
-func send(path string, assoc *dcm4go.Assoc) error {
+func send(path string, assoc *dcm4go.RequestorAssoc) error {
 
 	// open the file, which returns a reader
 	file, err := os.Open(path)

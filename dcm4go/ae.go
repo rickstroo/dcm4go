@@ -28,9 +28,15 @@ func (ae *AE) AETitle() string {
 	return ae.aeTitle
 }
 
-// AddCapability adds a capability that is supported by this AE
-func (ae *AE) AddCapability(abstractSyntax string, transferSyntaxes []string, commandHandler CommandHandler) {
+// AddSupportedCapability adds a capability that is supported by this AE
+func (ae *AE) AddSupportedCapability(abstractSyntax string, transferSyntaxes []string, commandHandler CommandHandler) {
 	capability := &Capability{abstractSyntax, transferSyntaxes}
 	ae.capabilities = append(ae.capabilities, capability)
 	ae.commandHandlers[abstractSyntax] = commandHandler
+}
+
+// AddRequestedCapability adds a capability that is supported by this AE
+func (ae *AE) AddRequestedCapability(abstractSyntax string, transferSyntaxes []string) {
+	capability := &Capability{abstractSyntax, transferSyntaxes}
+	ae.capabilities = append(ae.capabilities, capability)
 }

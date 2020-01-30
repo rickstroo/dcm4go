@@ -1,6 +1,8 @@
 package dcm4go
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // A BasicCEchoService is the default service provided by the library for handling DICOM C-Echo requests
 type BasicCEchoService struct {
@@ -9,13 +11,9 @@ type BasicCEchoService struct {
 
 // NewBasicCEchoService creates and initializes a Basic C-Echo service
 func NewBasicCEchoService() Service {
-	service := &BasicCEchoService{}
-	service.abstractSyntaxes = append(service.abstractSyntaxes, VerificationUID)
+	service := newBasicService()
+	service.addCapability(&Capability{VerificationUID, []string{ImplicitVRLittleEndianUID}})
 	return service
-}
-
-func (service *BasicCEchoService) onClose(assoc *AcceptorAssoc) error {
-	return service.BasicService.onClose(assoc)
 }
 
 func (service *BasicCEchoService) onCommand(

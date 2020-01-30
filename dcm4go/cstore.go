@@ -22,8 +22,10 @@ type BasicCStoreService struct {
 	BasicService
 }
 
-func (service *BasicCStoreService) onClose(assoc *AcceptorAssoc) error {
-	return service.BasicService.onClose(assoc)
+// NewBasicCStoreService creates and initializes a Basic C-Store service
+func NewBasicCStoreService() Service {
+	service := newBasicService()
+	return service
 }
 
 func (service *BasicCStoreService) onCommand(

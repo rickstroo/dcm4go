@@ -4,9 +4,6 @@ import "fmt"
 
 // A Service is used to handle requests of DICOM services
 type Service interface {
-	onClose(
-		assoc *AcceptorAssoc,
-	) error
 	onCommand(
 		assoc *AcceptorAssoc,
 		presContext *PresContext,
@@ -23,12 +20,15 @@ type Service interface {
 
 // A BasicService is the default service provided by the library
 type BasicService struct {
-	abstractSyntaxes []string
+	capabilities []*Capability
 }
 
-func (service *BasicService) onClose(assoc *AcceptorAssoc) error {
-	// do nothing by default execpt return all is well
-	return nil
+func newBasicService() *BasicService {
+	return &BasicService{make([]*Capability, 0, 5)}
+}
+
+func (service *BasicService) addCapability(capability *Capability) {
+	service.capabilities = append(service.capabilities, capability)
 }
 
 func (service *BasicService) onCommand(
