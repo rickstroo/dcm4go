@@ -184,12 +184,7 @@ func (encoder *Encoder) writePaddedTexts(writer io.Writer, texts []string) error
 
 // flattenStrings converts an array of strings into a single string with separataor character
 func flattenStrings(texts []string) string {
-	t := ""
-	for _, text := range texts {
-		t += text + "\\"
-	}
-	t = strings.TrimSuffix(t, "\\")
-	return t
+	return strings.Join(texts, "\\")
 }
 
 func (encoder *Encoder) writePaddedText(writer io.Writer, text string) error {
