@@ -24,5 +24,5 @@ func main() {
 
 	// try a verify, then send the files
 	check(dcm4go.Verify(addr))
-	check(dcm4go.SendN(addr, paths))
+	check(dcm4go.Send(addr, paths))
 }

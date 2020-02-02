@@ -104,24 +104,13 @@ func (client *Client) verify(addr string) error {
 }
 
 // Send sends a DICOM store request from a client to a server.
-func (client *Client) Send(addr string, paths ...string) error {
-	return client.send(addr, paths)
-}
-
-// SendN sends a DICOM store request from a client to a server.
-func (client *Client) SendN(addr string, paths []string) error {
+func (client *Client) Send(addr string, paths []string) error {
 	return client.send(addr, paths)
 }
 
 // Send creates a DICOM client and sends a store request
 // For greater control, create a client and use Client.Send().
-func Send(addr string, paths ...string) error {
-	client := &Client{}
-	return client.send(addr, paths)
-}
-
-// SendN creates a DICOM client and sends a store request
-func SendN(addr string, paths []string) error {
+func Send(addr string, paths []string) error {
 	client := &Client{}
 	return client.send(addr, paths)
 }
