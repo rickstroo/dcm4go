@@ -130,3 +130,8 @@ func (assoc *Assoc) ReadRequestOrResponse() (*Message, error) {
 func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
+
+// Close closes the connection of the association
+func (assoc *Assoc) Close() error {
+	return assoc.conn.Close()
+}

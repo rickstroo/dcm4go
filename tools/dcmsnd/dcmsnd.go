@@ -22,7 +22,14 @@ func main() {
 		"/Users/Rick/data/dicom/GENECG.dcm",
 	}
 
-	// try a verify, then send the files
-	check(dcm4go.Verify(addr))
-	check(dcm4go.Send(addr, paths))
+	// create a client
+	client := &dcm4go.Client{
+		AETitle: "DCMSND",
+	}
+
+	// verify
+	check(client.Verify(addr))
+
+	// send the files
+	check(client.Send(addr, paths))
 }

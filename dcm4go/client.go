@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	// DefaultClientAETitle defines the default AE title for the client
+	DefaultClientAETitle = "DCMSND"
+)
+
 // A Client is a DICOM client.  In DICOM parlance, it is often referrned
 // to erroneusly as an SCU or more accurately as a Requestor.
 //
@@ -33,66 +38,27 @@ type Client struct {
 	WriteTimeout time.Duration
 }
 
-func parseAddr(addr string) (string, string, error) {
-	s := strings.Split(addr, "@")
-	if len(s) != 2 {
-		return "", "", fmt.Errorf("expected address of form 'ae@host:port', found '%v'", addr)
-	}
-	return s[0], s[1], nil
-}
-
 // Verify sends  DICOM verifiction request from a client to a server
 func (client *Client) Verify(addr string) error {
-	return client.verify(addr)
-}
-
-// Verify creates a DICOM client and sends a verification request
-// For greater control, create a client and use Client.Verify().
-func Verify(addr string) error {
-	client := &Client{}
 	return client.verify(addr)
 }
 
 // verify implements the verification request
 func (client *Client) verify(addr string) error {
 
-	// parse the address
-	serverAETitle, serverHostPort, err := parseAddr(addr)
+	// define the required capabilities
+	capabilities := []*Capability{
+		&Capability{VerificationUID, []string{ImplicitVRLittleEndianUID}},
+	}
+
+	// setup the connection and association
+	assoc, err := client.connect(addr, capabilities)
 	if err != nil {
 		return err
 	}
 
-	// attempt a connection
-	conn, err := net.Dial("tcp", serverHostPort)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
-
-	// ensure the connection gets closed
-	defer conn.Close()
-
-	// define an application entity for managing dicom connections
-	clientAETitle := client.AETitle
-	if clientAETitle == "" {
-		clientAETitle = "DCMSND"
-	}
-	local := NewAE(clientAETitle)
-
-	// request support for verification
-	local.AddRequestedCapability(VerificationUID, []string{ImplicitVRLittleEndianUID})
-	fmt.Printf("local ae:%v\n", local)
-
-	// define the the remote ae
-	remote := NewAE(serverAETitle)
-	fmt.Printf("remote ae:%v\n", remote)
-
-	// request an association
-	assoc, err := RequestAssoc(conn, local, remote)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("negotiated association from %s to %s\n", local.AETitle(), remote.AETitle())
+	// make sure the association gets closed
+	defer assoc.Close()
 
 	// send a verification request
 	if err := assoc.Verify(); err != nil {
@@ -103,22 +69,68 @@ func (client *Client) verify(addr string) error {
 	return nil
 }
 
-// Send sends a DICOM store request from a client to a server.
-func (client *Client) Send(addr string, paths []string) error {
-	return client.send(addr, paths)
+func (client *Client) connect(addr string, capabilities []*Capability) (*RequestorAssoc, error) {
+
+	// parse the address
+	serverAETitle, serverHostPort, err := parseAddr(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	// attempt a connection
+	conn, err := net.Dial("tcp", serverHostPort)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
+
+	// define an application entity for managing dicom connections
+	clientAETitle := client.AETitle
+	if clientAETitle == "" {
+		clientAETitle = DefaultClientAETitle
+	}
+	local := NewAE(clientAETitle)
+
+	// request support for verification
+	for _, capability := range capabilities {
+		local.AddRequestedCapability(capability.abstractSyntax, capability.transferSyntaxes)
+	}
+	fmt.Printf("local ae:%v\n", local)
+
+	// define the the remote ae
+	remote := NewAE(serverAETitle)
+	fmt.Printf("remote ae:%v\n", remote)
+
+	// request an association
+	assoc, err := RequestAssoc(conn, local, remote)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("negotiated association from %s to %s\n", local.AETitle(), remote.AETitle())
+
+	// return the association
+	// we do not close the connection at this time
+	// it will be closed when we close the association
+	return assoc, nil
 }
 
-// Send creates a DICOM client and sends a store request
-// For greater control, create a client and use Client.Send().
-func Send(addr string, paths []string) error {
-	client := &Client{}
+func parseAddr(addr string) (string, string, error) {
+	s := strings.Split(addr, "@")
+	if len(s) != 2 {
+		return "", "", fmt.Errorf("expected address of form 'ae@host:port', found '%v'", addr)
+	}
+	return s[0], s[1], nil
+}
+
+// Send sends a DICOM store request from a client to a server.
+func (client *Client) Send(addr string, paths []string) error {
 	return client.send(addr, paths)
 }
 
 // send implements the send request
 func (client *Client) send(addr string, paths []string) error {
 
-	// gather all the abstract syntax and transfer syntaxes required
+	// gather the required capabilities
 	capabilities := make([]*Capability, 0, 5)
 	for _, path := range paths {
 		capability, err := readGroupTwo(path)
@@ -130,48 +142,14 @@ func (client *Client) send(addr string, paths []string) error {
 	}
 	fmt.Printf("capabilities is %v\n", capabilities)
 
-	// parse the address
-	serverAETitle, serverHostPort, err := parseAddr(addr)
+	// setup the connection and association
+	assoc, err := client.connect(addr, capabilities)
 	if err != nil {
 		return err
 	}
 
-	// attempt a connection
-	conn, err := net.Dial("tcp", serverHostPort)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
-
-	// ensure the connection gets closed
-	defer conn.Close()
-
-	// define an application entity for managing dicom connections
-	clientAETitle := client.AETitle
-	if clientAETitle == "" {
-		clientAETitle = "DCMSND"
-	}
-	local := NewAE(clientAETitle)
-
-	// add the capabilities
-	for _, capability := range capabilities {
-		local.AddRequestedCapability(
-			capability.abstractSyntax,
-			capability.transferSyntaxes,
-		)
-	}
-	fmt.Printf("local ae:%v\n", local)
-
-	// define the the remote ae
-	remote := NewAE(serverAETitle)
-	fmt.Printf("remote ae:%v\n", remote)
-
-	// request an association
-	assoc, err := RequestAssoc(conn, local, remote)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("negotiated association from %s to %s\n", local.AETitle(), remote.AETitle())
+	// make sure the association gets closed
+	defer assoc.Close()
 
 	// send each file
 	for _, path := range paths {
