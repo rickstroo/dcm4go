@@ -191,7 +191,12 @@ func (assoc *RequestorAssoc) Send(reader io.Reader) error {
 	// create a pdatawriter to copy the data to
 	// it knows how to create pdus and pdvs as required
 	// since it implements a writer, we can then simply copy the data
-	pDataWriter := newPDataWriter(assoc.conn, pcID, false, assoc.assocRQPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(
+		assoc.conn,                               // the writer is the association connection
+		pcID,                                     // write using the same presentation context id as in the request
+		false,                                    // false means we are writing data
+		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
+	)
 
 	// copy the data
 	num, err := io.Copy(pDataWriter, reader)
@@ -200,7 +205,7 @@ func (assoc *RequestorAssoc) Send(reader io.Reader) error {
 	}
 	fmt.Printf("copied %d bytes\n", num)
 
-	// flush to the underlying writer
+	// flush the underlying writer
 	// passing true means we are done writing this object
 	if err := pDataWriter.Flush(true); err != nil {
 		return err
@@ -223,7 +228,7 @@ func (assoc *RequestorAssoc) Send(reader io.Reader) error {
 		return fmt.Errorf("status was %d, not success", status)
 	}
 
-	// all is well
+	// otherwise, all is well
 	return nil
 }
 
