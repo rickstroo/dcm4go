@@ -129,19 +129,10 @@ func (client *Client) Send(addr string, paths []string) error {
 // send implements the send request
 func (client *Client) send(addr string, paths []string) error {
 
-	// gather the required capabilities
-	capabilities := make([]*Capability, 0, 5)
-	for _, path := range paths {
-		capability, err := readCapability(path)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("capability is %v\n", capability)
-
-		// add the capability if not already present
-		if !capability.Contained(capabilities) {
-			capabilities = append(capabilities, capability)
-		}
+	// gather the required capabilities for sending the files
+	capabilities, err := readCapabilities(paths)
+	if err != nil {
+		return err
 	}
 	fmt.Printf("capabilities is %v\n", capabilities)
 
@@ -154,16 +145,30 @@ func (client *Client) send(addr string, paths []string) error {
 	// make sure the association gets closed
 	defer assoc.Close()
 
-	// send each file
-	for _, path := range paths {
-		if err := sendFile(path, assoc); err != nil {
-			return err
-		}
-		fmt.Printf("sent file %q\n", path)
+	// send the files
+	if err := sendFiles(paths, assoc); err != nil {
+		return err
 	}
 
 	// all is well
 	return nil
+}
+
+func readCapabilities(paths []string) ([]*Capability, error) {
+	capabilities := make([]*Capability, 0, 5)
+	for _, path := range paths {
+		capability, err := readCapability(path)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("capability is %v\n", capability)
+
+		// add the capability if not already present
+		if !capability.Contained(capabilities) {
+			capabilities = append(capabilities, capability)
+		}
+	}
+	return capabilities, nil
 }
 
 func readCapability(path string) (*Capability, error) {
@@ -203,6 +208,16 @@ func readCapability(path string) (*Capability, error) {
 		TransferSyntaxes: []string{transferSyntaxUID},
 	}
 	return capability, nil
+}
+
+func sendFiles(paths []string, assoc *RequestorAssoc) error {
+	for _, path := range paths {
+		if err := sendFile(path, assoc); err != nil {
+			return err
+		}
+		fmt.Printf("sent file %q\n", path)
+	}
+	return nil
 }
 
 func sendFile(path string, assoc *RequestorAssoc) error {
