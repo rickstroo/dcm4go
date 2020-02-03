@@ -37,8 +37,8 @@ func createPresContexts(capabilities []*Capability) []*PresContext {
 	for i, capability := range capabilities {
 		presContext := &PresContext{
 			byte(i*2 + 1),
-			capability.abstractSyntax,
-			capability.transferSyntaxes,
+			capability.AbstractSyntax,
+			capability.TransferSyntaxes,
 			byte(0),
 		}
 		presContexts = append(presContexts, presContext)

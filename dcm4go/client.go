@@ -93,7 +93,7 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 
 	// request support for verification
 	for _, capability := range capabilities {
-		local.AddRequestedCapability(capability.abstractSyntax, capability.transferSyntaxes)
+		local.AddRequestedCapability(capability.AbstractSyntax, capability.TransferSyntaxes)
 	}
 	fmt.Printf("local ae:%v\n", local)
 
@@ -133,12 +133,16 @@ func (client *Client) send(addr string, paths []string) error {
 	// gather the required capabilities
 	capabilities := make([]*Capability, 0, 5)
 	for _, path := range paths {
-		capability, err := readGroupTwo(path)
+		capability, err := readCapabilities(path)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("capability is %v\n", capability)
-		capabilities = append(capabilities, capability)
+
+		// add the capability if not already present
+		if !capability.Contained(capabilities) {
+			capabilities = append(capabilities, capability)
+		}
 	}
 	fmt.Printf("capabilities is %v\n", capabilities)
 
@@ -163,7 +167,7 @@ func (client *Client) send(addr string, paths []string) error {
 	return nil
 }
 
-func readGroupTwo(path string) (*Capability, error) {
+func readCapabilities(path string) (*Capability, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
@@ -196,8 +200,8 @@ func readGroupTwo(path string) (*Capability, error) {
 
 	// all is well, return the sop class uid and the transfer syntax uid
 	capability := &Capability{
-		abstractSyntax:   sopClassUID,
-		transferSyntaxes: []string{transferSyntaxUID},
+		AbstractSyntax:   sopClassUID,
+		TransferSyntaxes: []string{transferSyntaxUID},
 	}
 	return capability, nil
 }

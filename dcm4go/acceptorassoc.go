@@ -97,7 +97,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 
 	// if we found one, now we look for a matching transfer syntax
 	for _, rqTansferSyntax := range rqPresContext.transferSyntaxes {
-		if contains(capability.transferSyntaxes, rqTansferSyntax) {
+		if contains(capability.TransferSyntaxes, rqTansferSyntax) {
 			acPresContext := &PresContext{
 				rqPresContext.id,          // the id
 				"",                        // no abstract syntax
@@ -121,7 +121,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 // findCapability searches for a capability for an abstract syntax
 func findCapability(abstractSyntax string, capabilities []*Capability) (*Capability, bool) {
 	for _, capability := range capabilities {
-		if abstractSyntax == capability.abstractSyntax {
+		if abstractSyntax == capability.AbstractSyntax {
 			return capability, true
 		}
 	}
