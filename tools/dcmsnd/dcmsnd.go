@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
@@ -21,12 +22,19 @@ func main() {
 	var local string
 	var remote string
 	var path string
+	var help bool
 
 	flag.StringVar(&local, "local", "DCMSND", "AE title for local client")
-	flag.StringVar(&remote, "remote", "DCMRCV@localhost:4104", "AE title, host and port for remote server")
-	flag.StringVar(&path, "path", "", "path to command separated list of files to send")
+	flag.StringVar(&remote, "remote", "DCMRCV@localhost:4104", "AE title, host and port for remote server of form 'ae@host:port'")
+	flag.StringVar(&path, "path", "", "comma separated list of files to send")
+	flag.BoolVar(&help, "help", false, "display usage")
 
 	flag.Parse()
+
+	if help {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
 
 	paths := strings.Split(path, ",")
 
