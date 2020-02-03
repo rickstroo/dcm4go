@@ -78,6 +78,8 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 	}
 
 	// attempt a connection
+	// we won't defer a close in this function
+	// the connection will be closed when the association is closed
 	conn, err := net.Dial("tcp", serverHostPort)
 	if err != nil {
 		return nil, err
@@ -85,16 +87,8 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 	fmt.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
 
 	// define an application entity for managing dicom connections
-	clientAETitle := client.AETitle
-	if clientAETitle == "" {
-		clientAETitle = DefaultClientAETitle
-	}
+	clientAETitle := getClientAETitle(client)
 	local := NewAE(clientAETitle)
-
-	// request support for verification
-	for _, capability := range capabilities {
-		local.AddRequestedCapability(capability.AbstractSyntax, capability.TransferSyntaxes)
-	}
 	fmt.Printf("local ae:%v\n", local)
 
 	// define the the remote ae
@@ -102,16 +96,21 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 	fmt.Printf("remote ae:%v\n", remote)
 
 	// request an association
-	assoc, err := RequestAssoc(conn, local, remote)
+	assoc, err := RequestAssoc(conn, local, remote, capabilities)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("negotiated association from %s to %s\n", local.AETitle(), remote.AETitle())
 
 	// return the association
-	// we do not close the connection at this time
-	// it will be closed when we close the association
 	return assoc, nil
+}
+
+func getClientAETitle(client *Client) string {
+	if client.AETitle == "" {
+		return DefaultClientAETitle
+	}
+	return client.AETitle
 }
 
 func parseAddr(addr string) (string, string, error) {
@@ -133,7 +132,7 @@ func (client *Client) send(addr string, paths []string) error {
 	// gather the required capabilities
 	capabilities := make([]*Capability, 0, 5)
 	for _, path := range paths {
-		capability, err := readCapabilities(path)
+		capability, err := readCapability(path)
 		if err != nil {
 			return err
 		}
@@ -167,7 +166,7 @@ func (client *Client) send(addr string, paths []string) error {
 	return nil
 }
 
-func readCapabilities(path string) (*Capability, error) {
+func readCapability(path string) (*Capability, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
