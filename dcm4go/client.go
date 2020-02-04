@@ -88,11 +88,11 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 
 	// define an application entity for managing dicom connections
 	clientAETitle := getClientAETitle(client)
-	local := NewAE(clientAETitle)
+	local := &AE{clientAETitle}
 	fmt.Printf("local ae:%v\n", local)
 
 	// define the the remote ae
-	remote := NewAE(serverAETitle)
+	remote := &AE{serverAETitle}
 	fmt.Printf("remote ae:%v\n", remote)
 
 	// request an association

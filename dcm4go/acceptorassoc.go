@@ -11,7 +11,7 @@ type AcceptorAssoc struct {
 }
 
 // AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn, ae *AE) (*AcceptorAssoc, error) {
+func AcceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAssoc, error) {
 
 	// this should really be handled as a state machine
 	// will think about doing that later
@@ -33,7 +33,7 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*AcceptorAssoc, error) {
 		}
 		fmt.Printf("assocRQPDU is %v\n", assocRQPDU)
 
-		assocACPDU, err := negotiateAssoc(assocRQPDU, ae)
+		assocACPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
 		if err != nil {
 			return nil, err
 		}
@@ -61,14 +61,14 @@ func AcceptAssoc(conn net.Conn, ae *AE) (*AcceptorAssoc, error) {
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE) (*AssocACPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)
 
 	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, ae.capabilities)
+		acPresContext, err := negotiatePresContext(rqPresContext, capabilities)
 		if err != nil {
 			return nil, err
 		}

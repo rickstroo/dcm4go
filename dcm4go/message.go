@@ -96,26 +96,26 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 			return nil, err
 		}
 
-		// find the affected sop class uid
-		affectedSOPClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
-		if err != nil {
-			return nil, err
-		}
+		// // find the affected sop class uid
+		// affectedSOPClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
-		// if there is a handler for this command, call it
-		commandHandler, ok := assoc.ae.commandHandlers[affectedSOPClassUID]
-		if ok && (commandHandler != nil) {
-
-			// call the handler, which will return the data, which may be potentially nil
-			// if the handler decides to consume the data itself
-			data, err := commandHandler.HandleCommand(assoc, pcID, command, dataReader)
-			if err != nil {
-				return nil, err
-			}
-
-			// return the request with command and data
-			return &Message{pcID, command, data}, nil
-		}
+		// // if there is a handler for this command, call it
+		// commandHandler, ok := assoc.ae.commandHandlers[affectedSOPClassUID]
+		// if ok && (commandHandler != nil) {
+		//
+		// 	// call the handler, which will return the data, which may be potentially nil
+		// 	// if the handler decides to consume the data itself
+		// 	data, err := commandHandler.HandleCommand(assoc, pcID, command, dataReader)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		//
+		// 	// return the request with command and data
+		// 	return &Message{pcID, command, data}, nil
+		// }
 
 		// if no handler, read the data ourselves
 		data, err := readData(dataReader, assoc, pcID)
