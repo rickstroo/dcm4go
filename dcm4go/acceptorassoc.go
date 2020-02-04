@@ -2,6 +2,7 @@ package dcm4go
 
 import (
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -11,7 +12,7 @@ type AcceptorAssoc struct {
 }
 
 // AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAssoc, error) {
+func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, error) {
 
 	// this should really be handled as a state machine
 	// will think about doing that later
@@ -33,7 +34,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAs
 		}
 		fmt.Printf("assocRQPDU is %v\n", assocRQPDU)
 
-		assocACPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
+		assocACPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
 		if err != nil {
 			return nil, err
 		}
@@ -61,14 +62,14 @@ func AcceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAs
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) (*AssocACPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocACPDU, error) {
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)
 
 	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, capabilities)
+		acPresContext, err := negotiatePresContext(rqPresContext, handlers)
 		if err != nil {
 			return nil, err
 		}
@@ -79,10 +80,10 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) 
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability) (*PresContext, error) {
+func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*PresContext, error) {
 
 	// look for a capability for this abstract syntax
-	capability, found := findCapability(rqPresContext.abstractSyntax, capabilities)
+	handler, capability, found := findCapability(rqPresContext.abstractSyntax, handlers)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
@@ -91,6 +92,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 			"",                           // no abstract syntax
 			nil,                          // no transfer syntaxes
 			pcAbstractSyntaxNotSupported, // failure
+			nil,                          // no handler
 		}
 		return acPresContext, nil
 	}
@@ -103,6 +105,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 				"",                        // no abstract syntax
 				[]string{rqTansferSyntax}, // the transfer syntax
 				pcAcceptance,              // success
+				handler,                   // the handler
 			}
 			return acPresContext, nil
 		}
@@ -114,18 +117,21 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 		"",                             // no abstract syntax
 		nil,                            // no transfer syntaxes
 		pcTransferSyntaxesNotSupported, // failure
+		nil,                            // no handler
 	}
 	return acPresContext, nil
 }
 
 // findCapability searches for a capability for an abstract syntax
-func findCapability(abstractSyntax string, capabilities []*Capability) (*Capability, bool) {
-	for _, capability := range capabilities {
-		if abstractSyntax == capability.AbstractSyntax {
-			return capability, true
+func findCapability(abstractSyntax string, handlers []Handler) (Handler, *Capability, bool) {
+	for _, handler := range handlers {
+		for _, capability := range handler.Capabilities() {
+			if abstractSyntax == capability.AbstractSyntax {
+				return handler, capability, true
+			}
 		}
 	}
-	return nil, false
+	return nil, nil, false
 }
 
 // contains looks for a string in a set of strings
@@ -146,4 +152,92 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 // WriteResponse writes a response to the association
 func (assoc *AcceptorAssoc) WriteResponse(message *Message) error {
 	return assoc.WriteRequestOrResponse(message)
+}
+
+// Serve reads and services requests
+func (assoc *AcceptorAssoc) Serve() error {
+
+	for {
+		// read a pdu
+		pdu, err := readPDU(assoc.conn)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("pdu is %v\n", pdu)
+
+		// is this an association release request?  if so, write response and return EOF
+		if pdu.pduType == aReleaseRQPDU {
+			if err := readReleaseRQPDU(pdu); err != nil {
+				return err
+			}
+			if err := writeReleaseRPPDU(assoc.conn); err != nil {
+				return err
+			}
+			return io.EOF
+		}
+
+		// is this an abort request?  if so, just return EOF
+		if pdu.pduType == aAbortPDU {
+			return io.EOF
+		}
+
+		// is this not a data transfer request?
+		if pdu.pduType != pDataTFPDU {
+			return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		}
+
+		// create a reader for the command
+		commandReader, err := newPDataReader(assoc.Conn(), pdu, true)
+		if err != nil {
+			return err
+		}
+
+		// get the presentation context id from the reader
+		pcID := commandReader.pdv.pcID
+
+		// read the command
+		command, err := readCommand(commandReader, &assoc.Assoc)
+		if err != nil {
+			return err
+		}
+
+		// find the persentation context by id
+		presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+		if err != nil {
+			return err
+		}
+
+		// get the handler by the presentation context
+		handler := presContext.handler
+
+		// get the command data set
+		commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
+		if err != nil {
+			return err
+		}
+
+		if isDataSetPresent(commandDataSet) {
+
+			// create a reader for the data
+			dataReader, err := newPDataReader(assoc.Conn(), pdu, false)
+			if err != nil {
+				return err
+			}
+
+			// call the handler for the command
+			if err := handler.onCommand(assoc, presContext, command, dataReader); err != nil {
+				return err
+			}
+
+		} else {
+
+			// call the handler for the command
+			if err := handler.onCommand(assoc, presContext, command, nil); err != nil {
+				return err
+			}
+		}
+
+		// that's it, get another pdu
+	}
+
 }

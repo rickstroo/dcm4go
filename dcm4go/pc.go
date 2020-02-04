@@ -14,6 +14,7 @@ type PresContext struct {
 	abstractSyntax   string
 	transferSyntaxes []string
 	result           byte
+	handler          Handler
 }
 
 // String returns a string representation of a requested presentation context
@@ -121,6 +122,7 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 		abstractSyntax,   // the abstract syntax
 		transferSyntaxes, // the transfer syntaxes
 		reason,           // the reason
+		nil,              // no handler
 	}
 
 	// return the presentation context

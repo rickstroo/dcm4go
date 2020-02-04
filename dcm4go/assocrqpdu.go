@@ -40,6 +40,7 @@ func createPresContexts(capabilities []*Capability) []*PresContext {
 			capability.AbstractSyntax,
 			capability.TransferSyntaxes,
 			byte(0),
+			nil,
 		}
 		presContexts = append(presContexts, presContext)
 	}

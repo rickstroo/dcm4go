@@ -24,39 +24,6 @@ var (
 	ErrServerClosed = errors.New("dicom: server shutdown or closed")
 )
 
-// A Handler handles a DICOM request.
-type Handler interface {
-	Capabilities() []*Capability
-	ServeDICOM(*AcceptorAssoc, *Message) error
-}
-
-// A BasicCEchoHandler provides a handler for C-Echo requests
-type BasicCEchoHandler struct {
-}
-
-// Capabilities returns the capabilities of a C-Echo handler
-func (handler *BasicCEchoHandler) Capabilities() []*Capability {
-	return []*Capability{&Capability{VerificationUID, []string{ImplicitVRLittleEndianUID}}}
-}
-
-// ServeDICOM handles the request
-func (handler *BasicCEchoHandler) ServeDICOM(assoc *AcceptorAssoc, request *Message) error {
-
-	// create a response
-	response, err := NewCEchoResponse(assoc, request)
-	if err != nil {
-		return err
-	}
-
-	// write the response
-	if err := assoc.WriteResponse(response); err != nil {
-		return err
-	}
-
-	// all is well
-	return nil
-}
-
 // A Server is a DICOM server.  In DICOM parlance, it is often referrned
 // to erroneusly as an SCP or more accurately as an Acceptor.
 //
@@ -178,36 +145,40 @@ func (server *Server) handle(conn net.Conn) error {
 
 	// attempt to accept an association
 	ae := &AE{server.AETitle}
-	assoc, err := AcceptAssoc(conn, ae, capabilities)
+	assoc, err := AcceptAssoc(conn, ae, server.Handlers)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("accepted association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
 	// handle the requests
-	for {
-
-		// read a request and call handlers as appropriate
-		request, err := assoc.ReadRequest()
-		if err != nil {
-			if err != io.EOF {
-				return err
-			}
-			break
-		}
-		fmt.Printf("request is %v\n", request)
-
-		// find the handler
-		handler, err := server.findHandler(assoc, request)
-		if err != nil {
-			return err
-		}
-
-		// call the handler
-		if err := handler.ServeDICOM(assoc, request); err != nil {
-			return err
-		}
+	if err := assoc.Serve(); err != io.EOF {
+		return err
 	}
+
+	// for {
+	//
+	// 	// read a request and call handlers as appropriate
+	// 	request, err := assoc.ReadRequest()
+	// 	if err != nil {
+	// 		if err != io.EOF {
+	// 			return err
+	// 		}
+	// 		break
+	// 	}
+	// 	fmt.Printf("request is %v\n", request)
+	//
+	// 	// find the handler
+	// 	handler, err := server.findHandler(assoc, request)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	//
+	// 	// call the handler
+	// 	if err := handler.ServeDICOM(assoc, request); err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// close the connection
 	if err := conn.Close(); err != nil {

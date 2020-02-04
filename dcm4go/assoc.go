@@ -24,6 +24,16 @@ type Assoc struct {
 	assocACPDU *AssocACPDU
 }
 
+// Conn returns the connection
+func (assoc *Assoc) Conn() net.Conn {
+	return assoc.conn
+}
+
+// AE returns the AE
+func (assoc *Assoc) AE() *AE {
+	return assoc.ae
+}
+
 // CalledAETitle returns called ae title from the association request
 func (assoc *Assoc) CalledAETitle() string {
 	return strings.TrimSpace(assoc.assocRQPDU.calledAETitle)

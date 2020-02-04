@@ -18,7 +18,10 @@ func main() {
 
 	addr := "localhost:4104"
 	aeTitle := "DCMRCV"
-	handlers := []dcm4go.Handler{&dcm4go.BasicCEchoHandler{}}
+	handlers := []dcm4go.Handler{
+		&dcm4go.BasicCEchoHandler{},
+		&dcm4go.BasicCStoreHandler{},
+	}
 
 	server := &dcm4go.Server{
 		Addr:     addr,
