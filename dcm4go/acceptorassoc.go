@@ -149,11 +149,6 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 	return assoc.ReadRequestOrResponse()
 }
 
-// WriteResponse writes a response to the association
-func (assoc *AcceptorAssoc) WriteResponse(message *Message) error {
-	return assoc.WriteRequestOrResponse(message)
-}
-
 // Serve reads and services requests
 func (assoc *AcceptorAssoc) Serve() error {
 
@@ -202,13 +197,10 @@ func (assoc *AcceptorAssoc) Serve() error {
 		}
 
 		// find the persentation context by id
-		presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+		pc, err := assoc.findAcceptedPresContextByPCID(pcID)
 		if err != nil {
 			return err
 		}
-
-		// get the handler by the presentation context
-		handler := presContext.handler
 
 		// get the command data set
 		commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
@@ -216,28 +208,38 @@ func (assoc *AcceptorAssoc) Serve() error {
 			return err
 		}
 
-		if isDataSetPresent(commandDataSet) {
+		// get a data reader if required
+		dataReader, err := getDataReader(commandDataSet, &assoc.Assoc, pdu)
+		if err != nil {
+			return err
+		}
 
-			// create a reader for the data
-			dataReader, err := newPDataReader(assoc.Conn(), pdu, false)
-			if err != nil {
-				return err
-			}
-
-			// call the handler for the command
-			if err := handler.onCommand(assoc, presContext, command, dataReader); err != nil {
-				return err
-			}
-
-		} else {
-
-			// call the handler for the command
-			if err := handler.onCommand(assoc, presContext, command, nil); err != nil {
-				return err
-			}
+		// call the handler for the command
+		if err := pc.handler.HandleRequest(&assoc.Assoc, pc, command, dataReader); err != nil {
+			return err
 		}
 
 		// that's it, get another pdu
 	}
 
+	// we never get to this point
+}
+
+func getDataReader(commandDataSet uint16, assoc *Assoc, pdu *PDU) (*PDataReader, error) {
+
+	// check to see if data is present
+	if isDataSetPresent(commandDataSet) {
+
+		// create a reader for the data
+		dataReader, err := newPDataReader(assoc.Conn(), pdu, false)
+		if err != nil {
+			return nil, err
+		}
+
+		// return the data reader
+		return dataReader, nil
+	}
+
+	// return nothing, as no data reader is required
+	return nil, nil
 }

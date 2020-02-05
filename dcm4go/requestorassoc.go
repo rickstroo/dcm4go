@@ -112,14 +112,14 @@ func (assoc *RequestorAssoc) RequestRelease() error {
 func (assoc *RequestorAssoc) Verify() error {
 
 	// create a verification request
-	request, err := NewCEchoRequest(assoc)
+	pc, request, err := NewCEchoRequest(&assoc.Assoc)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("c-echo request is %v\n", request)
 
 	// write the verification request
-	if err := assoc.WriteRequest(request); err != nil {
+	if err := assoc.writeCommand(pc, request); err != nil {
 		return err
 	}
 
@@ -174,26 +174,23 @@ func (assoc *RequestorAssoc) Send(reader io.Reader) error {
 	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
 
 	// create a group zero object
-	request, err := NewCStoreRequest(assoc, sopClassUID, sopInstanceUID, transferSyntaxUID)
+	pc, request, err := NewCStoreRequest(&assoc.Assoc, sopClassUID, sopInstanceUID, transferSyntaxUID)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("request is %v\n", request)
 
 	// write the request, but no data
-	if err := assoc.WriteRequest(request); err != nil {
+	if err := assoc.writeCommand(pc, request); err != nil {
 		return err
 	}
-
-	// grab the pc id of the request
-	pcID := request.pcID
 
 	// create a pdatawriter to copy the data to
 	// it knows how to create pdus and pdvs as required
 	// since it implements a writer, we can then simply copy the data
 	pDataWriter := newPDataWriter(
 		assoc.conn,                               // the writer is the association connection
-		pcID,                                     // write using the same presentation context id as in the request
+		pc.id,                                    // write using the same presentation context id as in the request
 		false,                                    // false means we are writing data
 		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
 	)

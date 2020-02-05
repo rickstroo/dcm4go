@@ -17,6 +17,11 @@ type PresContext struct {
 	handler          Handler
 }
 
+// ID returns the id
+func (presContext *PresContext) ID() byte {
+	return presContext.id
+}
+
 // String returns a string representation of a requested presentation context
 func (presContext *PresContext) String() string {
 	return fmt.Sprintf(

@@ -141,6 +141,52 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
+func (assoc *Assoc) writeCommand(pc *PresContext, command *Object) error {
+	// write the command
+	return assoc.writeObject(pc, command, true, ImplicitVRLittleEndianTS)
+}
+
+func (assoc *Assoc) writeData(pc *PresContext, data *Object) error {
+
+	// find the transfer syntax
+	ts, err := assoc.findAcceptedTransferSyntax(pc.id)
+	if err != nil {
+		return err
+	}
+
+	// write the data
+	return assoc.writeObject(pc, data, false, ts)
+}
+
+func (assoc *Assoc) writeObject(pc *PresContext, object *Object, isCommand bool, ts *TransferSyntax) error {
+
+	// create a writer to write the data to
+	pDataWriter := newPDataWriter(assoc.conn, pc.id, isCommand, assoc.assocRQPDU.userInfo.maxLenReceived)
+
+	// create an encoder for writing objects
+	encoder := newEncoder()
+
+	// write the command to the buffer
+	if err := encoder.writeObject(pDataWriter, object, ts); err != nil {
+		return err
+	}
+
+	// flush to the underlying writer
+	// passing true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+// WriteResponse writes a response to the association
+func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) error {
+	message := &Message{pcID, command, data}
+	return assoc.WriteRequestOrResponse(message)
+}
+
 // Close closes the connection of the association
 func (assoc *Assoc) Close() error {
 	return assoc.conn.Close()
