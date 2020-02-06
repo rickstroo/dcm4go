@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func initDecoderTest(buf []byte) (CounterReader, *Decoder) {
+func initDecoderTest(buf []byte) (*CountingReader, *Decoder) {
 	return newCountingReader(bytes.NewReader(buf)), newDecoder(1024)
 }
 

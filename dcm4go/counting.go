@@ -2,21 +2,15 @@ package dcm4go
 
 import "io"
 
-// CounterReader extends the Reader interface to include counting of bytes read
-type CounterReader interface {
-	io.Reader
-	BytesRead() int
-}
-
 // CountingReader wraps a reader and counts the bytes read
 type CountingReader struct {
-	bytesRead int
 	reader    io.Reader
+	bytesRead int
 }
 
 // newCountingReader returns a new counting reader
-func newCountingReader(reader io.Reader) CounterReader {
-	return &CountingReader{0, reader}
+func newCountingReader(reader io.Reader) *CountingReader {
+	return &CountingReader{reader: reader, bytesRead: 0}
 }
 
 // Read calls underlying reader and counts the bytes
@@ -31,23 +25,11 @@ func (countingReader *CountingReader) BytesRead() int {
 	return countingReader.bytesRead
 }
 
-// LimitedCountingReader wraps a limited reader and provides access to bytes read
-type LimitedCountingReader struct {
-	countingReader CounterReader
-	limitedReader  io.Reader
-}
-
-// newLimitedReader returns a new limited counting reader
-func newLimitedCountingReader(countingReader CounterReader, length int64) CounterReader {
-	return &LimitedCountingReader{countingReader, io.LimitReader(countingReader, length)}
-}
-
-// Read reads bytes from the underling limited reader
-func (limitedCountingReader *LimitedCountingReader) Read(buf []byte) (int, error) {
-	return limitedCountingReader.limitedReader.Read(buf)
-}
-
-// BytesRead returns the number of bytes read by the underlying counting reader
-func (limitedCountingReader *LimitedCountingReader) BytesRead() int {
-	return limitedCountingReader.countingReader.BytesRead()
+// limitCountingReader returns a CountingReader that reads from the underlying
+// countingReader and stops with EOF after read length bytes.  The returned
+// CountingReader has a starting bytesRead equal to the current bytesRead of
+// the undelying countingReader.  Since the returned CountingReader reads from the underlying
+// countingReader, the underlying countingReader's bytesRead will be updated as well.
+func limitCountingReader(countingReader *CountingReader, length int64) *CountingReader {
+	return &CountingReader{reader: io.LimitReader(countingReader, length), bytesRead: countingReader.bytesRead}
 }

@@ -90,7 +90,7 @@ func ReadGroupTwo(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	}
 
 	// create a limit reader for the remainder of the group two attributes
-	limitCountingReader := newLimitedCountingReader(countingReader, int64(groupTwoLengthValue))
+	limitCountingReader := limitCountingReader(countingReader, int64(groupTwoLengthValue))
 
 	// read the remainder of the group two attribute
 	groupTwo, err := decoder.readObject(limitCountingReader, ExplicitVRLittleEndianTS)
