@@ -23,7 +23,7 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*
 			presContexts,              // pres context list
 			&UserInfo{
 				16378,                     // max length received, need to figure out why dcm4che uses this number
-				ImplementationClassUID,    // implementation class uid, need to get a root, borrowing dcm4che for now
+				ImplementationClassUID,    // implementation class uid, we have our own now
 				ImplementationVersionName, // implementation class name
 				0,                         // max num ops invoked
 				0,                         // max num ops performed
