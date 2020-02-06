@@ -41,10 +41,10 @@ func RequestAssoc(conn net.Conn, local *AE, remote *AE, capabilities []*Capabili
 		// create an association from the response
 		assoc := &RequestorAssoc{
 			Assoc{
-				conn,
-				local,
-				assocRQPDU,
-				assocACPDU,
+				conn:       conn,
+				ae:         local,
+				assocRQPDU: assocRQPDU,
+				assocACPDU: assocACPDU,
 			},
 		}
 

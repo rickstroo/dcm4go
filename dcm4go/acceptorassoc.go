@@ -46,10 +46,10 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 
 		assoc := &AcceptorAssoc{
 			Assoc{
-				conn,
-				ae,
-				assocRQPDU,
-				assocACPDU,
+				conn:       conn,
+				ae:         ae,
+				assocRQPDU: assocRQPDU,
+				assocACPDU: assocACPDU,
 			},
 		}
 
