@@ -1,7 +1,7 @@
 package dcm4go
 
 const (
-	// ImplementationClassUID is the UID for this implementation, borrowing from dcm4che at the moment
+	// ImplementationClassUID is the UID for this implementation, we have our own now
 	ImplementationClassUID = "1.3.6.1.4.1.55242"
 
 	// ImplementationVersionName is the version name for this implementation
