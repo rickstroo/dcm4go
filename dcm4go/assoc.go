@@ -22,6 +22,8 @@ type Assoc struct {
 	ae         *AE
 	assocRQPDU *AssocRQPDU
 	assocACPDU *AssocACPDU
+	state      int
+	handlers   []Handler
 }
 
 // Conn returns the connection
@@ -190,4 +192,195 @@ func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) erro
 // Close closes the connection of the association
 func (assoc *Assoc) Close() error {
 	return assoc.conn.Close()
+}
+
+// the states of the DICOM state machine
+const (
+	sta1  = 1  // idle
+	sta2  = 2  // transport connection open (awaiting A-ASSOCIATE-RQ PDU)
+	sta3  = 3  // awaiting A-ASSOCIATE response primitive from local user
+	sta4  = 4  // awaiting transport connection opening to complete (from local transport service)
+	sta5  = 5  // awaiting A-ASSOCIATE-AC or A-ASSOCIATE-RJ PDU
+	sta6  = 6  // association established and ready for data transfer
+	sta7  = 7  // awaiting A-RELEASE-RP PDU
+	sta8  = 8  // awaiting A-RELEASE response primitive (from local user)
+	sta9  = 9  // release collision requestor side, awaiting A-RELEASE primitive response (from local user)
+	sta10 = 10 // release collision acceptor side, awaiting A-RELEASE-RP PDU
+	sta11 = 11 // release collision requestor side, awaiting A-RELEASE-RP PDU
+	sta12 = 12 // release collision acceptor side, awaiting A-RELEASE response primitive (from local user)
+	sta13 = 13 // awaiting connection to close (association no longer exists)
+)
+
+// Serve reads and services requests
+func (assoc *Assoc) Serve(conn net.Conn, handlers []Handler) error {
+
+	// remember the connection
+	assoc.conn = conn
+
+	// remember the handlers
+	assoc.handlers = handlers
+
+	// set the state for an acceptor of requests
+	assoc.state = sta2
+
+	// call the state machine
+	return assoc.activate()
+}
+
+func (assoc *Assoc) activate() error {
+	for {
+		_, err := assoc.nextPDU()
+		if err != nil {
+			return err
+		}
+		if assoc.state == sta1 || assoc.state == sta13 {
+			break
+		}
+	}
+	return nil
+}
+
+func (assoc *Assoc) nextPDU() (*PDU, error) {
+	// read a pdu
+	pdu, err := readPDU(assoc.conn)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("pdu is %v\n", pdu)
+
+	switch assoc.state {
+	case sta1:
+	case sta2:
+		if err := assoc.sta2(pdu); err != nil {
+			return nil, err
+		}
+	case sta3:
+	case sta4:
+	case sta5:
+	case sta6:
+	case sta7:
+	case sta8:
+	case sta9:
+	case sta10:
+	case sta11:
+	case sta12:
+	case sta13:
+	}
+
+	return pdu, nil
+}
+
+func (assoc *Assoc) sta1(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta1(): not implemented")
+}
+
+func (assoc *Assoc) sta2(pdu *PDU) error {
+	switch pdu.pduType {
+	case aAssociateACPDU, aAssociateRJPDU, pDataTFPDU, aReleaseRQPDU, aReleaseRPPDU:
+		if err := assoc.aa1(); err != nil {
+			return err
+		}
+	case aAssociateRQPDU:
+		if err := assoc.ae6(pdu); err != nil {
+			return err
+		}
+	case aAbortPDU:
+		if err := assoc.aa2(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (assoc *Assoc) sta3(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta3(): not implemented")
+}
+
+func (assoc *Assoc) sta4(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta4(): not implemented")
+}
+
+func (assoc *Assoc) sta5(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta5(): not implemented")
+}
+
+func (assoc *Assoc) sta6(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta6(): not implemented")
+}
+
+func (assoc *Assoc) sta7(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta7(): not implemented")
+}
+
+func (assoc *Assoc) sta8(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta8(): not implemented")
+}
+
+func (assoc *Assoc) sta9(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta9(): not implemented")
+}
+
+func (assoc *Assoc) sta10(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta10(): not implemented")
+}
+
+func (assoc *Assoc) sta11(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta11(): not implemented")
+}
+
+func (assoc *Assoc) sta12(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta12(): not implemented")
+}
+
+func (assoc *Assoc) sta13(pdu *PDU) error {
+	return fmt.Errorf("Assoc.sta13(): not implemented")
+}
+
+func (assoc *Assoc) aa1() error {
+	// send abort
+	// start or restart artim timer
+	// go to state sta13
+	assoc.state = sta13
+
+	// all is well
+	return nil
+}
+
+func (assoc *Assoc) aa2() error {
+	// stop the artim timer
+	// close the connection
+	// go sta1
+	assoc.state = sta1
+	return nil
+}
+
+func (assoc *Assoc) ae6(pdu *PDU) error {
+	// stop artim timer
+	// if a-associate-rq acceptable, issue a-associate-ac and go to state sta3
+	// otherwise, issue a-associate-rj, start timer and go to sta13
+
+	// read the A-ASSOCIATE-RQ PDU
+	assocRQPDU, err := readAssocRQPDU(pdu)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("assocRQPDU is %v\n", assocRQPDU)
+
+	assocACPDU, err := negotiateAssoc(assocRQPDU, assoc.ae, assoc.handlers)
+	if err != nil {
+		// need to write an A-ASSOCIATE-RJ here
+		return err
+	}
+	fmt.Printf("assocACPDU is %v\n", assocACPDU)
+
+	if err := writeAssocACPDU(assoc.conn, assocACPDU); err != nil {
+		return err
+	}
+
+	// remember the associate request and response PDUs
+	assoc.assocRQPDU = assocRQPDU
+	assoc.assocACPDU = assocACPDU
+
+	// all is well
+	return nil
 }
