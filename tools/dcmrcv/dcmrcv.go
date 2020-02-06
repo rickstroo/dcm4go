@@ -49,6 +49,7 @@ func (handler *MyCStoreHandler) Capabilities() []*dcm4go.Capability {
 	defaultTransferSyntaxes := []string{
 		dcm4go.ImplicitVRLittleEndianUID,
 		dcm4go.ExplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRBigEndianUID,
 	}
 	return []*dcm4go.Capability{
 		&dcm4go.Capability{
@@ -114,6 +115,13 @@ func (handler *MyCStoreHandler) StoreToFile(assoc *dcm4go.Assoc, pcID byte, comm
 
 	// write the file meta information
 	if err := dcm4go.WriteFile(file, fmi, pDataReader); err != nil {
+		return err
+	}
+
+	// sync the file, because we really really really want
+	// to be sure the file is flushed from memory and stored
+	// to some storage media
+	if err := file.Sync(); err != nil {
 		return err
 	}
 
