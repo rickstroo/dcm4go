@@ -1,9 +1,11 @@
 package dcm4go
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"strings"
 )
 
 // AcceptorAssoc is an association used by acceptors of associations
@@ -64,36 +66,65 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
+	assocACRJPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("assocACPDU is %v\n", assocACPDU)
+	log.Printf("assocACRJPDU is %v\n", assocACRJPDU)
 
-	// hmm, this might be a rejection, need to handle that as well
-
-	if err := writeAssocACPDU(conn, assocACPDU); err != nil {
-		return nil, err
+	// was association rejected
+	assocRJPDU, ok := assocACRJPDU.(*AssocRJPDU)
+	if ok {
+		// write the associate reject pdu
+		if err := assocRJPDU.Write(conn); err != nil {
+			return nil, err
+		}
+		// let the caller know that the associate request was rejected
+		return nil, ErrAssociateRequestRejected
 	}
 
-	assoc := &AcceptorAssoc{
-		Assoc{
-			conn:       conn,
-			ae:         ae,
-			assocRQPDU: assocRQPDU,
-			assocACPDU: assocACPDU,
-		},
-	}
-	log.Printf("assoc is %v\n", assoc)
+	// was association accepted
+	assocACPDU, ok := assocACRJPDU.(*AssocACPDU)
+	if ok {
+		// write the associate accept pdu
+		if err := assocACPDU.Write(conn); err != nil {
+			return nil, err
+		}
+		// construct an association
+		assoc := &AcceptorAssoc{
+			Assoc{
+				conn:       conn,
+				ae:         ae,
+				assocRQPDU: assocRQPDU,
+				assocACPDU: assocACPDU,
+			},
+		}
+		log.Printf("assoc is %v\n", assoc)
 
-	// return the association to the caller
-	return assoc, nil
+		// return the association to the caller
+		return assoc, nil
+	}
+
+	// hmm, didn't expected to get here
+	return nil, fmt.Errorf("internal error, unexpected type returned from negotiate")
 }
 
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocACPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (interface{}, error) {
+
+	// reject if the called ae title does not match the given ae title
+	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
+	if calledAETitle != ae.aeTitle {
+		// create and return an associate reject pdu
+		assocRJPDU := &AssocRJPDU{
+			result: resultRejectedPermanent,
+			source: sourceServiceProviderACSERelatedFunction,
+			reason: reasonServiceUserCalledAETitleNotRecognized,
+		}
+		return assocRJPDU, nil
+	}
 
 	// initialize the association accept pdu
 	assocACPDU := newAssocACPDU(assocRQPDU)

@@ -5,6 +5,30 @@ import (
 	"io"
 )
 
+const (
+	resultRejectedPermanent = 0x01
+	resultRejectedTransient = 0x02
+)
+
+const (
+	sourceServiceUser                                = 0x01
+	sourceServiceProviderACSERelatedFunction         = 0x02
+	sourceServiceProviderPresentationRelatedFunction = 0x04
+)
+
+const (
+	reasonServiceUserNoReasonGiven                      = 0x01
+	reasonServiceUserApplicationContextNameNotSupported = 0x02
+	reasonServiceUserCallingAETitleNotRecognized        = 0x03
+	reasonServiceUserCalledAETitleNotRecognized         = 0x07
+
+	reasonServiceProviderACSERelatedFunctionNoReasonGiven               = 0x01
+	reasonServiceProviderACSERelatedFunctionProtocolVersionNotSupported = 0x02
+
+	reasonServiceProviderPresentationRelatedFunctionTemporaryCongestion = 0x01
+	reasonServiceProviderPresentationRelatedFunctionLocalLimitExceeded  = 0x02
+)
+
 // AssocRJPDU is an associate reject PDU
 type AssocRJPDU struct {
 	result byte
