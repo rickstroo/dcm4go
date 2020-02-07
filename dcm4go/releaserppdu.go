@@ -48,9 +48,3 @@ func (releaseRPPDU *ReleaseRPPDU) Write(writer io.Writer) error {
 
 	return nil
 }
-
-// writeReleaseRPPDU writes a release response PDU to a writer
-func writeReleaseRPPDU(writer io.Writer) error {
-	releaseRPPDU := &ReleaseRPPDU{}
-	return releaseRPPDU.Write(writer)
-}

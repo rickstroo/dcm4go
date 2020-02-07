@@ -42,6 +42,11 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 	return &AssocACPDU{assocACRQPDU}, nil
 }
 
-func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
+// Write writes an associate accept PDU
+func (assocACPDU *AssocACPDU) Write(writer io.Writer) error {
 	return writeAssocACRQPDU(writer, assocACPDU.AssocACRQPDU, aAssociateACPDU, acPresContextItemType)
+}
+
+func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
+	return assocACPDU.Write(writer)
 }

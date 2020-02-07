@@ -54,3 +54,33 @@ func readAssocRJPDU(reader io.Reader) (*AssocRJPDU, error) {
 
 	return assocRJPDU, nil
 }
+
+// Write writes an associate reject PDU
+func (assocRJPDU *AssocRJPDU) Write(writer io.Writer) error {
+
+	// construct the abort pdu
+	buf := []byte{
+		0x00,              // reserved
+		assocRJPDU.result, // result
+		assocRJPDU.source, // source
+		assocRJPDU.reason, // reason
+	}
+
+	// construct the base pdu
+	pdu := &PDU{
+		pduType:   aAssociateRJPDU,  // the type
+		pduLength: uint32(len(buf)), // the length
+	}
+
+	// write the base pdu
+	if err := pdu.Write(writer); err != nil {
+		return err
+	}
+
+	// write the release pdu
+	if err := writeBytes(writer, buf[:]); err != nil {
+		return err
+	}
+
+	return nil
+}
