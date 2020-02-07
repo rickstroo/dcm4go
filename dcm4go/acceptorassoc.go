@@ -1,14 +1,19 @@
 package dcm4go
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"net"
 )
 
 // AcceptorAssoc is an association used by acceptors of associations
 type AcceptorAssoc struct {
 	Assoc
+}
+
+// String prints a string representation of an acceptor association
+func (assoc *AcceptorAssoc) String() string {
+	return assoc.Assoc.String()
 }
 
 // AcceptAssoc accepts an association
@@ -24,39 +29,65 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("pdu is %v\n", pdu)
+	log.Printf("pdu is %v\n", pdu)
 
-	// is this an association request?
-	if pdu.pduType == aAssociateRQPDU {
-		assocRQPDU, err := readAssocRQPDU(pdu)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("assocRQPDU is %v\n", assocRQPDU)
-
-		assocACPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("assocACPDU is %v\n", assocACPDU)
-
-		if err := writeAssocACPDU(conn, assocACPDU); err != nil {
-			return nil, err
-		}
-
-		assoc := &AcceptorAssoc{
-			Assoc{
-				conn:       conn,
-				ae:         ae,
-				assocRQPDU: assocRQPDU,
-				assocACPDU: assocACPDU,
-			},
-		}
-
-		return assoc, nil
+	// if abort, we simply exit
+	if pdu.pduType == aAbortPDU {
+		return nil, io.EOF
 	}
 
-	return nil, fmt.Errorf("unrecognized pdu type: %d", pdu.pduType)
+	// if anything other than an associate request, we abort
+	if pdu.pduType != aAssociateRQPDU {
+
+		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
+
+		// construct an abort pdu
+		abortPDU := &AbortPDU{
+			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
+			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
+		}
+
+		// attempt to write it
+		if err := abortPDU.Write(conn); err != nil {
+			return nil, err
+		}
+
+		// let the caller know why we were not able to negotiate an association
+		return nil, ErrUnexpectedPDU
+	}
+
+	// read the associate request
+	assocRQPDU, err := readAssocRQPDU(pdu)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("assocRQPDU is %v\n", assocRQPDU)
+
+	// attempt to negotiate an association
+	assocACPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("assocACPDU is %v\n", assocACPDU)
+
+	// hmm, this might be a rejection, need to handle that as well
+
+	if err := writeAssocACPDU(conn, assocACPDU); err != nil {
+		return nil, err
+	}
+
+	assoc := &AcceptorAssoc{
+		Assoc{
+			conn:       conn,
+			ae:         ae,
+			assocRQPDU: assocRQPDU,
+			assocACPDU: assocACPDU,
+		},
+	}
+	log.Printf("assoc is %v\n", assoc)
+
+	// return the association to the caller
+	return assoc, nil
 }
 
 // negotiateAssoc determines what requested presentation contexts
@@ -149,80 +180,105 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 	return assoc.ReadRequestOrResponse()
 }
 
-// Serve reads and services requests
+// Serve reads and services a single request
 func (assoc *AcceptorAssoc) Serve() error {
 
-	for {
-		// read a pdu
-		pdu, err := readPDU(assoc.conn)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("pdu is %v\n", pdu)
+	// read a pdu
+	pdu, err := readPDU(assoc.conn)
+	if err != nil {
+		return err
+	}
+	log.Printf("pdu is %v\n", pdu)
 
-		// is this an association release request?  if so, write response and return EOF
-		if pdu.pduType == aReleaseRQPDU {
-			if err := readReleaseRQPDU(pdu); err != nil {
-				return err
-			}
-			if err := writeReleaseRPPDU(assoc.conn); err != nil {
-				return err
-			}
-			return io.EOF
-		}
+	// is this an association release request?  if so, write response and return EOF
+	if pdu.pduType == aReleaseRQPDU {
 
-		// is this an abort request?  if so, just return EOF
-		if pdu.pduType == aAbortPDU {
-			return io.EOF
-		}
+		log.Printf("received release request, attempting to release association\n")
 
-		// is this not a data transfer request?
-		if pdu.pduType != pDataTFPDU {
-			return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
-		}
-
-		// create a reader for the command
-		commandReader, err := newPDataReader(assoc.Conn(), pdu, true)
-		if err != nil {
+		if err := readReleaseRQPDU(pdu); err != nil {
 			return err
 		}
 
-		// get the presentation context id from the reader
-		pcID := commandReader.pdv.pcID
-
-		// read the command
-		command, err := readCommand(commandReader, &assoc.Assoc)
-		if err != nil {
+		// construct a release response pdu
+		releaseRPPDU := &ReleaseRPPDU{}
+		if err := releaseRPPDU.Write(assoc.conn); err != nil {
 			return err
 		}
 
-		// find the persentation context by id
-		pc, err := assoc.findAcceptedPresContextByPCID(pcID)
-		if err != nil {
-			return err
-		}
-
-		// get the command data set
-		commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
-		if err != nil {
-			return err
-		}
-
-		// get a data reader if required
-		dataReader, err := getDataReader(commandDataSet, &assoc.Assoc, pdu)
-		if err != nil {
-			return err
-		}
-
-		// call the handler for the command
-		if err := pc.handler.HandleRequest(&assoc.Assoc, pc, command, dataReader); err != nil {
-			return err
-		}
-
-		// that's it, get another pdu
+		// return EOF to indicate that the association is completed
+		return io.EOF
 	}
 
-	// we never get to this point
+	// is this an abort request? if so, simply return EOF
+	if pdu.pduType == aAbortPDU {
+		log.Printf("received abort request, aborting association\n")
+		return io.EOF
+	}
+
+	// if anything other than an data transfer request, we abort
+	if pdu.pduType != pDataTFPDU {
+
+		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
+
+		// construct an abort pdu
+		abortPDU := &AbortPDU{
+			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
+			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
+		}
+
+		// attempt to write it
+		if err := abortPDU.Write(assoc.conn); err != nil {
+			return err
+		}
+
+		// let the caller know why we were not able to negotiate an association
+		return ErrUnexpectedPDU
+	}
+
+	log.Printf("attempting to accept data transfer\n")
+
+	// create a reader for the command
+	commandReader, err := newPDataReader(assoc.Conn(), pdu, true)
+	if err != nil {
+		return err
+	}
+
+	// get the presentation context id from the reader
+	pcID := commandReader.pdv.pcID
+
+	// read the command
+	command, err := readCommand(commandReader, &assoc.Assoc)
+	if err != nil {
+		return err
+	}
+	log.Printf("command is %v\n", command)
+
+	// find the persentation context by id
+	pc, err := assoc.findAcceptedPresContextByPCID(pcID)
+	if err != nil {
+		return err
+	}
+	log.Printf("pc is %v\n", pc)
+
+	// get the command data set
+	commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
+	if err != nil {
+		return err
+	}
+
+	// get a data reader if required
+	dataReader, err := getDataReader(commandDataSet, &assoc.Assoc, pdu)
+	if err != nil {
+		return err
+	}
+
+	// call the handler for the command
+	if err := pc.handler.HandleRequest(&assoc.Assoc, pc, command, dataReader); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
 }
 
 func getDataReader(commandDataSet uint16, assoc *Assoc, pdu *PDU) (*PDataReader, error) {

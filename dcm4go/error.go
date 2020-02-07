@@ -29,3 +29,9 @@ var ErrAttributeNotFound = errors.New("attribute not found")
 // ErrUnrecognizedTransferSyntax means that the transfer syntax
 // was not unrecognized
 var ErrUnrecognizedTransferSyntax = errors.New("transfer syntax not recognized")
+
+// ErrUnexpectedPDU means that the pdu type was unexpected
+var ErrUnexpectedPDU = errors.New("unexpected PDU")
+
+// ErrAssociateRequestRejected means that the associate request was rejected
+var ErrAssociateRequestRejected = errors.New("associate request rejected")

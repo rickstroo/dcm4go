@@ -5,6 +5,9 @@ import (
 	"io"
 )
 
+// ReleaseRPPDU represents a release response PDU
+type ReleaseRPPDU struct{}
+
 // readReleaseRPPDU reads an readReleaseRPPDU from a reader
 func readReleaseRPPDU(reader io.Reader) error {
 
@@ -16,21 +19,38 @@ func readReleaseRPPDU(reader io.Reader) error {
 	return nil
 }
 
-// writeReleaseRPPDU writes a release response PDU to a writer
-func writeReleaseRPPDU(writer io.Writer) error {
+// Write writes a release response PDU
+func (releaseRPPDU *ReleaseRPPDU) Write(writer io.Writer) error {
 
-	// construct a pdu
-	pdu := &PDU{aReleaseRPPDU, 0x04, nil}
+	// construct the abort pdu
+	buf := []byte{
+		0x00, // reserved
+		0x00, // reserved
+		0x00, // reserved
+		0x00, // reserved
+	}
 
-	// write the pdu header
-	if err := writePDU(writer, pdu); err != nil {
+	// construct the base pdu
+	pdu := &PDU{
+		pduType:   aReleaseRPPDU,    // the type
+		pduLength: uint32(len(buf)), // the length
+	}
+
+	// write the base pdu
+	if err := pdu.Write(writer); err != nil {
 		return err
 	}
 
-	// write a long zero
-	if err := writeLong(writer, 0x00, binary.BigEndian); err != nil {
+	// write the release pdu
+	if err := writeBytes(writer, buf[:]); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// writeReleaseRPPDU writes a release response PDU to a writer
+func writeReleaseRPPDU(writer io.Writer) error {
+	releaseRPPDU := &ReleaseRPPDU{}
+	return releaseRPPDU.Write(writer)
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"time"
 )
@@ -99,14 +100,14 @@ func (server *Server) Serve(listener net.Listener) error {
 	for {
 
 		// wait for connection
-		fmt.Printf("waiting for connection on %v\n", listener.Addr())
+		log.Printf("waiting for connection on %v\n", listener.Addr())
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("error occured while waiting for connection on %v, error is %v\n", listener.Addr(), err)
+			log.Printf("error occured while waiting for connection on %v, error is %v\n", listener.Addr(), err)
 			continue
 		}
 
-		fmt.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
+		log.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 
 		// handle the connection, eventually as a goroutine
 		server.Handle(conn)
@@ -119,7 +120,7 @@ func (server *Server) Serve(listener net.Listener) error {
 
 	err := listener.Close()
 	if err != nil {
-		fmt.Printf("error occured while closing listener on %v, error is %v\n", listener.Addr(), err)
+		log.Printf("error occured while closing listener on %v, error is %v\n", listener.Addr(), err)
 	}
 
 	// let the caller know that the server is now closed
@@ -131,17 +132,26 @@ func (server *Server) Serve(listener net.Listener) error {
 // goroutine, so it does not return any values.
 func (server *Server) Handle(conn net.Conn) {
 	if err := server.handle(conn); err != nil {
-		fmt.Printf("Error occured while handling connection, error is %v\n", err)
+		log.Printf("Error occured while handling connection, error is %v\n", err)
 	} else {
-		fmt.Printf("Handled connection successfully\n")
+		log.Printf("Handled connection successfully\n")
 	}
 }
 
 func (server *Server) handle(conn net.Conn) error {
 
+	// ensure the connection gets closed
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("error occured while attempting to close connection on %v from %v, err is %v\n", conn.LocalAddr(), conn.RemoteAddr(), err)
+		} else {
+			log.Printf("closed connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
+		}
+	}()
+
 	// gather all the capabilities of all the handlers
 	capabilities := collectCapabilities(server.Handlers)
-	fmt.Printf("capabilities is %v\n", capabilities)
+	log.Printf("capabilities is %v\n", capabilities)
 
 	// attempt to accept an association
 	ae := &AE{server.AETitle}
@@ -149,42 +159,19 @@ func (server *Server) handle(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("accepted association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
+	log.Printf("accepted association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
 	// handle the requests
-	if err := assoc.Serve(); err != io.EOF {
-		return err
+	for {
+		if err := assoc.Serve(); err != nil {
+			if err != io.EOF {
+				return err
+			}
+			break
+		}
 	}
 
-	// for {
-	//
-	// 	// read a request and call handlers as appropriate
-	// 	request, err := assoc.ReadRequest()
-	// 	if err != nil {
-	// 		if err != io.EOF {
-	// 			return err
-	// 		}
-	// 		break
-	// 	}
-	// 	fmt.Printf("request is %v\n", request)
-	//
-	// 	// find the handler
-	// 	handler, err := server.findHandler(assoc, request)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	//
-	// 	// call the handler
-	// 	if err := handler.ServeDICOM(assoc, request); err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// close the connection
-	if err := conn.Close(); err != nil {
-		return err
-	}
-	fmt.Printf("closed connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
+	log.Printf("closed association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
 	// all is well
 	return nil

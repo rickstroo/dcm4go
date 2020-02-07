@@ -26,6 +26,20 @@ type Assoc struct {
 	handlers   []Handler
 }
 
+// String returns a string representation of an association
+func (assoc *Assoc) String() string {
+	return fmt.Sprintf(
+		"conn:{local:%v,remote:%v},ae:%v,assocRQPDU:%v,assocACPDU:%v,state:%v,handlers:%v",
+		assoc.conn.LocalAddr(),
+		assoc.conn.RemoteAddr(),
+		assoc.ae,
+		assoc.assocRQPDU,
+		assoc.assocACPDU,
+		assoc.state,
+		assoc.handlers,
+	)
+}
+
 // Conn returns the connection
 func (assoc *Assoc) Conn() net.Conn {
 	return assoc.conn
@@ -212,10 +226,13 @@ const (
 )
 
 // Serve reads and services requests
-func (assoc *Assoc) Serve(conn net.Conn, handlers []Handler) error {
+func (assoc *Assoc) Serve(conn net.Conn, ae *AE, handlers []Handler) error {
 
 	// remember the connection
 	assoc.conn = conn
+
+	// remember the ae
+	assoc.ae = ae
 
 	// remember the handlers
 	assoc.handlers = handlers
@@ -380,6 +397,9 @@ func (assoc *Assoc) ae6(pdu *PDU) error {
 	// remember the associate request and response PDUs
 	assoc.assocRQPDU = assocRQPDU
 	assoc.assocACPDU = assocACPDU
+
+	// go to the next state
+	assoc.state = sta3
 
 	// all is well
 	return nil

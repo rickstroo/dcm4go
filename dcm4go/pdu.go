@@ -60,7 +60,7 @@ func readPDU(reader io.Reader) (*PDU, error) {
 	return &PDU{pduType, pduLength, limitReader}, nil
 }
 
-func writePDU(writer io.Writer, pdu *PDU) error {
+func (pdu *PDU) Write(writer io.Writer) error {
 	if err := writeByte(writer, pdu.pduType); err != nil {
 		return err
 	}
@@ -71,4 +71,8 @@ func writePDU(writer io.Writer, pdu *PDU) error {
 		return err
 	}
 	return nil
+}
+
+func writePDU(writer io.Writer, pdu *PDU) error {
+	return pdu.Write(writer)
 }
