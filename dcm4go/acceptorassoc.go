@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -21,10 +20,12 @@ func (assoc *AcceptorAssoc) String() string {
 // AcceptAssoc accepts an association
 func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, error) {
 
-	// this should really be handled as a state machine
-	// will think about doing that later
-	// for now, want to focus on getting the data transfer
-	// mechanisms working
+	// I've decided not to implement a state machine.
+	// I've looked at a number of implementations and it looks
+	// to me like a state machine makes it really hard to follow
+	// all the logic.  So, in the spirit of writing easy to
+	// read programs, I will implement the logic of the state
+	// machine in the AcceptAssoc and RequestAssoc structs.
 
 	// read a pdu
 	pdu, err := readPDU(conn)
@@ -66,15 +67,16 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACRJPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("assocACRJPDU is %v\n", assocACRJPDU)
+	log.Printf("assocACPDU is %v\n", assocACPDU)
+	log.Printf("assocRJPDU is %v\n", assocRJPDU)
 
 	// was association rejected
-	assocRJPDU, ok := assocACRJPDU.(*AssocRJPDU)
-	if ok {
+	if assocRJPDU != nil {
+
 		// write the associate reject pdu
 		if err := assocRJPDU.Write(conn); err != nil {
 			return nil, err
@@ -83,36 +85,30 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 		return nil, ErrAssociateRequestRejected
 	}
 
-	// was association accepted
-	assocACPDU, ok := assocACRJPDU.(*AssocACPDU)
-	if ok {
-		// write the associate accept pdu
-		if err := assocACPDU.Write(conn); err != nil {
-			return nil, err
-		}
-		// construct an association
-		assoc := &AcceptorAssoc{
-			Assoc{
-				conn:       conn,
-				ae:         ae,
-				assocRQPDU: assocRQPDU,
-				assocACPDU: assocACPDU,
-			},
-		}
-		log.Printf("assoc is %v\n", assoc)
-
-		// return the association to the caller
-		return assoc, nil
+	// otherwise, write the associate accept pdu
+	if err := assocACPDU.Write(conn); err != nil {
+		return nil, err
 	}
 
-	// hmm, didn't expected to get here
-	return nil, fmt.Errorf("internal error, unexpected type returned from negotiate")
+	// construct an association
+	assoc := &AcceptorAssoc{
+		Assoc{
+			conn:       conn,
+			ae:         ae,
+			assocRQPDU: assocRQPDU,
+			assocACPDU: assocACPDU,
+		},
+	}
+	log.Printf("assoc is %v\n", assoc)
+
+	// return the association to the caller
+	return assoc, nil
 }
 
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (interface{}, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocACPDU, *AssocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -123,7 +119,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (interfa
 			source: sourceServiceProviderACSERelatedFunction,
 			reason: reasonServiceUserCalledAETitleNotRecognized,
 		}
-		return assocRJPDU, nil
+		return nil, assocRJPDU, nil
 	}
 
 	// initialize the association accept pdu
@@ -133,12 +129,12 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (interfa
 	for _, rqPresContext := range assocRQPDU.presContexts {
 		acPresContext, err := negotiatePresContext(rqPresContext, handlers)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		assocACPDU.presContexts = append(assocACPDU.presContexts, acPresContext)
 	}
 
-	return assocACPDU, nil
+	return assocACPDU, nil, nil
 }
 
 // negotiationPresContext negotiates a single presentation context
@@ -181,6 +177,8 @@ func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*Pres
 		pcTransferSyntaxesNotSupported, // failure
 		nil,                            // no handler
 	}
+
+	// return the accepted presentation context
 	return acPresContext, nil
 }
 
@@ -221,7 +219,8 @@ func (assoc *AcceptorAssoc) Serve() error {
 	}
 	log.Printf("pdu is %v\n", pdu)
 
-	// is this an association release request?  if so, write response and return EOF
+	// is this an association release request?
+	/// if so, write release response and return EOF
 	if pdu.pduType == aReleaseRQPDU {
 
 		log.Printf("received release request, attempting to release association\n")
@@ -236,11 +235,11 @@ func (assoc *AcceptorAssoc) Serve() error {
 			return err
 		}
 
-		// return EOF to indicate that the association is completed
+		// return EOF to indicate that the association is released
 		return io.EOF
 	}
 
-	// is this an abort request? if so, simply return EOF
+	// is this an abort request?  if so, simply return EOF
 	if pdu.pduType == aAbortPDU {
 		log.Printf("received abort request, aborting association\n")
 		return io.EOF

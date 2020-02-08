@@ -110,7 +110,7 @@ func (server *Server) Serve(listener net.Listener) error {
 		log.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 
 		// handle the connection, eventually as a goroutine
-		server.Handle(conn)
+		go server.Handle(conn)
 
 		// if shut down, exit
 		if server.IsShutDown {
@@ -132,9 +132,9 @@ func (server *Server) Serve(listener net.Listener) error {
 // goroutine, so it does not return any values.
 func (server *Server) Handle(conn net.Conn) {
 	if err := server.handle(conn); err != nil {
-		log.Printf("Error occured while handling connection, error is %v\n", err)
+		log.Printf("error occured while handling connection, error is %v\n", err)
 	} else {
-		log.Printf("Handled connection successfully\n")
+		log.Printf("handled connection successfully\n")
 	}
 }
 
