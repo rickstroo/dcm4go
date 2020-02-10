@@ -93,7 +93,12 @@ func (handler *MyCStoreHandler) HandleRequest(
 }
 
 // StoreToFile stores the DICOM object to a file
-func (handler *MyCStoreHandler) StoreToFile(assoc *dcm4go.Assoc, pcID byte, command *dcm4go.Object, pDataReader *dcm4go.PDataReader) error {
+func (handler *MyCStoreHandler) StoreToFile(
+	assoc *dcm4go.Assoc,
+	pcID byte,
+	command *dcm4go.Object,
+	pDataReader *dcm4go.PDataReader,
+) error {
 
 	// construct the file meta information
 	fmi, err := dcm4go.CreateFileMetaInfo(assoc, pcID, command)
