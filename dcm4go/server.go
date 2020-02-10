@@ -96,6 +96,15 @@ func (server *Server) ListenAndServe() error {
 // Serve always returns a non-nil error and closes the listener.
 func (server *Server) Serve(listener net.Listener) error {
 
+	// machine := &Machine{
+	// 	state:    sta1,
+	// 	listener: listener,
+	// 	acceptor: true,
+	// 	aeTitle:  server.AETitle,
+	// 	handlers: server.Handlers,
+	// }
+	// machine.run()
+
 	// listen for connections
 	for {
 
