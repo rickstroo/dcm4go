@@ -10,6 +10,11 @@ func newObject() *Object {
 	return &Object{make([]*Attribute, 0, 100)}
 }
 
+// Attributes returns a reference to the attributes
+func (object *Object) Attributes() []*Attribute {
+	return object.attributes
+}
+
 // Add adds an attribute to an object
 // TODO: Right now, this works because we are
 // parsing files and we know that we will be

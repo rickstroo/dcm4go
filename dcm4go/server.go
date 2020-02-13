@@ -163,7 +163,7 @@ func (server *Server) handle(conn net.Conn) error {
 	log.Printf("capabilities is %v\n", capabilities)
 
 	// attempt to accept an association
-	ae := &AE{server.AETitle}
+	ae := &AE{AETitle: server.AETitle}
 	assoc, err := AcceptAssoc(conn, ae, server.Handlers)
 	if err != nil {
 		return err

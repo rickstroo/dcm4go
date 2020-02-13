@@ -333,7 +333,7 @@ func (machine *Machine) ae6(pdu *PDU) error {
 	machine.stopTimer()
 
 	// build an ae
-	ae := &AE{machine.aeTitle}
+	ae := &AE{AETitle: machine.aeTitle}
 
 	// attempt to negotiate an association
 	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, machine.handlers)

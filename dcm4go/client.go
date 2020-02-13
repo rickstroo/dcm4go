@@ -4,6 +4,7 @@ package dcm4go
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -36,45 +37,21 @@ type Client struct {
 	// WriteTimeout is the maximum time allows for writing a request
 	// If zero, there is no write timeout.
 	WriteTimeout time.Duration
+
+	// conn is the connection between the client and server
+	conn net.Conn
+
+	// assoc is the association between the client and server
+	assoc *RequestorAssoc
 }
 
-// Verify sends  DICOM verifiction request from a client to a server
-func (client *Client) Verify(addr string) error {
-	return client.verify(addr)
-}
-
-// verify implements the verification request
-func (client *Client) verify(addr string) error {
-
-	// define the required capabilities
-	capabilities := []*Capability{
-		&Capability{VerificationUID, []string{ImplicitVRLittleEndianUID}},
-	}
-
-	// setup the connection and association
-	assoc, err := client.connect(addr, capabilities)
-	if err != nil {
-		return err
-	}
-
-	// make sure the association gets closed
-	defer assoc.Close()
-
-	// send a verification request
-	if err := assoc.Verify(); err != nil {
-		return err
-	}
-
-	// all is well
-	return nil
-}
-
-func (client *Client) connect(addr string, capabilities []*Capability) (*RequestorAssoc, error) {
+// Connect connects the client to a server
+func (client *Client) Connect(addr string, services ...*Service) error {
 
 	// parse the address
 	serverAETitle, serverHostPort, err := parseAddr(addr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// attempt a connection
@@ -82,28 +59,91 @@ func (client *Client) connect(addr string, capabilities []*Capability) (*Request
 	// the connection will be closed when the association is closed
 	conn, err := net.Dial("tcp", serverHostPort)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	fmt.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
 
+	// remember the connection
+	client.conn = conn
+
 	// define an application entity for managing dicom connections
 	clientAETitle := getClientAETitle(client)
-	local := &AE{clientAETitle}
+	local := &AE{AETitle: clientAETitle}
 	fmt.Printf("local ae:%v\n", local)
 
 	// define the the remote ae
-	remote := &AE{serverAETitle}
+	remote := &AE{AETitle: serverAETitle}
 	fmt.Printf("remote ae:%v\n", remote)
+
+	// gather the capabilities from the scus
+	capabilities := make([]*Capability, 0, 5)
+	// for _, scu := range scus {
+	// 	for _, capability := range scu.Capabilities() {
+	// 		if !capability.Contained(capabilities) {
+	// 			capabilities = append(capabilities, capability)
+	// 		}
+	// 	}
+	// }
+
+	// // connect the scus to the client
+	// for _, scu := range scus {
+	// 	scu.client = client
+	// }
 
 	// request an association
 	assoc, err := RequestAssoc(conn, local, remote, capabilities)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fmt.Printf("negotiated association from %s to %s\n", local.AETitle(), remote.AETitle())
+	fmt.Printf("negotiated association from %s to %s\n", local.AETitle, remote.AETitle)
 
-	// return the association
-	return assoc, nil
+	// remember the association
+	client.assoc = assoc
+
+	// all is well
+	return nil
+}
+
+// Verify sends  DICOM verifiction request from a client to a server
+func (client *Client) Verify() error {
+
+	// make sure there is an association
+	if client.assoc == nil {
+		return ErrNoAssoc
+	}
+
+	// send a verification request
+	if err := client.assoc.Verify(); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+// Close releases the association.
+// It can be called safely multiple times.
+func (client *Client) Close() {
+
+	// if the association is still open, attempt to close it
+	if client.assoc != nil {
+		if err := client.assoc.RequestRelease(); err != nil {
+			log.Printf("error occured while attempting to release association, error is %v", err)
+		}
+	}
+
+	// forget the association
+	client.assoc = nil
+
+	// if the connection is still open, attempt to close it
+	if client.conn != nil {
+		if err := client.conn.Close(); err != nil {
+			log.Printf("error occured while attempting to close connect, error is %v", err)
+		}
+	}
+
+	// forget the connection
+	client.conn = nil
 }
 
 func getClientAETitle(client *Client) string {
@@ -122,31 +162,15 @@ func parseAddr(addr string) (string, string, error) {
 }
 
 // Send sends a DICOM store request from a client to a server.
-func (client *Client) Send(addr string, paths []string) error {
-	return client.send(addr, paths)
-}
+func (client *Client) Send(paths []string) error {
 
-// send implements the send request
-func (client *Client) send(addr string, paths []string) error {
-
-	// gather the required capabilities for sending the files
-	capabilities, err := readCapabilities(paths)
-	if err != nil {
-		return err
+	// make sure there is an association
+	if client.assoc == nil {
+		return ErrNoAssoc
 	}
-	fmt.Printf("capabilities is %v\n", capabilities)
-
-	// setup the connection and association
-	assoc, err := client.connect(addr, capabilities)
-	if err != nil {
-		return err
-	}
-
-	// make sure the association gets closed
-	defer assoc.Close()
 
 	// send the files
-	if err := sendFiles(paths, assoc); err != nil {
+	if err := sendFiles(paths, client.assoc); err != nil {
 		return err
 	}
 
@@ -154,10 +178,42 @@ func (client *Client) send(addr string, paths []string) error {
 	return nil
 }
 
-func readCapabilities(paths []string) ([]*Capability, error) {
+func sendFiles(paths []string, assoc *RequestorAssoc) error {
+	for _, path := range paths {
+		if err := sendFile(path, assoc); err != nil {
+			return err
+		}
+		fmt.Printf("sent file %q\n", path)
+	}
+	return nil
+}
+
+func sendFile(path string, assoc *RequestorAssoc) error {
+
+	// open the file, which returns a reader
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	// make sure we close the file upon exit
+	defer file.Close()
+
+	// send the object
+	if err := assoc.Send(file); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+// ReadCapabilities reads the group two elements of a set of files to figure
+// out what capabilities are required to send the file.
+func ReadCapabilities(paths []string) ([]*Capability, error) {
 	capabilities := make([]*Capability, 0, 5)
 	for _, path := range paths {
-		capability, err := readCapability(path)
+		capability, err := ReadCapability(path)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +227,9 @@ func readCapabilities(paths []string) ([]*Capability, error) {
 	return capabilities, nil
 }
 
-func readCapability(path string) (*Capability, error) {
+// ReadCapability reads the group two elements of a single file to figure
+// out what capabilities are required to send the file.
+func ReadCapability(path string) (*Capability, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
@@ -210,32 +268,44 @@ func readCapability(path string) (*Capability, error) {
 	return capability, nil
 }
 
-func sendFiles(paths []string, assoc *RequestorAssoc) error {
-	for _, path := range paths {
-		if err := sendFile(path, assoc); err != nil {
-			return err
-		}
-		fmt.Printf("sent file %q\n", path)
-	}
-	return nil
-}
-
-func sendFile(path string, assoc *RequestorAssoc) error {
-
-	// open the file, which returns a reader
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	// make sure we close the file upon exit
-	defer file.Close()
-
-	// send the object
-	if err := assoc.Send(file); err != nil {
-		return err
-	}
-
-	// all is well
-	return nil
-}
+// // An SCU is a Service Class User
+// type SCU struct {
+// 	client *Client
+// }
+//
+// // Capabilities returns the capabilities required for an SCU
+// func (scu *SCU) Capabilities() []*Capability {
+// 	return nil
+// }
+//
+// // A CEchoSCU is a Service Class User for C-Echo
+// type CEchoSCU struct {
+// 	client *Client
+// }
+//
+// // Capabilities returns the capabilities required for a C-Echo SCU
+// func (scu *CEchoSCU) Capabilities() []*Capability {
+// 	return []*Capability{&Capability{VerificationUID, []string{ImplicitVRLittleEndianUID}}}
+// }
+//
+// // A CStoreSCU is a Service Class User for C-Store SCU
+// type CStoreSCU struct {
+// 	client       *Client
+// 	capabilities []*Capability
+// }
+//
+// // Capabilities returns the capabilities required for a C-Echo SCU
+// func (scu *CStoreSCU) Capabilities() []*Capability {
+// 	return scu.capabilities
+// }
+//
+// // ReadCapabilities reads the capabilities of a a set of files and
+// // assigns it to the capabilities of the CStoreSCU
+// func (scu *CStoreSCU) ReadCapabilities(paths []string) error {
+// 	capabilities, err := ReadCapabilities(paths)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	scu.capabilities = capabilities
+// 	return nil
+// }

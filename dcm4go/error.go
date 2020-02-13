@@ -35,3 +35,9 @@ var ErrUnexpectedPDU = errors.New("unexpected PDU")
 
 // ErrAssociateRequestRejected means that the associate request was rejected
 var ErrAssociateRequestRejected = errors.New("associate request rejected")
+
+// ErrNoConn means that there is no connection between the client and server
+var ErrNoConn = errors.New("no connection")
+
+// ErrNoAssoc means that there is no association between the client and the server
+var ErrNoAssoc = errors.New("no association")
