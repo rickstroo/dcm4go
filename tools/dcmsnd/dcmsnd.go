@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -12,7 +13,9 @@ import (
 // simple error management
 func check(err error) {
 	if err != nil {
-		panic(err)
+		log.Printf("error is %v", err)
+		//		panic(err)
+		os.Exit(1)
 	}
 }
 
@@ -47,9 +50,29 @@ func main() {
 		AETitle: local,
 	}
 
+	// we're going to use a C-Echo service
+	cEchoService := &dcm4go.CEchoService{}
+
+	// we're also going to use a C-Store service
+	cStoreService := &dcm4go.CStoreService{}
+
+	// discover the capabilities of the files that we are going to send
+	capabilities, err := dcm4go.ReadCapabilities(paths)
+	check(err)
+	cStoreService.Capabilities = capabilities
+
+	// connect with the SCUs that we are going to use
+	check(client.Connect(remote, cEchoService, cStoreService))
+
+	// defer close
+	defer func() {
+		client.Close()
+	}()
+
 	// verify
-	check(client.Verify(remote))
+	check(client.Verify())
 
 	// send the files
-	check(client.Send(remote, paths))
+	check(client.Send(paths))
+
 }
