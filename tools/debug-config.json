@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "name": "dcm2json",
+      "mode": "debug",
+      "args": ["-path=/Users/Rick/data/dicom/ENHXA.dcm"]
+    },
+    {
+      "name": "dcm2txt",
+      "mode": "debug",
+      "args": ["-path=image.dcm"]
+    },
+    {
+      "name": "dcmrcv",
+      "mode": "debug",
+      "args": []
+    },
+    {
+      "name": "dcmsnd",
+      "mode": "debug",
+      "args": ["-local=DCMSND", "-remote=DCMRCV@localhost:4104", "-path=/Users/Rick/data/dicom/ENHXA.dcm,/Users/Rick/data/dicom/GENECG.dcm"]
+    }
+  ]
+}

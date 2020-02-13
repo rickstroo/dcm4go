@@ -1,9 +1,0 @@
-{
-  "configurations": [
-    {
-      "name": "dcm2json",
-      "mode": "debug",
-      "args": ["-path", "/Users/Rick/data/dicom/ENHXA.dcm"]
-    }
-  ]
-}
