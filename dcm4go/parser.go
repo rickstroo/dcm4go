@@ -1,7 +1,6 @@
 package dcm4go
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -12,16 +11,26 @@ type Parser struct {
 
 // ParserOpts impact the behaviour of a Parser
 type ParserOpts struct {
+	BulkDataThreshold uint32
 }
 
 // Parse parses a DICOM object from a reader and returns the object
 func (parser *Parser) Parse(reader io.Reader) (*Object, error) {
-	return nil, fmt.Errorf("Parser.Parse(), not implemented")
+	object, err := ReadFile(reader, parser.opts.BulkDataThreshold)
+	if err != nil {
+		return nil, err
+	}
+	return object, nil
 }
 
-// Parse parses a DICOM object from a read using a default set of options
-func Parse(reader io.Reader) (*Object, error) {
-	parserOpts := &ParserOpts{}
-	parser := &Parser{opts: parserOpts}
+// ParseWithOpts parses a DICOM object from a reader with user provided options
+func ParseWithOpts(reader io.Reader, opts *ParserOpts) (*Object, error) {
+	parser := &Parser{opts: opts}
 	return parser.Parse(reader)
+}
+
+// Parse parses a DICOM object from a reader using a default set of options
+func Parse(reader io.Reader) (*Object, error) {
+	opts := &ParserOpts{BulkDataThreshold: 1024}
+	return ParseWithOpts(reader, opts)
 }

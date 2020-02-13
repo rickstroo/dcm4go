@@ -43,6 +43,6 @@ func main() {
 	check(err)
 
 	for _, attr := range object.Attributes() {
-		log.Printf("%v\n", attr)
+		fmt.Printf("%v\n", attr)
 	}
 }
