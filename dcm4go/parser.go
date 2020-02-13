@@ -23,14 +23,9 @@ func (parser *Parser) Parse(reader io.Reader) (*Object, error) {
 	return object, nil
 }
 
-// ParseWithOpts parses a DICOM object from a reader with user provided options
-func ParseWithOpts(reader io.Reader, opts *ParserOpts) (*Object, error) {
-	parser := &Parser{opts: opts}
-	return parser.Parse(reader)
-}
-
 // Parse parses a DICOM object from a reader using a default set of options
 func Parse(reader io.Reader) (*Object, error) {
 	opts := &ParserOpts{BulkDataThreshold: 1024}
-	return ParseWithOpts(reader, opts)
+	parser := &Parser{opts: opts}
+	return parser.Parse(reader)
 }
