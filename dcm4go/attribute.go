@@ -12,6 +12,11 @@ func (attribute *Attribute) String() string {
 	return attributeToString(attribute, "")
 }
 
+// Text returns attribute as text
+func (attribute *Attribute) Text() string {
+	return attributeToText(attribute, "")
+}
+
 // simple check for out of bounds
 func checkIndex(index int, length int) error {
 	if index < 0 || index >= length {

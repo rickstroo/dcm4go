@@ -22,7 +22,7 @@ func main() {
 	var path string
 	var help bool
 
-	flag.StringVar(&path, "path", "", "path to file to parse")
+	flag.StringVar(&path, "path", "", "specify path of file to parse")
 	flag.BoolVar(&help, "help", false, "display usage")
 
 	flag.Parse()
@@ -43,6 +43,6 @@ func main() {
 	check(err)
 
 	for _, attr := range object.Attributes() {
-		fmt.Printf("%v\n", attr)
+		fmt.Printf("%v\n", attr.Text())
 	}
 }
