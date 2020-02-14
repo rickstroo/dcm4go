@@ -108,6 +108,17 @@ func (assoc *RequestorAssoc) RequestRelease() error {
 	return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
+// Close closes the connection
+func (assoc *RequestorAssoc) Close() error {
+	if assoc.conn != nil {
+		if err := assoc.conn.Close(); err != nil {
+			return err
+		}
+		assoc.conn = nil
+	}
+	return nil
+}
+
 // Verify sends a verification request
 func (assoc *RequestorAssoc) Verify() error {
 
