@@ -11,6 +11,11 @@
       "args": ["-path=image.dcm"]
     },
     {
+      "name": "dcmecho",
+      "mode": "debug",
+      "args": ["-remote=DCMRCV@localhost:4104"]
+    },
+    {
       "name": "dcmrcv",
       "mode": "debug",
       "args": []
