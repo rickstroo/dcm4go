@@ -1,1 +1,7 @@
-tmp
+__debug_bin
+image.dcm
+tmp/
+tools/dcm2json/dcm2json
+tools/dcm2txt/dcm2txt
+tools/dcmrcv/dcmrcv
+tools/dcmsnd/dcmsnd
