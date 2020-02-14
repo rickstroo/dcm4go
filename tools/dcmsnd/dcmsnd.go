@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
@@ -24,9 +25,9 @@ func main() {
 	var remote string
 	var help bool
 
-	flag.StringVar(&path, "path", "image.dcm", "specify path of file to send")
-	flag.StringVar(&local, "local", "DCMSND", "specify ae of the local AE")
-	flag.StringVar(&remote, "remote", "DCMRCV@localhost:4104", "specify ae, host and port in the form 'ae@host:port' of the remote AE")
+	flag.StringVar(&path, "path", "image.dcm", "specify path of comma separated list of files to send")
+	flag.StringVar(&local, "local", "DCMSND", "specify ae title of the local AE")
+	flag.StringVar(&remote, "remote", "DCMRCV@localhost:4104", "specify ae title, host and port in the form 'aet@host:port' of the remote AE")
 	flag.BoolVar(&help, "help", false, "display usage")
 
 	flag.Parse()
@@ -36,17 +37,14 @@ func main() {
 		os.Exit(0)
 	}
 
-	file, err := os.Open(path)
-	check(err)
+	paths := strings.Split(path, ",")
 
-	defer file.Close()
+	// this is about the simplest way to send files
+	check(dcm4go.Send(paths, remote))
 
-	// this is about the simplest way to send a file
-	check(dcm4go.Send(file, remote))
-
-	// if one wants more control, creating a sender with options
+	// if one wants more control, create a sender with options
 	opts := &dcm4go.SenderOpts{
-		LocalAE:        local,
+		Local:          local,
 		ConnectTimeOut: 30 * time.Second,
 		WriteTimeOut:   10 * time.Second,
 		ReadTimeOut:    10 * time.Second,
@@ -54,5 +52,5 @@ func main() {
 	sender := &dcm4go.Sender{
 		Opts: opts,
 	}
-	check(sender.Send(file, remote))
+	check(sender.Send(paths, remote))
 }

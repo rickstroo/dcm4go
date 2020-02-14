@@ -2,7 +2,6 @@ package dcm4go
 
 import (
 	"fmt"
-	"io"
 	"time"
 )
 
@@ -13,7 +12,7 @@ type Sender struct {
 
 // SenderOpts impact the behaviour of a Sender.
 type SenderOpts struct {
-	LocalAE        string
+	Local          string        // a zero value means "DCMSND"
 	ConnectTimeOut time.Duration // a zero value means no connect timeout
 	WriteTimeOut   time.Duration // a zero value means no write timeout
 	ReadTimeOut    time.Duration // a zero value means no read timeout
@@ -21,15 +20,15 @@ type SenderOpts struct {
 
 // Send sends a DICOM object to an AE.
 // The address of the AE is of the format 'aetitle@host:port'.
-func (sender *Sender) Send(reader io.Reader, remoteAE string) error {
+func (sender *Sender) Send(paths []string, remote string) error {
 	return fmt.Errorf("Sender.Send(): not implemented")
 }
 
 // Send sends a DICOM object to another AE using a default set of options.
 // To gain more control over the sending, the user should create a Sender
 // with the desired SenderOpts.
-func Send(reader io.Reader, remoteAE string) error {
+func Send(paths []string, remote string) error {
 	opts := &SenderOpts{}
 	sender := &Sender{Opts: opts}
-	return sender.Send(reader, remoteAE)
+	return sender.Send(paths, remote)
 }

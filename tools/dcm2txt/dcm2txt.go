@@ -22,7 +22,7 @@ func main() {
 	var path string
 	var help bool
 
-	flag.StringVar(&path, "path", "", "specify path of file to parse")
+	flag.StringVar(&path, "path", "image.dcm", "specify path of file to parse")
 	flag.BoolVar(&help, "help", false, "display usage")
 
 	flag.Parse()
@@ -32,14 +32,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	fmt.Printf("path is %q\n", path)
-
-	file, err := os.Open(path)
-	check(err)
-
-	defer file.Close()
-
-	object, err := dcm4go.Parse(file)
+	object, err := dcm4go.Parse(path)
 	check(err)
 
 	for _, attr := range object.Attributes() {
