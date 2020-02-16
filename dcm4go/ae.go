@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 )
 
@@ -104,7 +105,65 @@ func (ae *AE) RequestAssoc(
 	*Assoc,
 	error,
 ) {
-	return nil, fmt.Errorf("AE.RequestAssoc(): not implemented")
+
+	// put together an association request pdu
+	assocRQPDU := newAssocRQPDU(remote.AETitle, ae.AETitle, capabilities)
+	log.Printf("assocRQPDU is %v", assocRQPDU)
+
+	// write the pdu
+	if err := writeAssocRQPDU(conn, assocRQPDU); err != nil {
+		return nil, err
+	}
+
+	// read the response
+	pdu, err := readPDU(conn)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("pdu is %v\n", pdu)
+
+	// is this an abort request?  if so, just return EOF
+	if pdu.pduType == aAbortPDU {
+		log.Printf("received an abort\n")
+		abortPDU, err := readAbortPDU(pdu)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("associate request aborted, %v", abortPDU)
+	}
+
+	if pdu.pduType == aAssociateRJPDU {
+		fmt.Printf("received a rejection\n")
+		assocRJPDU, err := readAssocRJPDU(pdu)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("assocRJPDU is %v\n", assocRJPDU)
+
+		return nil, fmt.Errorf("associate request rejected, %s", assocRJPDU)
+	}
+
+	// is this an association accept?
+	if pdu.pduType == aAssociateACPDU {
+		assocACPDU, err := readAssocACPDU(pdu)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("assocACPDU is %v\n", assocACPDU)
+
+		// create an association from the response
+		assoc := &Assoc{
+			conn:       conn,
+			ae:         ae,
+			assocRQPDU: assocRQPDU,
+			assocACPDU: assocACPDU,
+		}
+
+		// return assoc
+		return assoc, nil
+	}
+
+	return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 }
 
 // Similar question for AcceptAssoc.  Should it bind to an address and only

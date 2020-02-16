@@ -20,9 +20,36 @@ const (
 
 // An AbortPDU represents a PDU used to abort associations
 type AbortPDU struct {
-	pdu    *PDU // the base PDU
 	source byte // the initiator of the abort
 	reason byte // the reason for the abort
+}
+
+// ReadAbortPDU reads an AbortPDU
+func readAbortPDU(reader io.Reader) (*AbortPDU, error) {
+
+	// skip two bytes
+	if err := skipBytes(reader, 2); err != nil {
+		return nil, err
+	}
+
+	// read the source
+	source, err := readByte(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// read the reason
+	reason, err := readByte(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	abortPDU := &AbortPDU{
+		source: source,
+		reason: reason,
+	}
+
+	return abortPDU, nil
 }
 
 // Write writes an AbortPDU to a writer
