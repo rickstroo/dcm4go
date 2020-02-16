@@ -45,30 +45,46 @@ func main() {
 		os.Exit(0)
 	}
 
-	// this is about the simplest way to ping a remote ae
-	check(dcm4go.Echo(remote))
+	echo1(remote)
+	echo2(remote, local)
+	echo3(remote, local)
+}
 
-	// if one wants more control, create a echoer with options
+// this is about the simplest way to ping a remote ae
+func echo1(remote string) {
+	check(dcm4go.Echo(remote))
+}
+
+// if one wants more control, create a echoer with options
+func echo2(local string, remote string) {
+
 	opts := &dcm4go.EchoerOpts{
-		Local:          local,
+		LocalAETitle:   local,
 		ConnectTimeOut: 30 * time.Second,
 		WriteTimeOut:   10 * time.Second,
 		ReadTimeOut:    10 * time.Second,
 	}
+
 	echoer := &dcm4go.Echoer{
 		Opts: opts,
 	}
-	check(echoer.Echo(remote))
 
-	// and for even more control, we can manage the AEs and Assoc directly
+	check(echoer.Echo(remote))
+}
+
+// and now, implement using the underlying AE and Assoc APIs
+func echo3(local string, remote string) {
+
+	// create a local AE
+	localAE := &dcm4go.AE{
+		AETitle: local,
+	}
 
 	// parse the address
 	remoteAETitle, remoteHostPort, err := parseAddr(remote)
 	check(err)
 
-	localAE := &dcm4go.AE{
-		AETitle: local,
-	}
+	// create a remote AE
 	remoteAE := &dcm4go.AE{
 		AETitle: remoteAETitle,
 	}
