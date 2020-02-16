@@ -1,6 +1,10 @@
 package dcm4go
 
-import "io"
+import (
+	"fmt"
+	"io"
+	"net"
+)
 
 // I'm starting to think that having an AE as the starting point for all the
 // APIs in the library makes sense.  It is AEs that application developers
@@ -91,8 +95,16 @@ func (service *CStoreService) OnStore(assoc *Assoc, request *Request, reader io.
 // A set of services that this AE expects to user on this association
 // are provided, so that the appropriate transfer capabilities can be
 // be negotiated.
-func (ae *AE) RequestAssoc(other *AE, services ...*Service) (*Assoc, error) {
-	return nil, nil
+func (ae *AE) RequestAssoc(
+	conn net.Conn,
+	remote *AE,
+	capabilities []*Capability,
+	opts *AssocOpts,
+) (
+	*Assoc,
+	error,
+) {
+	return nil, fmt.Errorf("AE.RequestAssoc(): not implemented")
 }
 
 // Similar question for AcceptAssoc.  Should it bind to an address and only

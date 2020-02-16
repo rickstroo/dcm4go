@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -53,4 +54,64 @@ func main() {
 		Opts: opts,
 	}
 	check(sender.Send(paths, remote))
+
+	// and for even more control, one can create AEs
+	// and manage the association completion
+	localAE := &dcm4go.AE{
+		AETitle: local,
+	}
+	remoteAE := &dcm4go.AE{
+		AETitle: remote,
+	}
+
+	// define some options for the association
+	assocOpts := &dcm4go.AssocOpts{
+		WriteTimeOut: 10 * time.Second,
+		ReadTimeOut:  10 * time.Second,
+		MaxBufLen:    16 * 1024,
+	}
+
+	// read the transfer capabilities from all the files
+	capabilities, err := dcm4go.ReadCapabilities(paths)
+	check(err)
+
+	// open a connection
+	conn, err := net.Dial("tcp", remote)
+	check(err)
+
+	// ensure the connection get closed
+	defer func() {
+		check(conn.Close())
+	}()
+
+	// create an association
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
+	check(err)
+
+	// ensure the association gets released
+	defer func() {
+		check(assoc.RequestRelease())
+	}()
+
+	// send the files
+	for _, path := range paths {
+
+		// open the file
+		file, err := os.Open(path)
+		if err != nil {
+			log.Printf("error while opening file, %v", err)
+			continue
+		}
+
+		// send the file
+		if err := assoc.Store(file); err != nil {
+			log.Printf("error while sending file, %v", err)
+		}
+
+		// close the file
+		if err := file.Close(); err != nil {
+			log.Printf("error while closing file, %v", err)
+		}
+	}
+
 }

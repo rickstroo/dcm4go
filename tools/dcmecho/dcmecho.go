@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"os"
 	"time"
 
@@ -48,4 +49,52 @@ func main() {
 		Opts: opts,
 	}
 	check(echoer.Echo(remote))
+
+	// and for even more control, one can create an AE directly
+	localAE := &dcm4go.AE{
+		AETitle: local,
+	}
+	remoteAE := &dcm4go.AE{
+		AETitle: remote,
+	}
+
+	// define some options for the association
+	assocOpts := &dcm4go.AssocOpts{
+		WriteTimeOut: 10 * time.Second,
+		ReadTimeOut:  10 * time.Second,
+		MaxBufLen:    16 * 1024,
+	}
+
+	// set the transfer capabilities
+	capabilities := []*dcm4go.Capability{
+		&dcm4go.Capability{
+			AbstractSyntax: dcm4go.VerificationUID,
+			TransferSyntaxes: []string{
+				dcm4go.ImplicitVRLittleEndianUID,
+				dcm4go.ExplicitVRBigEndianUID,
+				dcm4go.ExplicitVRLittleEndianUID,
+			},
+		},
+	}
+
+	// open a connection
+	conn, err := net.Dial("tcp", remote)
+	check(err)
+
+	// ensure the connection get closed
+	defer func() {
+		check(conn.Close())
+	}()
+
+	// create an association
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
+	check(err)
+
+	// ensure the association gets released
+	defer func() {
+		check(assoc.RequestRelease())
+	}()
+
+	// send the echo
+	check(assoc.Echo())
 }
