@@ -13,30 +13,59 @@ type Echoer struct {
 
 // EchoerOpts impact the behaviour of a Echoer.
 type EchoerOpts struct {
-	Local          string        // a zero value means "DCMSND"
+	LocalAETitle   string        // a zero value means "DCMSND"
 	ConnectTimeOut time.Duration // a zero value means no connect timeout
 	WriteTimeOut   time.Duration // a zero value means no write timeout
 	ReadTimeOut    time.Duration // a zero value means no read timeout
 }
 
-// Echo Echos a DICOM object to an AE.
+// Echo echos a DICOM object to an AE.
 // The address of the AE is of the format 'aetitle@host:port'.
-func (Echoer *Echoer) Echo(remote string) error {
-	return Echoer.echo(remote)
+func (echoer *Echoer) Echo(remoteAddr string) error {
+	return echoer.echo(remoteAddr)
 }
 
-// Echo Echos a DICOM object to another AE using a default set of options.
+// Echo echos a DICOM object to another AE using a default set of options.
 // To gain more control over the Echoing, the user should create a Echoer
 // with the desired EchoerOpts.
-func Echo(remote string) error {
+func Echo(remoteAddr string) error {
 	opts := &EchoerOpts{}
 	Echoer := &Echoer{Opts: opts}
-	return Echoer.Echo(remote)
+	return Echoer.Echo(remoteAddr)
 }
 
-func (Echoer *Echoer) echo(remote string) error {
+func (echoer *Echoer) echo(remoteAddr string) error {
 
-	// gather the capabilities
+	// implement the default value for the LocalAETitle opt
+	localAETitle := echoer.Opts.LocalAETitle
+	if localAETitle == "" {
+		localAETitle = "DCMSND"
+	}
+
+	// create an AE for the local
+	localAE := &AE{
+		AETitle: localAETitle,
+	}
+
+	// parse the address
+	remoteAETitle, remoteHostPort, err := parseAddr(remoteAddr)
+	if err != nil {
+		return err
+	}
+
+	// create an AE for the remote
+	remoteAE := &AE{
+		AETitle: remoteAETitle,
+	}
+
+	// define some options for the association
+	assocOpts := &AssocOpts{
+		WriteTimeOut: echoer.Opts.WriteTimeOut,
+		ReadTimeOut:  echoer.Opts.ReadTimeOut,
+		MaxBufLen:    16 * 1024,
+	}
+
+	// set the transfer capabilities
 	capabilities := []*Capability{
 		&Capability{
 			AbstractSyntax: VerificationUID,
@@ -48,58 +77,43 @@ func (Echoer *Echoer) echo(remote string) error {
 		},
 	}
 
-	// connect to the remote
-	assoc, err := Echoer.connect(Echoer.Opts.Local, remote, capabilities)
+	// open a connection
+	conn, err := net.Dial("tcp", remoteHostPort)
 	if err != nil {
 		return err
 	}
+	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 
-	// ensure the association is released and closed
+	// ensure the connection get closed
 	defer func() {
-		assoc.RequestRelease()
-		assoc.Close()
+		if err := conn.Close(); err != nil {
+			log.Printf("error while attempting to close connection from %v to %v, error is %v", conn.LocalAddr(), conn.RemoteAddr(), err)
+		} else {
+			log.Printf("closed connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
+		}
 	}()
 
-	// Echo the ae
-	if err := assoc.Verify(); err != nil {
+	// create an association
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
+	if err != nil {
+		return err
+	}
+	log.Printf("created association from %s to %s", assoc.CallingAETitle(), assoc.CalledAETitle())
+
+	// ensure the association gets released
+	defer func() {
+		if err := assoc.RequestRelease(); err != nil {
+			log.Printf("error while attempting to release association from %s to %s, error is %v", assoc.CallingAETitle(), assoc.CalledAETitle(), err)
+		} else {
+			log.Printf("released association from %s to %s", assoc.CallingAETitle(), assoc.CalledAETitle())
+		}
+	}()
+
+	// send the echo
+	if err := assoc.Echo(); err != nil {
 		return err
 	}
 
-	// all is well
+	// return success
 	return nil
-}
-
-// connect connects the local AE to the remote AE
-func (Echoer *Echoer) connect(local string, remote string, capabilities []*Capability) (*RequestorAssoc, error) {
-
-	// parse the address
-	serverAETitle, serverHostPort, err := parseAddr(remote)
-	if err != nil {
-		return nil, err
-	}
-
-	// attempt a connection
-	// we won't defer a close in this function
-	// the connection will be closed when the association is closed
-	conn, err := net.Dial("tcp", serverHostPort)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("connected to %v from %v\n", conn.RemoteAddr(), conn.LocalAddr())
-
-	// define an application entity for managing dicom connections
-	localAE := &AE{AETitle: local}
-
-	// define the the remote ae
-	remoteAE := &AE{AETitle: serverAETitle}
-
-	// request an association
-	assoc, err := RequestAssoc(conn, localAE, remoteAE, capabilities)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("negotiated association from %s to %s\n", localAE.AETitle, remoteAE.AETitle)
-
-	// return the association
-	return assoc, nil
 }
