@@ -29,27 +29,14 @@ type Requestor struct {
 	assoc *Assoc   // the association
 }
 
-// NewRequestor creates a new Requestor.
-//
-// I still don't have a good idea of when to provide a constructor and
-// when to allow a caller to initialize an object.  One good reason is when
-// an object requires complex initialization.  Perhaps another reason is when
-// one wants to hide implementation details.
-//
-// I've also read a couple of intersting articles about how to initialize
-// objects.  One article talks about passing in initializes as a set of
-// methods.  I need to find a link for that.  Another article talks about
-// passing in an Opts object that contains a list of options.  It avoids
-// the need for complex and long calling signatures.  I've chosen
-// to go with the Opts object, not necessarily for initializaion, but for
-// calling methods.
-func NewRequestor(ae *AE) *Requestor {
-	return &Requestor{ae: ae}
-}
-
 // AE returns the ae of this requestor
 func (requestor *Requestor) AE() *AE {
 	return requestor.ae
+}
+
+// Conn returns the connection of this requestor
+func (requestor *Requestor) Conn() net.Conn {
+	return requestor.conn
 }
 
 // Assoc returns the association of this requestor
@@ -57,24 +44,20 @@ func (requestor *Requestor) Assoc() *Assoc {
 	return requestor.assoc
 }
 
-// RequestAssoc is used to send an associate request.
-//
 // I've been debating about whether to have the Requestor be responsible
 // for managing the connection of having the connection passed to the
 // Requestor.  The DICOM standard says that an association and connection
 // have a one-to-one relationship, so it makes sense to manage them together.
-// Software design suggests that we might want to separate those, so that
+// Good design suggests that we might want to separate those, so that
 // we could substitute other types of connections, say for testing purposes.
 // In the end, I've decided to have the Requestor manage the connection
 // because it satisfies the standard and it makes it easier to write
 // applications correctly.  If we ever want to support other types of
 // connections in the future, perhaps we can initialize a Requestor with
 // a connection factory.
-func RequestAssoc(localAE *AE, remoteAddr string, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
 
-	// parse the remote address
-	remoteAE := NewAE(remoteAddr)
-	log.Printf("remote ae title is %v", remoteAE)
+// requestAssoc is used to send an associate request.
+func requestAssoc(localAE *AE, remoteAE *AE, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
 
 	// connect to the remote
 	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())

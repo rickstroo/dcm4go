@@ -40,12 +40,12 @@ func main() {
 }
 
 // this is about the simplest way to ping a remote ae
-func echo1(remote string) {
-	check(dcm4go.Echo(remote))
+func echo1(remoteAddr string) {
+	check(dcm4go.Echo(remoteAddr))
 }
 
 // if one wants more control, create a echoer with options
-func echo2(remote string, local string) {
+func echo2(remoteAddr string, local string) {
 
 	opts := &dcm4go.EchoerOpts{
 		LocalAETitle:   local,
@@ -58,11 +58,11 @@ func echo2(remote string, local string) {
 		Opts: opts,
 	}
 
-	check(echoer.Echo(remote))
+	check(echoer.Echo(remoteAddr))
 }
 
 // and now, implement using the underlying AE and Assoc APIs
-func echo3(remote string, local string) {
+func echo3(remoteAddr string, local string) {
 
 	// create a local AE
 	localAE := dcm4go.NewAE(local)
@@ -82,8 +82,11 @@ func echo3(remote string, local string) {
 		},
 	}
 
+	// create the remote AE
+	remoteAE := dcm4go.NewAE(remoteAddr)
+
 	// create an association
-	requestor, err := localAE.RequestAssoc(remote, capabilities, assocOpts)
+	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	check(err)
 	log.Printf(
 		"created association from %s to %s",

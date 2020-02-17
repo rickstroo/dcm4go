@@ -52,8 +52,11 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 		return err
 	}
 
+	// create the remote AE
+	remoteAE := NewAE(remoteAddr)
+
 	// create an association
-	requestor, err := RequestAssoc(localAE, remoteAddr, capabilities, assocOpts)
+	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	if err != nil {
 		return err
 	}

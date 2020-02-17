@@ -45,12 +45,12 @@ func main() {
 }
 
 // this is about the simplest way to send files
-func store1(paths []string, remote string) {
-	check(dcm4go.Send(paths, remote))
+func store1(paths []string, remoteAddr string) {
+	check(dcm4go.Send(paths, remoteAddr))
 }
 
 // if one wants more control, create a sender with options
-func store2(paths []string, remote string, local string) {
+func store2(paths []string, remoteAddr string, local string) {
 
 	opts := &dcm4go.SenderOpts{
 		LocalAETitle:   local,
@@ -61,11 +61,11 @@ func store2(paths []string, remote string, local string) {
 	sender := &dcm4go.Sender{
 		Opts: opts,
 	}
-	check(sender.Send(paths, remote))
+	check(sender.Send(paths, remoteAddr))
 }
 
 // if one wants more control, create a sender with options
-func store3(paths []string, remote string, local string) {
+func store3(paths []string, remoteAddr string, local string) {
 
 	// create a local AE
 	localAE := dcm4go.NewAE(local)
@@ -81,8 +81,11 @@ func store3(paths []string, remote string, local string) {
 	capabilities, err := dcm4go.ReadCapabilities(paths)
 	check(err)
 
+	// create the remote AE
+	remoteAE := dcm4go.NewAE(remoteAddr)
+
 	// create an association
-	requestor, err := localAE.RequestAssoc(remote, capabilities, assocOpts)
+	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	check(err)
 	log.Printf(
 		"created association from %s to %s",

@@ -61,8 +61,11 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 		},
 	}
 
+	// create the remote AE
+	remoteAE := NewAE(remoteAddr)
+
 	// create a requestor
-	requestor, err := RequestAssoc(localAE, remoteAddr, capabilities, assocOpts)
+	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	if err != nil {
 		return err
 	}

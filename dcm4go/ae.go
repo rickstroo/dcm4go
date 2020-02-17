@@ -3,6 +3,7 @@
 package dcm4go
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -70,10 +71,15 @@ func (ae *AE) Port() string {
 // Perhaps this is a good compromise.
 
 // RequestAssoc requests an association and returns a Requestor
-func (ae *AE) RequestAssoc(remoteAddr string, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
-	requestor, err := RequestAssoc(ae, remoteAddr, capabilities, opts)
+func (ae *AE) RequestAssoc(remoteAE *AE, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
+	requestor, err := requestAssoc(ae, remoteAE, capabilities, opts)
 	if err != nil {
 		return nil, err
 	}
 	return requestor, nil
+}
+
+// AcceptAssoc waits for an association and returns an Acceptor
+func (ae *AE) AcceptAssoc(capabilities []*Capability, opts *AssocOpts) (*Acceptor, error) {
+	return nil, fmt.Errorf("AE.AcceptAssoc(): not implemented")
 }
