@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"fmt"
 	"io"
+	"os"
 )
 
 // ReadFile reads a DICOM object from a reader of a Part 10 source
@@ -167,10 +168,70 @@ func CreateFileMetaInfo(assoc *Assoc, pcID byte, command *Object) (*Object, erro
 	fmi.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
 	fmi.addUID(ImplementationClassUIDTag, ImplementationClassUID)
 	fmi.addText(ImplementationVersionNameTag, "SH", "dcm4go")
-	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.AETitle)
+	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.AETitle())
 	fmi.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
 	fmi.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
 
 	// return the file meta information
 	return fmi, nil
+}
+
+// ReadCapabilities reads the group two elements of a set of files to figure
+// out what capabilities are required to send the file.
+func ReadCapabilities(paths []string) ([]*Capability, error) {
+	capabilities := make([]*Capability, 0, 5)
+	for _, path := range paths {
+		capability, err := ReadCapability(path)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("capability is %v\n", capability)
+
+		// add the capability if not already present
+		if !capability.Contained(capabilities) {
+			capabilities = append(capabilities, capability)
+		}
+	}
+	return capabilities, nil
+}
+
+// ReadCapability reads the group two elements of a single file to figure
+// out what capabilities are required to send the file.
+func ReadCapability(path string) (*Capability, error) {
+
+	// open the file, which returns a reader, defer a close
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// make sure we close the file upon exit
+	defer file.Close()
+
+	// read the group two attributes
+	groupTwo, err := ReadGroupTwo(file, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// get the sop class uid of the stored object
+	sopClassUID, err := groupTwo.AsString(MediaStorageSOPClassUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("sop class uid is %q\n", sopClassUID)
+
+	// get the transfer syntax used to store the file
+	transferSyntaxUID, err := groupTwo.AsString(TransferSyntaxUIDTag, 0)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
+
+	// all is well, return the sop class uid and the transfer syntax uid
+	capability := &Capability{
+		AbstractSyntax:   sopClassUID,
+		TransferSyntaxes: []string{transferSyntaxUID},
+	}
+	return capability, nil
 }

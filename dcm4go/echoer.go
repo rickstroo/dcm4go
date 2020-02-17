@@ -1,8 +1,9 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
 package dcm4go
 
 import (
 	"log"
-	"net"
 	"time"
 )
 
@@ -43,20 +44,7 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 	}
 
 	// create an AE for the local
-	localAE := &AE{
-		AETitle: localAETitle,
-	}
-
-	// parse the address
-	remoteAETitle, remoteHostPort, err := parseAddr(remoteAddr)
-	if err != nil {
-		return err
-	}
-
-	// create an AE for the remote
-	remoteAE := &AE{
-		AETitle: remoteAETitle,
-	}
+	localAE := NewAE(localAETitle)
 
 	// define some options for the association
 	assocOpts := &AssocOpts{
@@ -68,49 +56,35 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 	// set the transfer capabilities
 	capabilities := []*Capability{
 		&Capability{
-			AbstractSyntax: VerificationUID,
-			TransferSyntaxes: []string{
-				ImplicitVRLittleEndianUID,
-				ExplicitVRBigEndianUID,
-				ExplicitVRLittleEndianUID,
-			},
+			AbstractSyntax:   VerificationUID,
+			TransferSyntaxes: []string{ImplicitVRLittleEndianUID},
 		},
 	}
 
-	// open a connection
-	conn, err := net.Dial("tcp", remoteHostPort)
-	if err != nil {
-		return err
-	}
-	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
-
-	// ensure the connection get closed
-	defer func() {
-		if err := conn.Close(); err != nil {
-			log.Printf("error while attempting to close connection from %v to %v, error is %v", conn.LocalAddr(), conn.RemoteAddr(), err)
-		} else {
-			log.Printf("closed connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
-		}
-	}()
+	// create a requestor
+	requestor := NewRequestor(localAE)
 
 	// create an association
-	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
-	if err != nil {
+	if err := requestor.RequestAssoc(remoteAddr, capabilities, assocOpts); err != nil {
 		return err
 	}
-	log.Printf("created association from %s to %s", assoc.CallingAETitle(), assoc.CalledAETitle())
+	log.Printf(
+		"created association from %s to %s",
+		requestor.Assoc().CallingAETitle(),
+		requestor.Assoc().CalledAETitle(),
+	)
 
 	// ensure the association gets released
 	defer func() {
-		if err := assoc.RequestRelease(); err != nil {
-			log.Printf("error while attempting to release association from %s to %s, error is %v", assoc.CallingAETitle(), assoc.CalledAETitle(), err)
+		if err := requestor.ReleaseAssoc(); err != nil {
+			log.Printf("while releasing association, caught error %v", err)
 		} else {
-			log.Printf("released association from %s to %s", assoc.CallingAETitle(), assoc.CalledAETitle())
+			log.Printf("released association")
 		}
 	}()
 
 	// send the echo
-	if err := assoc.Echo(); err != nil {
+	if err := requestor.Echo(); err != nil {
 		return err
 	}
 

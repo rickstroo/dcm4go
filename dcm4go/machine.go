@@ -1,3 +1,5 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
 package dcm4go
 
 import (
@@ -333,7 +335,7 @@ func (machine *Machine) ae6(pdu *PDU) error {
 	machine.stopTimer()
 
 	// build an ae
-	ae := &AE{AETitle: machine.aeTitle}
+	ae := NewAE(machine.aeTitle)
 
 	// attempt to negotiate an association
 	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, machine.handlers)

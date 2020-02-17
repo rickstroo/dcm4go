@@ -1,3 +1,5 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
 package dcm4go
 
 import (
@@ -131,7 +133,7 @@ func (assoc *Assoc) ReadRequestOrResponse() (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("pdu is %v\n", pdu)
+	log.Printf("pdu is %v", pdu)
 
 	// is this an association release request?  if so, write response and return EOF
 	if pdu.pduType == aReleaseRQPDU {
@@ -248,125 +250,13 @@ func (assoc *Assoc) RequestRelease() error {
 		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 	}
 
-	fmt.Printf("received a release response pdu")
+	log.Printf("received a release response pdu")
 	releaseRPPDU, err := readReleaseRPPDU(pdu)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("read release response pdu, %v", releaseRPPDU)
+	log.Printf("read release response pdu, %v", releaseRPPDU)
 
 	// all is well
-	return nil
-}
-
-// Echo sends a DICOM C-Echo request
-func (assoc *Assoc) Echo() error {
-
-	// create a verification request
-	pc, request, err := NewCEchoRequest(assoc)
-	if err != nil {
-		return err
-	}
-
-	// write the verification request
-	if err := assoc.writeCommand(pc, request); err != nil {
-		return err
-	}
-
-	// read the response
-	response, err := assoc.ReadRequestOrResponse()
-	if err != nil {
-		return err
-	}
-
-	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
-	if err != nil {
-		return err
-	}
-
-	if status != 0 {
-		return fmt.Errorf("status was %d, not success", status)
-	}
-
-	return nil
-}
-
-// Store sends a DICOM C-Store request
-func (assoc *Assoc) Store(reader io.Reader) error {
-
-	// read the group two attributes
-	groupTwo, err := ReadGroupTwo(reader, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the sop class uid of the stored object
-	sopClassUID, err := groupTwo.AsString(MediaStorageSOPClassUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the sop class instance UID of the stored object
-	sopInstanceUID, err := groupTwo.AsString(MediaStorageSOPInstanceUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the transfer syntax used to store the file
-	transferSyntaxUID, err := groupTwo.AsString(TransferSyntaxUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// create a group zero object
-	pc, request, err := NewCStoreRequest(assoc, sopClassUID, sopInstanceUID, transferSyntaxUID)
-	if err != nil {
-		return err
-	}
-
-	// write the request, but no data
-	if err := assoc.writeCommand(pc, request); err != nil {
-		return err
-	}
-
-	// create a pdatawriter to copy the data to
-	// it knows how to create pdus and pdvs as required
-	// since it implements a writer, we can then simply copy the data
-	pDataWriter := newPDataWriter(
-		assoc.conn,                               // the writer is the association connection
-		pc.id,                                    // write using the same presentation context id as in the request
-		false,                                    // false means we are writing data
-		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
-	)
-
-	// copy the data
-	if _, err := io.Copy(pDataWriter, reader); err != nil {
-		return err
-	}
-
-	// flush the underlying writer
-	// passing true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
-		return err
-	}
-
-	// read the response
-	response, err := assoc.ReadRequestOrResponse()
-	if err != nil {
-		return err
-	}
-
-	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
-	if err != nil {
-		return err
-	}
-
-	if status != 0 {
-		return fmt.Errorf("status was %d, not success", status)
-	}
-
-	// otherwise, all is well
 	return nil
 }

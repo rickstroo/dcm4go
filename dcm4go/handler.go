@@ -1,3 +1,5 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
 package dcm4go
 
 import (
@@ -30,7 +32,7 @@ func (handler *BasicCEchoHandler) HandleRequest(
 ) error {
 
 	// create a response
-	response, err := NewCEchoResponse(assoc, request)
+	response, err := newCEchoResponse(assoc, request)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func (handler *BasicCStoreHandler) HandleRequest(
 	fmt.Printf("discarded %d bytes\n", num)
 
 	// create a response
-	response, err := NewCStoreResponse(assoc, request)
+	response, err := newCStoreResponse(assoc, request)
 	if err != nil {
 		return err
 	}
