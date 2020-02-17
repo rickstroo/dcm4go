@@ -81,11 +81,9 @@ func store3(paths []string, remote string, local string) {
 	capabilities, err := dcm4go.ReadCapabilities(paths)
 	check(err)
 
-	// create a requestor
-	requestor := dcm4go.NewRequestor(localAE)
-
 	// create an association
-	check(requestor.RequestAssoc(remote, capabilities, assocOpts))
+	requestor, err := localAE.RequestAssoc(remote, capabilities, assocOpts)
+	check(err)
 	log.Printf(
 		"created association from %s to %s",
 		requestor.Assoc().CallingAETitle(),

@@ -28,13 +28,13 @@ func (sender *Sender) Send(paths []string, remote string) error {
 // Send sends a DICOM object to another AE using a default set of options.
 // To gain more control over the sending, the user should create a Sender
 // with the desired SenderOpts.
-func Send(paths []string, remote string) error {
+func Send(paths []string, remoteAddr string) error {
 	opts := &SenderOpts{}
 	sender := &Sender{Opts: opts}
-	return sender.Send(paths, remote)
+	return sender.Send(paths, remoteAddr)
 }
 
-func (sender *Sender) send(paths []string, remote string) error {
+func (sender *Sender) send(paths []string, remoteAddr string) error {
 
 	// create a local AE
 	localAE := NewAE(sender.Opts.LocalAETitle)
@@ -52,11 +52,9 @@ func (sender *Sender) send(paths []string, remote string) error {
 		return err
 	}
 
-	// create a requestor
-	requestor := NewRequestor(localAE)
-
 	// create an association
-	if err := requestor.RequestAssoc(remote, capabilities, assocOpts); err != nil {
+	requestor, err := RequestAssoc(localAE, remoteAddr, capabilities, assocOpts)
+	if err != nil {
 		return err
 	}
 	log.Printf(

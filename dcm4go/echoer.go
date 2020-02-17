@@ -62,10 +62,8 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 	}
 
 	// create a requestor
-	requestor := NewRequestor(localAE)
-
-	// create an association
-	if err := requestor.RequestAssoc(remoteAddr, capabilities, assocOpts); err != nil {
+	requestor, err := RequestAssoc(localAE, remoteAddr, capabilities, assocOpts)
+	if err != nil {
 		return err
 	}
 	log.Printf(

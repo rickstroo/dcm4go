@@ -70,7 +70,7 @@ func (requestor *Requestor) Assoc() *Assoc {
 // applications correctly.  If we ever want to support other types of
 // connections in the future, perhaps we can initialize a Requestor with
 // a connection factory.
-func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capability, opts *AssocOpts) error {
+func RequestAssoc(localAE *AE, remoteAddr string, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
 
 	// parse the remote address
 	remoteAE := NewAE(remoteAddr)
@@ -79,26 +79,23 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 	// connect to the remote
 	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 
-	// remember the connection
-	requestor.conn = conn
-
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAE.AETitle(), requestor.ae.AETitle(), capabilities)
+	assocRQPDU := newAssocRQPDU(remoteAE.AETitle(), localAE.AETitle(), capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
 	if err := writeAssocRQPDU(conn, assocRQPDU); err != nil {
-		return err
+		return nil, err
 	}
 
 	// read the response
 	pdu, err := readPDU(conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.Printf("pdu is %v", pdu)
 
@@ -107,9 +104,9 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 		log.Printf("received an abort pdu")
 		abortPDU, err := readAbortPDU(pdu)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return fmt.Errorf("associate request aborted, %v", abortPDU)
+		return nil, fmt.Errorf("associate request aborted, %v", abortPDU)
 	}
 
 	// if this an associate reuject?  if so, return error
@@ -117,38 +114,42 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 		log.Printf("received a rejection pdu")
 		assocRJPDU, err := readAssocRJPDU(pdu)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		log.Printf("assocRJPDU is %v", assocRJPDU)
 
-		return fmt.Errorf("associate request rejected, %s", assocRJPDU)
+		return nil, fmt.Errorf("associate request rejected, %s", assocRJPDU)
 	}
 
 	// is this not an associate accept?  if not, return error
 	if pdu.pduType != aAssociateACPDU {
-		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 	}
 
 	assocACPDU, err := readAssocACPDU(pdu)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	log.Printf("assocACPDU is %v", assocACPDU)
 
 	// create an association from the response
 	assoc := &Assoc{
 		conn:       conn,
-		ae:         requestor.ae,
+		ae:         localAE,
 		assocRQPDU: assocRQPDU,
 		assocACPDU: assocACPDU,
 	}
 	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
 
-	// remember the association
-	requestor.assoc = assoc
+	// create a requesetor
+	requestor := &Requestor{
+		ae:    localAE,
+		conn:  conn,
+		assoc: assoc,
+	}
 
-	// return success
-	return nil
+	// return the requestor
+	return requestor, nil
 }
 
 // ReleaseAssoc releases the association and closes the connection

@@ -64,3 +64,16 @@ func (ae *AE) Host() string {
 func (ae *AE) Port() string {
 	return ae.port
 }
+
+// Been thinking about how to make the AE the starting point for all
+// applications, yet separate out the Requestor and Acceptor methods.
+// Perhaps this is a good compromise.
+
+// RequestAssoc requests an association and returns a Requestor
+func (ae *AE) RequestAssoc(remoteAddr string, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
+	requestor, err := RequestAssoc(ae, remoteAddr, capabilities, opts)
+	if err != nil {
+		return nil, err
+	}
+	return requestor, nil
+}

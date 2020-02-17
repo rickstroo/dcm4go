@@ -82,11 +82,9 @@ func echo3(remote string, local string) {
 		},
 	}
 
-	// create a requestor
-	requestor := dcm4go.NewRequestor(localAE)
-
 	// create an association
-	check(requestor.RequestAssoc(remote, capabilities, assocOpts))
+	requestor, err := localAE.RequestAssoc(remote, capabilities, assocOpts)
+	check(err)
 	log.Printf(
 		"created association from %s to %s",
 		requestor.Assoc().CallingAETitle(),
