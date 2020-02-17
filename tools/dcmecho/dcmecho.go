@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
@@ -16,14 +14,6 @@ func check(err error) {
 	if err != nil {
 		log.Fatalf("error is %v", err)
 	}
-}
-
-func parseAddr(addr string) (string, string, error) {
-	s := strings.Split(addr, "@")
-	if len(s) != 2 {
-		return "", "", fmt.Errorf("expected address of form 'ae@host:port', found '%v'", addr)
-	}
-	return s[0], s[1], nil
 }
 
 // the main function
@@ -75,9 +65,7 @@ func echo2(remote string, local string) {
 func echo3(remote string, local string) {
 
 	// create a local AE
-	localAE := &dcm4go.AE{
-		AETitle: local,
-	}
+	localAE := dcm4go.NewAE(local)
 
 	// define some options for the association
 	assocOpts := &dcm4go.AssocOpts{

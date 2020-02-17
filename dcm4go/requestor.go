@@ -1,3 +1,5 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
 package dcm4go
 
 import (
@@ -5,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"strings"
 )
 
 // A Requestor is used to negotiate an associate request, to issue requests
@@ -72,23 +73,21 @@ func (requestor *Requestor) Assoc() *Assoc {
 func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capability, opts *AssocOpts) error {
 
 	// parse the remote address
-	remoteAETitle, remoteHostPort, err := requestor.parseAddr(remoteAddr)
-	if err != nil {
-		return err
-	}
+	remoteAE := NewAE(remoteAddr)
+	log.Printf("remote ae title is %v", remoteAE)
 
 	// connect to the remote
-	conn, err := net.Dial("tcp", remoteHostPort)
+	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
 	if err != nil {
 		return err
 	}
-	log.Printf("opened connection from %v to %v\n", conn.LocalAddr(), conn.RemoteAddr())
+	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 
 	// remember the connection
 	requestor.conn = conn
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAETitle, requestor.ae.AETitle, capabilities)
+	assocRQPDU := newAssocRQPDU(remoteAE.AETitle(), requestor.ae.AETitle(), capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
@@ -101,11 +100,11 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 	if err != nil {
 		return err
 	}
-	log.Printf("pdu is %v\n", pdu)
+	log.Printf("pdu is %v", pdu)
 
 	// is this an abort request?  if so, return error
 	if pdu.pduType == aAbortPDU {
-		log.Printf("received an abort\n")
+		log.Printf("received an abort pdu")
 		abortPDU, err := readAbortPDU(pdu)
 		if err != nil {
 			return err
@@ -115,12 +114,12 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 
 	// if this an associate reuject?  if so, return error
 	if pdu.pduType == aAssociateRJPDU {
-		fmt.Printf("received a rejection\n")
+		log.Printf("received a rejection pdu")
 		assocRJPDU, err := readAssocRJPDU(pdu)
 		if err != nil {
 			return err
 		}
-		log.Printf("assocRJPDU is %v\n", assocRJPDU)
+		log.Printf("assocRJPDU is %v", assocRJPDU)
 
 		return fmt.Errorf("associate request rejected, %s", assocRJPDU)
 	}
@@ -134,7 +133,7 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 	if err != nil {
 		return err
 	}
-	log.Printf("assocACPDU is %v\n", assocACPDU)
+	log.Printf("assocACPDU is %v", assocACPDU)
 
 	// create an association from the response
 	assoc := &Assoc{
@@ -143,27 +142,13 @@ func (requestor *Requestor) RequestAssoc(remoteAddr string, capabilities []*Capa
 		assocRQPDU: assocRQPDU,
 		assocACPDU: assocACPDU,
 	}
+	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
 
 	// remember the association
 	requestor.assoc = assoc
 
 	// return success
 	return nil
-}
-
-// parseAddr parses an address of the form 'ae@host:port' and returns the
-// 'ae' and 'host:port' parts separately
-func (requestor *Requestor) parseAddr(addr string) (string, string, error) {
-	s := strings.Split(addr, "@")
-	if len(s) != 2 {
-		return "", "", fmt.Errorf("expected address of form 'ae@host:port', found '%v'", addr)
-	}
-	return s[0], s[1], nil
-}
-
-// SendRequest is used to send a request and receive responses.
-func (requestor *Requestor) SendRequest(request *Request) ([]*Response, error) {
-	return nil, fmt.Errorf("Requestor.SendRequest(): not implemented")
 }
 
 // ReleaseAssoc releases the association and closes the connection
@@ -174,6 +159,9 @@ func (requestor *Requestor) ReleaseAssoc() error {
 		if err := requestor.assoc.RequestRelease(); err != nil {
 			log.Printf("while releasing association, caught error %v", err)
 		}
+		log.Printf("released association from %v to %v", requestor.assoc.CallingAETitle(), requestor.assoc.CalledAETitle())
+
+		requestor.assoc = nil
 	}
 
 	// close the connection
@@ -181,6 +169,7 @@ func (requestor *Requestor) ReleaseAssoc() error {
 		if err := requestor.conn.Close(); err != nil {
 			log.Printf("while closing connection, caught error %v", err)
 		}
+		log.Printf("closed connection from %v to %v", requestor.conn.LocalAddr(), requestor.conn.RemoteAddr())
 
 		requestor.conn = nil
 	}
@@ -197,14 +186,20 @@ func (requestor *Requestor) Abort() error {
 // Echo sends a DICOM C-Echo request
 func (requestor *Requestor) Echo() error {
 
+	// find the accepted presentation context for this transfer syntax
+	presContex, err := requestor.assoc.findAcceptedPresContextByAbstractSyntax(VerificationUID)
+	if err != nil {
+		return err
+	}
+
 	// create a verification request
-	pc, request, err := NewCEchoRequest(requestor.assoc)
+	request, err := newCEchoRequest(requestor.assoc)
 	if err != nil {
 		return err
 	}
 
 	// write the verification request
-	if err := requestor.assoc.writeCommand(pc, request); err != nil {
+	if err := requestor.assoc.writeCommand(presContex, request); err != nil {
 		return err
 	}
 
@@ -254,14 +249,20 @@ func (requestor *Requestor) Store(reader io.Reader) error {
 		return err
 	}
 
+	// find the accepted presentation context for this transfer syntax
+	presContex, err := requestor.assoc.findAcceptedPresContextByAbstractSyntax(transferSyntaxUID)
+	if err != nil {
+		return err
+	}
+
 	// create a group zero object
-	pc, request, err := NewCStoreRequest(requestor.assoc, sopClassUID, sopInstanceUID, transferSyntaxUID)
+	request, err := newCStoreRequest(requestor.assoc, sopClassUID, sopInstanceUID)
 	if err != nil {
 		return err
 	}
 
 	// write the request, but no data
-	if err := requestor.assoc.writeCommand(pc, request); err != nil {
+	if err := requestor.assoc.writeCommand(presContex, request); err != nil {
 		return err
 	}
 
@@ -270,7 +271,7 @@ func (requestor *Requestor) Store(reader io.Reader) error {
 	// since it implements a writer, we can then simply copy the data
 	pDataWriter := newPDataWriter(
 		requestor.assoc.conn, // the writer is the association connection
-		pc.id,                // write using the same presentation context id as in the request
+		presContex.id,        // write using the same presentation context id as in the request
 		false,                // false means we are writing data
 		requestor.assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
 	)

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -40,12 +39,21 @@ func main() {
 
 	paths := strings.Split(path, ",")
 
-	// this is about the simplest way to send files
-	check(dcm4go.Send(paths, remote))
+	store1(paths, remote)
+	store2(paths, remote, local)
+	store3(paths, remote, local)
+}
 
-	// if one wants more control, create a sender with options
+// this is about the simplest way to send files
+func store1(paths []string, remote string) {
+	check(dcm4go.Send(paths, remote))
+}
+
+// if one wants more control, create a sender with options
+func store2(paths []string, remote string, local string) {
+
 	opts := &dcm4go.SenderOpts{
-		Local:          local,
+		LocalAETitle:   local,
 		ConnectTimeOut: 30 * time.Second,
 		WriteTimeOut:   10 * time.Second,
 		ReadTimeOut:    10 * time.Second,
@@ -54,15 +62,13 @@ func main() {
 		Opts: opts,
 	}
 	check(sender.Send(paths, remote))
+}
 
-	// and for even more control, one can create AEs
-	// and manage the association completion
-	localAE := &dcm4go.AE{
-		AETitle: local,
-	}
-	remoteAE := &dcm4go.AE{
-		AETitle: remote,
-	}
+// if one wants more control, create a sender with options
+func store3(paths []string, remote string, local string) {
+
+	// create a local AE
+	localAE := dcm4go.NewAE(local)
 
 	// define some options for the association
 	assocOpts := &dcm4go.AssocOpts{
@@ -75,22 +81,21 @@ func main() {
 	capabilities, err := dcm4go.ReadCapabilities(paths)
 	check(err)
 
-	// open a connection
-	conn, err := net.Dial("tcp", remote)
-	check(err)
-
-	// ensure the connection get closed
-	defer func() {
-		check(conn.Close())
-	}()
+	// create a requestor
+	requestor := dcm4go.NewRequestor(localAE)
 
 	// create an association
-	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
-	check(err)
+	check(requestor.RequestAssoc(remote, capabilities, assocOpts))
+	log.Printf(
+		"created association from %s to %s",
+		requestor.Assoc().CallingAETitle(),
+		requestor.Assoc().CalledAETitle(),
+	)
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.RequestRelease())
+		check(requestor.ReleaseAssoc())
+		log.Printf("released association")
 	}()
 
 	// send the files
@@ -104,7 +109,7 @@ func main() {
 		}
 
 		// send the file
-		if err := assoc.Store(file); err != nil {
+		if err := requestor.Store(file); err != nil {
 			log.Printf("error while sending file, %v", err)
 		}
 
@@ -113,5 +118,4 @@ func main() {
 			log.Printf("error while closing file, %v", err)
 		}
 	}
-
 }
