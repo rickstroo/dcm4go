@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -47,7 +46,7 @@ func main() {
 
 	echo1(remote)
 	echo2(remote, local)
-	echo3(remote, local)
+	//	echo3(remote, local)
 }
 
 // this is about the simplest way to ping a remote ae
@@ -56,7 +55,7 @@ func echo1(remote string) {
 }
 
 // if one wants more control, create a echoer with options
-func echo2(local string, remote string) {
+func echo2(remote string, local string) {
 
 	opts := &dcm4go.EchoerOpts{
 		LocalAETitle:   local,
@@ -73,20 +72,11 @@ func echo2(local string, remote string) {
 }
 
 // and now, implement using the underlying AE and Assoc APIs
-func echo3(local string, remote string) {
+func echo3(remote string, local string) {
 
 	// create a local AE
 	localAE := &dcm4go.AE{
 		AETitle: local,
-	}
-
-	// parse the address
-	remoteAETitle, remoteHostPort, err := parseAddr(remote)
-	check(err)
-
-	// create a remote AE
-	remoteAE := &dcm4go.AE{
-		AETitle: remoteAETitle,
 	}
 
 	// define some options for the association
@@ -99,37 +89,32 @@ func echo3(local string, remote string) {
 	// set the transfer capabilities
 	capabilities := []*dcm4go.Capability{
 		&dcm4go.Capability{
-			AbstractSyntax: dcm4go.VerificationUID,
-			TransferSyntaxes: []string{
-				dcm4go.ImplicitVRLittleEndianUID,
-				dcm4go.ExplicitVRBigEndianUID,
-				dcm4go.ExplicitVRLittleEndianUID,
-			},
+			AbstractSyntax:   dcm4go.VerificationUID,
+			TransferSyntaxes: []string{dcm4go.ImplicitVRLittleEndianUID},
 		},
 	}
 
-	// open a connection
-	conn, err := net.Dial("tcp", remoteHostPort)
-	check(err)
-	log.Printf("opened connection from %v to %v\n", conn.LocalAddr(), conn.RemoteAddr())
-
-	// ensure the connection get closed
-	defer func() {
-		check(conn.Close())
-		log.Printf("closed connection from %v to %v\n", conn.LocalAddr(), conn.RemoteAddr())
-	}()
+	// create a requestor
+	requestor := dcm4go.NewRequestor(localAE)
 
 	// create an association
-	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
-	check(err)
-	log.Printf("created association from %s to %s\n", assoc.CallingAETitle(), assoc.CalledAETitle())
+	check(requestor.RequestAssoc(remote, capabilities, assocOpts))
+	log.Printf(
+		"created association from %s to %s\n",
+		requestor.Assoc().CallingAETitle(),
+		requestor.Assoc().CalledAETitle(),
+	)
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.RequestRelease())
-		log.Printf("released association from %s to %s\n", assoc.CallingAETitle(), assoc.CalledAETitle())
+		check(requestor.RequestRelease())
+		log.Printf(
+			"released association from %s to %s\n",
+			requestor.Assoc().CallingAETitle(),
+			requestor.Assoc().CalledAETitle(),
+		)
 	}()
 
 	// send the echo
-	check(assoc.Echo())
+	check(requestor.Echo())
 }
