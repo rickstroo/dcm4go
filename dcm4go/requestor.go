@@ -166,22 +166,14 @@ func (requestor *Requestor) SendRequest(request *Request) ([]*Response, error) {
 	return nil, fmt.Errorf("Requestor.SendRequest(): not implemented")
 }
 
-// RequestRelease releases the association and closes the connection
-func (requestor *Requestor) RequestRelease() error {
+// ReleaseAssoc releases the association and closes the connection
+func (requestor *Requestor) ReleaseAssoc() error {
 
-	// release and close the association
+	// release the association
 	if requestor.assoc != nil {
-
-		// release the association
 		if err := requestor.assoc.RequestRelease(); err != nil {
 			log.Printf("while releasing association, caught error %v", err)
 		}
-
-		if err := requestor.assoc.Close(); err != nil {
-			log.Printf("while releasing association, caught error %v", err)
-		}
-
-		requestor.assoc = nil
 	}
 
 	// close the connection

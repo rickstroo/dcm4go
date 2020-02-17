@@ -3,6 +3,7 @@ package dcm4go
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 )
 
@@ -86,13 +87,15 @@ func (assoc *RequestorAssoc) RequestRelease() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("pdu is %v\n", pdu)
+	log.Printf("pdu is %v\n", pdu)
 
 	if pdu.pduType == aReleaseRPPDU {
-		fmt.Printf("received a release response\n")
-		if err := readReleaseRPPDU(pdu); err != nil {
+		fmt.Printf("received a release response pdu")
+		releaseRPPDU, err := readReleaseRPPDU(pdu)
+		if err != nil {
 			return err
 		}
+		log.Printf("read release response pdu, %v", releaseRPPDU)
 
 		// all is well
 		return nil

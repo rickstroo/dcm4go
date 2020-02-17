@@ -213,11 +213,6 @@ func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) erro
 	return assoc.WriteRequestOrResponse(message)
 }
 
-// Close closes the connection of the association
-func (assoc *Assoc) Close() error {
-	return assoc.conn.Close()
-}
-
 // RequestRelease requests release from an association
 func (assoc *Assoc) RequestRelease() error {
 
@@ -234,24 +229,34 @@ func (assoc *Assoc) RequestRelease() error {
 	}
 	log.Printf("pdu is %v\n", pdu)
 
-	if pdu.pduType == aReleaseRPPDU {
-		fmt.Printf("received a release response\n")
-		if err := readReleaseRPPDU(pdu); err != nil {
-			return err
-		}
-
-		// all is well
-		return nil
-	}
-
 	// is this an abort request?  if so, just return EOF
 	if pdu.pduType == aAbortPDU {
-		log.Printf("received an abort\n")
+
+		log.Printf("received an abort pdu")
+
+		abortPDU, err := readAbortPDU(pdu)
+		if err != nil {
+			return err
+		}
+		log.Printf("read abort pdu, %v", abortPDU)
+
 		// all is well
 		return nil
 	}
 
-	return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+	if pdu.pduType != aReleaseRPPDU {
+		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+	}
+
+	fmt.Printf("received a release response pdu")
+	releaseRPPDU, err := readReleaseRPPDU(pdu)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("read release response pdu, %v", releaseRPPDU)
+
+	// all is well
+	return nil
 }
 
 // Echo sends a DICOM C-Echo request

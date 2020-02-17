@@ -46,7 +46,7 @@ func main() {
 
 	echo1(remote)
 	echo2(remote, local)
-	//	echo3(remote, local)
+	echo3(remote, local)
 }
 
 // this is about the simplest way to ping a remote ae
@@ -100,19 +100,15 @@ func echo3(remote string, local string) {
 	// create an association
 	check(requestor.RequestAssoc(remote, capabilities, assocOpts))
 	log.Printf(
-		"created association from %s to %s\n",
+		"created association from %s to %s",
 		requestor.Assoc().CallingAETitle(),
 		requestor.Assoc().CalledAETitle(),
 	)
 
 	// ensure the association gets released
 	defer func() {
-		check(requestor.RequestRelease())
-		log.Printf(
-			"released association from %s to %s\n",
-			requestor.Assoc().CallingAETitle(),
-			requestor.Assoc().CalledAETitle(),
-		)
+		check(requestor.ReleaseAssoc())
+		log.Printf("released association")
 	}()
 
 	// send the echo
