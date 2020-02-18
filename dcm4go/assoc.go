@@ -1,5 +1,7 @@
 // Copyright 2020 Rick Stroobosscher.  All rights reserved.
 
+// This source file contains the definition and common methods of an Assoc.
+
 package dcm4go
 
 import (
@@ -168,33 +170,58 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
-func (assoc *Assoc) writeCommand(pc *PresContext, command *Object) error {
+// func (assoc *Assoc) writeCommand(pc *PresContext, command *Object) error {
+// 	// write the command
+// 	return assoc.writeObject(pc, command, true, ImplicitVRLittleEndianTS)
+// }
+//
+// func (assoc *Assoc) writeData(pc *PresContext, data *Object) error {
+//
+// 	// find the transfer syntax
+// 	ts, err := assoc.findAcceptedTransferSyntax(pc.id)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	// write the data
+// 	return assoc.writeObject(pc, data, false, ts)
+// }
+
+// // WriteResponse writes a response to the association
+// func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) error {
+// 	message := &Message{pcID, command, data}
+// 	return assoc.WriteRequestOrResponse(message)
+// }
+
+// writeCommandOnly writes a request with no data
+func (assoc *Assoc) writeCommandOnly(
+	presContext *PresContext,
+	command *Object,
+) error {
 	// write the command
-	return assoc.writeObject(pc, command, true, ImplicitVRLittleEndianTS)
-}
-
-func (assoc *Assoc) writeData(pc *PresContext, data *Object) error {
-
-	// find the transfer syntax
-	ts, err := assoc.findAcceptedTransferSyntax(pc.id)
-	if err != nil {
+	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
-
-	// write the data
-	return assoc.writeObject(pc, data, false, ts)
+	// return success
+	return nil
 }
 
-func (assoc *Assoc) writeObject(pc *PresContext, object *Object, isCommand bool, ts *TransferSyntax) error {
+// writeObject writes an object, command or data
+func (assoc *Assoc) writeObject(
+	presContext *PresContext,
+	object *Object,
+	isCommand bool,
+	transferSyntax *TransferSyntax,
+) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(assoc.conn, pc.id, isCommand, assoc.assocRQPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(assoc.conn, presContext.id, isCommand, assoc.assocRQPDU.userInfo.maxLenReceived)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
 	// write the command to the buffer
-	if err := encoder.writeObject(pDataWriter, object, ts); err != nil {
+	if err := encoder.writeObject(pDataWriter, object, transferSyntax); err != nil {
 		return err
 	}
 
@@ -208,126 +235,80 @@ func (assoc *Assoc) writeObject(pc *PresContext, object *Object, isCommand bool,
 	return nil
 }
 
-// WriteResponse writes a response to the association
-func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) error {
-	message := &Message{pcID, command, data}
-	return assoc.WriteRequestOrResponse(message)
-}
-
-// RequestRelease requests release from an association
-func (assoc *Assoc) RequestRelease() error {
-
-	// write a request release pdu
-	if err := writeReleaseRQPDU(assoc.conn); err != nil {
+// writeCommandWithData writes a request with data
+func (assoc *Assoc) writeCommandWithData(
+	presContext *PresContext,
+	command *Object,
+	data *Object,
+) error {
+	// write the command
+	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
-	log.Printf("wrote a release request\n")
 
-	// read the response
-	pdu, err := readPDU(assoc.conn)
+	// find the transfer syntax
+	transferSyntax, err := assoc.findAcceptedTransferSyntax(presContext.id)
 	if err != nil {
 		return err
 	}
-	log.Printf("pdu is %v\n", pdu)
 
-	// is this an abort request?  if so, just return EOF
-	if pdu.pduType == aAbortPDU {
-
-		log.Printf("received an abort pdu")
-
-		abortPDU, err := readAbortPDU(pdu)
-		if err != nil {
-			return err
-		}
-		log.Printf("read abort pdu, %v", abortPDU)
-
-		// all is well
-		return nil
-	}
-
-	if pdu.pduType != aReleaseRPPDU {
-		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
-	}
-
-	log.Printf("received a release response pdu")
-	releaseRPPDU, err := readReleaseRPPDU(pdu)
-	if err != nil {
+	// write the data
+	if err := assoc.writeObject(presContext, data, false, transferSyntax); err != nil {
 		return err
 	}
-	log.Printf("read release response pdu, %v", releaseRPPDU)
 
-	// all is well
+	// return success
 	return nil
 }
 
-// RequestAssoc is used to request an association.
-func RequestAssoc(
-	conn net.Conn,
-	localAETitle string,
-	remoteAETitle string,
-	capabilities []*Capability,
-	opts *AssocOpts,
-) (*Assoc, error) {
-
-	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAETitle, localAETitle, capabilities)
-	log.Printf("assocRQPDU is %v", assocRQPDU)
-
-	// write the pdu
-	if err := writeAssocRQPDU(conn, assocRQPDU); err != nil {
-		return nil, err
+// writeCommandWithDataFromReader writes a request with data from a reader
+func (assoc *Assoc) writeCommandWithDataFromReader(
+	presContext *PresContext,
+	command *Object,
+	reader io.Reader,
+) error {
+	// write the command
+	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
+		return err
 	}
 
-	// read the response
-	pdu, err := readPDU(conn)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("pdu is %v", pdu)
-
-	// is this an abort request?  if so, return error
-	if pdu.pduType == aAbortPDU {
-		log.Printf("received an abort pdu")
-		abortPDU, err := readAbortPDU(pdu)
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("associate request aborted, %v", abortPDU)
+	// copy the data
+	if err := assoc.copyDataFromReader(presContext, reader); err != nil {
+		return nil
 	}
 
-	// if this an associate reuject?  if so, return error
-	if pdu.pduType == aAssociateRJPDU {
-		log.Printf("received a rejection pdu")
-		assocRJPDU, err := readAssocRJPDU(pdu)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("assocRJPDU is %v", assocRJPDU)
+	// return success
+	return nil
+}
 
-		return nil, fmt.Errorf("associate request rejected, %s", assocRJPDU)
+// copyDataFromReader copies the data from a reader to a stream of PDUs and PDVs
+func (assoc *Assoc) copyDataFromReader(
+	presContext *PresContext,
+	reader io.Reader,
+) error {
+	// create a pdatawriter to copy the data to
+	// it knows how to create pdus and pdvs as required
+	// since it implements a writer, we can then simply copy the data
+	pDataWriter := newPDataWriter(
+		assoc.conn,                               // the writer is the association connection
+		presContext.id,                           // write using the same presentation context id as in the request
+		false,                                    // false means we are writing data
+		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
+	)
+
+	// copy the data
+	if _, err := io.Copy(pDataWriter, reader); err != nil {
+		return err
 	}
 
-	// is this not an associate accept?  if not, return error
-	if pdu.pduType != aAssociateACPDU {
-		return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+	// flush the data writer
+	// passing true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
+		return err
 	}
 
-	assocACPDU, err := readAssocACPDU(pdu)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("assocACPDU is %v", assocACPDU)
-
-	// create an association from the response
-	assoc := &Assoc{
-		conn:       conn,
-		assocRQPDU: assocRQPDU,
-		assocACPDU: assocACPDU,
-	}
-	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
-
-	// return the association
-	return assoc, nil
+	// return success
+	return nil
 }
 
 // ReleaseAssoc releases the association and closes the connection
@@ -353,433 +334,4 @@ func (assoc *Assoc) ReleaseAssoc() error {
 
 	// return success
 	return nil
-}
-
-// Echo sends a DICOM C-Echo request
-func (assoc *Assoc) Echo() error {
-
-	// find the accepted presentation context for this abstract syntax and any transfer syntax
-	presContex, err := assoc.findAcceptedPresContextByCapability(VerificationUID, "*")
-	if err != nil {
-		return err
-	}
-
-	// create a verification request
-	request := newCEchoRequest()
-
-	// write the verification request
-	if err := assoc.writeCommand(presContex, request); err != nil {
-		return err
-	}
-
-	// read the response
-	response, err := assoc.ReadRequestOrResponse()
-	if err != nil {
-		return err
-	}
-
-	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
-	if err != nil {
-		return err
-	}
-
-	if status != 0 {
-		return fmt.Errorf("status was %d, not success", status)
-	}
-
-	return nil
-}
-
-// Store sends a DICOM C-Store request
-func (assoc *Assoc) Store(reader io.Reader) error {
-
-	// read the group two attributes
-	groupTwo, err := ReadGroupTwo(reader, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the sop class uid of the stored object
-	sopClassUID, err := groupTwo.AsString(MediaStorageSOPClassUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the sop class instance UID of the stored object
-	sopInstanceUID, err := groupTwo.AsString(MediaStorageSOPInstanceUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// get the transfer syntax used to store the file
-	transferSyntaxUID, err := groupTwo.AsString(TransferSyntaxUIDTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// find the accepted presentation context for this transfer syntax
-	presContex, err := assoc.findAcceptedPresContextByCapability(sopClassUID, transferSyntaxUID)
-	if err != nil {
-		return err
-	}
-
-	// create a group zero object
-	request := newCStoreRequest(sopClassUID, sopInstanceUID)
-
-	// write the request, but no data
-	if err := assoc.writeCommand(presContex, request); err != nil {
-		return err
-	}
-
-	// create a pdatawriter to copy the data to
-	// it knows how to create pdus and pdvs as required
-	// since it implements a writer, we can then simply copy the data
-	pDataWriter := newPDataWriter(
-		assoc.conn,                               // the writer is the association connection
-		presContex.id,                            // write using the same presentation context id as in the request
-		false,                                    // false means we are writing data
-		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
-	)
-
-	// copy the data
-	if _, err := io.Copy(pDataWriter, reader); err != nil {
-		return err
-	}
-
-	// flush the underlying writer
-	// passing true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
-		return err
-	}
-
-	// read the response
-	response, err := assoc.ReadRequestOrResponse()
-	if err != nil {
-		return err
-	}
-
-	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
-	if err != nil {
-		return err
-	}
-
-	if status != 0 {
-		return fmt.Errorf("status was %d, not success", status)
-	}
-
-	// otherwise, all is well
-	return nil
-}
-
-// AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*Assoc, error) {
-
-	// I've decided not to implement a state machine.
-	// I've looked at a number of implementations and it looks
-	// to me like a state machine makes it really hard to follow
-	// all the logic.  So, in the spirit of writing easy to
-	// read programs, I will implement the logic of the state
-	// machine in the AcceptAssoc and RequestAssoc structs.
-
-	// read a pdu
-	pdu, err := readPDU(conn)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("pdu is %v\n", pdu)
-
-	// if abort, we simply exit
-	if pdu.pduType == aAbortPDU {
-		return nil, io.EOF
-	}
-
-	// if anything other than an associate request, we abort
-	if pdu.pduType != aAssociateRQPDU {
-
-		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
-
-		// construct an abort pdu
-		abortPDU := &AbortPDU{
-			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
-			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
-		}
-
-		// attempt to write it
-		if err := abortPDU.Write(conn); err != nil {
-			return nil, err
-		}
-
-		// let the caller know why we were not able to negotiate an association
-		return nil, ErrUnexpectedPDU
-	}
-
-	// read the associate request
-	assocRQPDU, err := readAssocRQPDU(pdu)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("assocRQPDU is %v\n", assocRQPDU)
-
-	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("assocACPDU is %v\n", assocACPDU)
-	log.Printf("assocRJPDU is %v\n", assocRJPDU)
-
-	// was association rejected
-	if assocRJPDU != nil {
-
-		// write the associate reject pdu
-		if err := assocRJPDU.Write(conn); err != nil {
-			return nil, err
-		}
-		// let the caller know that the associate request was rejected
-		return nil, ErrAssociateRequestRejected
-	}
-
-	// otherwise, write the associate accept pdu
-	if err := assocACPDU.Write(conn); err != nil {
-		return nil, err
-	}
-
-	// construct an association
-	assoc := &Assoc{
-		conn:       conn,
-		ae:         ae,
-		assocRQPDU: assocRQPDU,
-		assocACPDU: assocACPDU,
-	}
-	log.Printf("assoc is %v\n", assoc)
-
-	// return the association to the caller
-	return assoc, nil
-}
-
-// negotiateAssoc determines what requested presentation contexts
-// are accepted based on the presentation contexts that are supported
-// by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocACPDU, *AssocRJPDU, error) {
-
-	// reject if the called ae title does not match the given ae title
-	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
-	if calledAETitle != ae.AETitle() {
-		// create and return an associate reject pdu
-		assocRJPDU := &AssocRJPDU{
-			result: resultRejectedPermanent,
-			source: sourceServiceProviderACSERelatedFunction,
-			reason: reasonServiceUserCalledAETitleNotRecognized,
-		}
-		return nil, assocRJPDU, nil
-	}
-
-	// initialize the association accept pdu
-	assocACPDU := newAssocACPDU(assocRQPDU)
-
-	// negotiate each of the presentation contexts
-	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, handlers)
-		if err != nil {
-			return nil, nil, err
-		}
-		assocACPDU.presContexts = append(assocACPDU.presContexts, acPresContext)
-	}
-
-	return assocACPDU, nil, nil
-}
-
-// negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*PresContext, error) {
-
-	// look for a capability for this abstract syntax
-	handler, capability, found := findCapability(rqPresContext.abstractSyntax, handlers)
-
-	// if we don't find one, return a failure for this requested presentation context
-	if !found {
-		acPresContext := &PresContext{
-			rqPresContext.id,             // the id
-			"",                           // no abstract syntax
-			nil,                          // no transfer syntaxes
-			pcAbstractSyntaxNotSupported, // failure
-			nil,                          // no handler
-		}
-		return acPresContext, nil
-	}
-
-	// if we found one, now we look for a matching transfer syntax
-	for _, rqTansferSyntax := range rqPresContext.transferSyntaxes {
-		if contains(capability.TransferSyntaxes, rqTansferSyntax) {
-			acPresContext := &PresContext{
-				rqPresContext.id,          // the id
-				"",                        // no abstract syntax
-				[]string{rqTansferSyntax}, // the transfer syntax
-				pcAcceptance,              // success
-				handler,                   // the handler
-			}
-			return acPresContext, nil
-		}
-	}
-
-	// we didn't find a matching transfer syntax, so return a failed acceptance presentation context
-	acPresContext := &PresContext{
-		rqPresContext.id,               // the id
-		"",                             // no abstract syntax
-		nil,                            // no transfer syntaxes
-		pcTransferSyntaxesNotSupported, // failure
-		nil,                            // no handler
-	}
-
-	// return the accepted presentation context
-	return acPresContext, nil
-}
-
-// findCapability searches for a capability for an abstract syntax
-func findCapability(abstractSyntax string, handlers []Handler) (Handler, *Capability, bool) {
-	for _, handler := range handlers {
-		for _, capability := range handler.Capabilities() {
-			if abstractSyntax == capability.AbstractSyntax {
-				return handler, capability, true
-			}
-		}
-	}
-	return nil, nil, false
-}
-
-// contains looks for a string in a set of strings
-func contains(ses []string, t string) bool {
-	for _, s := range ses {
-		if s == t {
-			return true
-		}
-	}
-	return false
-}
-
-// ReadRequest reads a request from the association
-func (assoc *Assoc) ReadRequest() (*Message, error) {
-	return assoc.ReadRequestOrResponse()
-}
-
-// Serve reads and services a single request
-func (assoc *Assoc) Serve() error {
-
-	// read a pdu
-	pdu, err := readPDU(assoc.conn)
-	if err != nil {
-		return err
-	}
-	log.Printf("pdu is %v\n", pdu)
-
-	// is this an association release request?
-	/// if so, write release response and return EOF
-	if pdu.pduType == aReleaseRQPDU {
-
-		log.Printf("received release request, attempting to release association\n")
-
-		if err := readReleaseRQPDU(pdu); err != nil {
-			return err
-		}
-
-		// construct a release response pdu
-		releaseRPPDU := &ReleaseRPPDU{}
-		if err := releaseRPPDU.Write(assoc.conn); err != nil {
-			return err
-		}
-
-		// return EOF to indicate that the association is released
-		return io.EOF
-	}
-
-	// is this an abort request?  if so, simply return EOF
-	if pdu.pduType == aAbortPDU {
-		log.Printf("received abort request, aborting association\n")
-		return io.EOF
-	}
-
-	// if anything other than an data transfer request, we abort
-	if pdu.pduType != pDataTFPDU {
-
-		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
-
-		// construct an abort pdu
-		abortPDU := &AbortPDU{
-			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
-			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
-		}
-
-		// attempt to write it
-		if err := abortPDU.Write(assoc.conn); err != nil {
-			return err
-		}
-
-		// let the caller know why we were not able to negotiate an association
-		return ErrUnexpectedPDU
-	}
-
-	log.Printf("attempting to accept data transfer\n")
-
-	// create a reader for the command
-	commandReader, err := newPDataReader(assoc.Conn(), pdu, true)
-	if err != nil {
-		return err
-	}
-
-	// get the presentation context id from the reader
-	pcID := commandReader.pdv.pcID
-
-	// read the command
-	command, err := readCommand(commandReader, assoc)
-	if err != nil {
-		return err
-	}
-	log.Printf("command is %v\n", command)
-
-	// find the persentation context by id
-	pc, err := assoc.findAcceptedPresContextByPCID(pcID)
-	if err != nil {
-		return err
-	}
-	log.Printf("pc is %v\n", pc)
-
-	// get the command data set
-	commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
-	if err != nil {
-		return err
-	}
-
-	// get a data reader if required
-	dataReader, err := getDataReader(commandDataSet, assoc, pdu)
-	if err != nil {
-		return err
-	}
-
-	// call the handler for the command
-	if err := pc.handler.HandleRequest(assoc, pc, command, dataReader); err != nil {
-		return err
-	}
-
-	// all is well
-	return nil
-}
-
-func getDataReader(commandDataSet uint16, assoc *Assoc, pdu *PDU) (*PDataReader, error) {
-
-	// check to see if data is present
-	if isDataSetPresent(commandDataSet) {
-
-		// create a reader for the data
-		dataReader, err := newPDataReader(assoc.Conn(), pdu, false)
-		if err != nil {
-			return nil, err
-		}
-
-		// return the data reader
-		return dataReader, nil
-	}
-
-	// return nothing, as no data reader is required
-	return nil, nil
 }
