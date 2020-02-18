@@ -32,7 +32,7 @@ func (handler *BasicCEchoHandler) HandleRequest(
 ) error {
 
 	// create a response
-	response, err := newCEchoResponse(assoc, request)
+	response, err := newCEchoResponse(request)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (handler *BasicCStoreHandler) HandleRequest(
 	fmt.Printf("discarded %d bytes\n", num)
 
 	// create a response
-	response, err := newCStoreResponse(assoc, request)
+	response, err := newCStoreResponse(request)
 	if err != nil {
 		return err
 	}

@@ -365,10 +365,7 @@ func (assoc *Assoc) Echo() error {
 	}
 
 	// create a verification request
-	request, err := newCEchoRequest(assoc)
-	if err != nil {
-		return err
-	}
+	request := newCEchoRequest()
 
 	// write the verification request
 	if err := assoc.writeCommand(presContex, request); err != nil {
@@ -428,10 +425,7 @@ func (assoc *Assoc) Store(reader io.Reader) error {
 	}
 
 	// create a group zero object
-	request, err := newCStoreRequest(assoc, sopClassUID, sopInstanceUID)
-	if err != nil {
-		return err
-	}
+	request := newCStoreRequest(sopClassUID, sopInstanceUID)
 
 	// write the request, but no data
 	if err := assoc.writeCommand(presContex, request); err != nil {
