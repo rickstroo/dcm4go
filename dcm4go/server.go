@@ -196,7 +196,7 @@ func collectCapabilities(handlers []Handler) []*Capability {
 	return capabilities
 }
 
-func (server *Server) findHandler(assoc *AcceptorAssoc, request *Message) (Handler, error) {
+func (server *Server) findHandler(assoc *Assoc, request *Message) (Handler, error) {
 
 	// find the affected sop class uid from the request
 	affectedSOPClassUID, err := request.Command().asString(AffectedSOPClassUIDTag, 0)
