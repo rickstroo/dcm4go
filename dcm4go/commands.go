@@ -35,12 +35,12 @@ const (
 // newRequest constructs a request message
 func newRequest(
 	affectedSOPClassUID string,
-	comandField uint16,
+	commandField uint16,
 	commandDataSetType uint16,
 ) *Object {
 	request := newObject()
 	request.addUID(AffectedSOPClassUIDTag, affectedSOPClassUID)
-	request.addShort(CommandFieldTag, "US", comandField)
+	request.addShort(CommandFieldTag, "US", commandField)
 	request.addShort(MessageIDTag, "US", nextMessageID())
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
 	return request
@@ -69,7 +69,7 @@ func newResponse(
 	commandField |= 0x8000
 
 	// use the message id from the request as the message id responded to
-	messageID, err := request.asShort(MessageIDTag, 0)
+	messageIDBeingRespondedTo, err := request.asShort(MessageIDTag, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func newResponse(
 	response := newObject()
 	response.addUID(AffectedSOPClassUIDTag, affectedSOPClassUID)
 	response.addShort(CommandFieldTag, "US", commandField)
-	response.addShort(MessageIDBeingRespondedToTag, "US", messageID)
+	response.addShort(MessageIDBeingRespondedToTag, "US", messageIDBeingRespondedTo)
 	response.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
 	response.addShort(StatusTag, "US", statusCode)
 
@@ -96,16 +96,14 @@ func newCEchoResponse(request *Object) (*Object, error) {
 	return newResponse(request, NoDataSetCode, SuccessStatusCode)
 }
 
-// newCStoreRequest constructs a C-Echo request message
+// newCStoreRequest constructs a C-Store request message
 func newCStoreRequest(sopClassUID string, sopInstanceUID string) *Object {
 
 	// construct a default request
 	request := newRequest(sopClassUID, CStoreRQ, DataSetCode)
 
-	// add the priority
+	// add the C-Store specifics
 	request.addShort(PriorityTag, "US", MediumPriorityCode)
-
-	// add the affected sop instance UID
 	request.addUID(AffectedSOPInstanceUIDTag, sopInstanceUID)
 
 	// return the request
