@@ -40,8 +40,8 @@ func main() {
 	paths := strings.Split(path, ",")
 
 	store1(paths, remote)
-	store2(paths, remote, local)
-	store3(paths, remote, local)
+	//	store2(paths, remote, local)
+	//	store3(paths, remote, local)
 }
 
 // this is about the simplest way to send files
@@ -85,17 +85,17 @@ func store3(paths []string, remoteAddr string, local string) {
 	remoteAE := dcm4go.NewAE(remoteAddr)
 
 	// create an association
-	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	check(err)
 	log.Printf(
 		"created association from %s to %s",
-		requestor.Assoc().CallingAETitle(),
-		requestor.Assoc().CalledAETitle(),
+		assoc.CallingAETitle(),
+		assoc.CalledAETitle(),
 	)
 
 	// ensure the association gets released
 	defer func() {
-		check(requestor.ReleaseAssoc())
+		check(assoc.ReleaseAssoc())
 		log.Printf("released association")
 	}()
 
@@ -110,7 +110,7 @@ func store3(paths []string, remoteAddr string, local string) {
 		}
 
 		// send the file
-		if err := requestor.Store(file); err != nil {
+		if err := assoc.Store(file); err != nil {
 			log.Printf("error while sending file, %v", err)
 		}
 

@@ -64,20 +64,20 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 	// create the remote AE
 	remoteAE := NewAE(remoteAddr)
 
-	// create a requestor
-	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	// create an association
+	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	if err != nil {
 		return err
 	}
 	log.Printf(
 		"created association from %s to %s",
-		requestor.Assoc().CallingAETitle(),
-		requestor.Assoc().CalledAETitle(),
+		assoc.CallingAETitle(),
+		assoc.CalledAETitle(),
 	)
 
 	// ensure the association gets released
 	defer func() {
-		if err := requestor.ReleaseAssoc(); err != nil {
+		if err := assoc.ReleaseAssoc(); err != nil {
 			log.Printf("while releasing association, caught error %v", err)
 		} else {
 			log.Printf("released association")
@@ -85,7 +85,7 @@ func (echoer *Echoer) echo(remoteAddr string) error {
 	}()
 
 	// send the echo
-	if err := requestor.Echo(); err != nil {
+	if err := assoc.Echo(); err != nil {
 		return err
 	}
 

@@ -4,6 +4,8 @@ package dcm4go
 
 import (
 	"fmt"
+	"log"
+	"net"
 	"strings"
 )
 
@@ -66,13 +68,21 @@ func (ae *AE) Port() string {
 	return ae.port
 }
 
-// Been thinking about how to make the AE the starting point for all
-// applications, yet separate out the Requestor and Acceptor methods.
-// Perhaps this is a good compromise.
-
 // RequestAssoc requests an association and returns a Requestor
-func (ae *AE) RequestAssoc(remoteAE *AE, capabilities []*Capability, opts *AssocOpts) (*Requestor, error) {
-	requestor, err := requestAssoc(ae, remoteAE, capabilities, opts)
+func (ae *AE) RequestAssoc(
+	remoteAE *AE,
+	capabilities []*Capability,
+	opts *AssocOpts,
+) (*Assoc, error) {
+
+	// connect to the remote
+	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
+
+	requestor, err := RequestAssoc(conn, ae.AETitle(), remoteAE.AETitle(), capabilities, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +90,6 @@ func (ae *AE) RequestAssoc(remoteAE *AE, capabilities []*Capability, opts *Assoc
 }
 
 // AcceptAssoc waits for an association and returns an Acceptor
-func (ae *AE) AcceptAssoc(capabilities []*Capability, opts *AssocOpts) (*Acceptor, error) {
+func (ae *AE) AcceptAssoc(capabilities []*Capability, opts *AssocOpts) (*Assoc, error) {
 	return nil, fmt.Errorf("AE.AcceptAssoc(): not implemented")
 }

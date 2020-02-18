@@ -86,20 +86,20 @@ func echo3(remoteAddr string, local string) {
 	remoteAE := dcm4go.NewAE(remoteAddr)
 
 	// create an association
-	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	check(err)
 	log.Printf(
 		"created association from %s to %s",
-		requestor.Assoc().CallingAETitle(),
-		requestor.Assoc().CalledAETitle(),
+		assoc.CallingAETitle(),
+		assoc.CalledAETitle(),
 	)
 
 	// ensure the association gets released
 	defer func() {
-		check(requestor.ReleaseAssoc())
+		check(assoc.ReleaseAssoc())
 		log.Printf("released association")
 	}()
 
 	// send the echo
-	check(requestor.Echo())
+	check(assoc.Echo())
 }

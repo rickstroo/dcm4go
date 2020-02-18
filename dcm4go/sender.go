@@ -56,19 +56,19 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 	remoteAE := NewAE(remoteAddr)
 
 	// create an association
-	requestor, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
 	if err != nil {
 		return err
 	}
 	log.Printf(
 		"created association from %s to %s",
-		requestor.Assoc().CallingAETitle(),
-		requestor.Assoc().CalledAETitle(),
+		assoc.CallingAETitle(),
+		assoc.CalledAETitle(),
 	)
 
 	// ensure the association gets released
 	defer func() {
-		if err := requestor.ReleaseAssoc(); err != nil {
+		if err := assoc.ReleaseAssoc(); err != nil {
 			log.Printf("while releasing association, caught error %v", err)
 		}
 		log.Printf("released association")
@@ -85,7 +85,7 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 		}
 
 		// send the file
-		if err := requestor.Store(file); err != nil {
+		if err := assoc.Store(file); err != nil {
 			log.Printf("error while sending file, %v", err)
 		}
 
