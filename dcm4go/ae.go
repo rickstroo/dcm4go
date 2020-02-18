@@ -73,7 +73,10 @@ func (ae *AE) RequestAssoc(
 	remoteAE *AE,
 	capabilities []*Capability,
 	opts *AssocOpts,
-) (*Assoc, error) {
+) (
+	*RequestorAssoc,
+	error,
+) {
 
 	// connect to the remote
 	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
@@ -90,6 +93,12 @@ func (ae *AE) RequestAssoc(
 }
 
 // AcceptAssoc waits for an association and returns an Acceptor
-func (ae *AE) AcceptAssoc(capabilities []*Capability, opts *AssocOpts) (*Assoc, error) {
+func (ae *AE) AcceptAssoc(
+	capabilities []*Capability,
+	opts *AssocOpts,
+) (
+	*AcceptorAssoc,
+	error,
+) {
 	return nil, fmt.Errorf("AE.AcceptAssoc(): not implemented")
 }

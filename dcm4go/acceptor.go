@@ -12,8 +12,13 @@ import (
 	"strings"
 )
 
+// AcceptorAssoc is a type of Assoc, used by Acceptors of associations.
+type AcceptorAssoc struct {
+	Assoc
+}
+
 // AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*Assoc, error) {
+func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -86,11 +91,13 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*Assoc, error) {
 	}
 
 	// construct an association
-	assoc := &Assoc{
-		conn:       conn,
-		ae:         ae,
-		assocRQPDU: assocRQPDU,
-		assocACPDU: assocACPDU,
+	assoc := &AcceptorAssoc{
+		Assoc{
+			conn:       conn,
+			ae:         ae,
+			assocRQPDU: assocRQPDU,
+			assocACPDU: assocACPDU,
+		},
 	}
 	log.Printf("assoc is %v\n", assoc)
 

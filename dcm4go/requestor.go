@@ -12,6 +12,11 @@ import (
 	"net"
 )
 
+// RequestorAssoc is a type of Assoc, used by requestors of associations.
+type RequestorAssoc struct {
+	Assoc
+}
+
 // RequestAssoc is used to request an association.
 func RequestAssoc(
 	conn net.Conn,
@@ -19,7 +24,7 @@ func RequestAssoc(
 	remoteAETitle string,
 	capabilities []*Capability,
 	opts *AssocOpts,
-) (*Assoc, error) {
+) (*RequestorAssoc, error) {
 
 	// put together an association request pdu
 	assocRQPDU := newAssocRQPDU(remoteAETitle, localAETitle, capabilities)
@@ -71,10 +76,12 @@ func RequestAssoc(
 	log.Printf("assocACPDU is %v", assocACPDU)
 
 	// create an association from the response
-	assoc := &Assoc{
-		conn:       conn,
-		assocRQPDU: assocRQPDU,
-		assocACPDU: assocACPDU,
+	assoc := &RequestorAssoc{
+		Assoc{
+			conn:       conn,
+			assocRQPDU: assocRQPDU,
+			assocACPDU: assocACPDU,
+		},
 	}
 	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
 
@@ -129,7 +136,7 @@ func (assoc *Assoc) RequestRelease() error {
 }
 
 // Echo sends a DICOM C-Echo request
-func (assoc *Assoc) Echo() error {
+func (assoc *RequestorAssoc) Echo() error {
 
 	// find the accepted presentation context for this abstract syntax and any transfer syntax
 	presContex, err := assoc.findAcceptedPresContextByCapability(VerificationUID, "*")
@@ -165,7 +172,7 @@ func (assoc *Assoc) Echo() error {
 }
 
 // Store sends a DICOM C-Store request
-func (assoc *Assoc) Store(reader io.Reader) error {
+func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 
 	// read the group two attributes
 	groupTwo, err := ReadGroupTwo(reader, 0)
