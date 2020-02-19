@@ -199,7 +199,7 @@ func collectCapabilities(handlers []Handler) []*Capability {
 func (server *Server) findHandler(assoc *Assoc, request *Message) (Handler, error) {
 
 	// find the affected sop class uid from the request
-	affectedSOPClassUID, err := request.Command().asString(AffectedSOPClassUIDTag, 0)
+	affectedSOPClassUID, err := request.command.asString(AffectedSOPClassUIDTag, 0)
 	if err != nil {
 		return nil, err
 	}

@@ -16,9 +16,9 @@ type PDataReader struct {
 }
 
 // newPDataReader constructs and initializes a PDataReader
-// notice that we don't pass in a pdu, but a pdu reader
-// that's because a single pdu reader can be used to read a
-// sequence of command PDVs and a sequence of data set PDVs
+// the reader is used to read additional pdus if required
+// the pdu is used to read pdvs
+// isCommand indicates whether we are reading a command or data
 func newPDataReader(reader io.Reader, pdu *PDU, isCommand bool) (*PDataReader, error) {
 
 	// read the first PDV

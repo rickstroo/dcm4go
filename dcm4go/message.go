@@ -9,10 +9,10 @@ import (
 
 // Message presents the requests and responses that are passed between AEs
 type Message struct {
-	pcID        byte
-	command     *Object
-	data        *Object
-	pDataReader *PDataReader
+	pcID       byte
+	command    *Object
+	data       *Object
+	dataReader *PDataReader
 }
 
 var messageID uint16
@@ -38,26 +38,6 @@ func (message *Message) String() string {
 	return s
 }
 
-// PCID returns the presentation context id of the message
-func (message *Message) PCID() byte {
-	return message.pcID
-}
-
-// Command returns the command portion of the message
-func (message *Message) Command() *Object {
-	return message.command
-}
-
-// Data returns the data portion of the message
-func (message *Message) Data() *Object {
-	return message.data
-}
-
-// PDataReader returns the data reader
-func (message *Message) PDataReader() *PDataReader {
-	return message.pDataReader
-}
-
 func isDataSetPresent(commandDataSetType uint16) bool {
 	return commandDataSetType != 0x0101
 }
@@ -73,6 +53,7 @@ func readMessage(
 ) {
 
 	// create a reader for the command
+	// start by reading from the pdu that was provided
 	commandReader, err := newPDataReader(reader, pdu, true)
 	if err != nil {
 		return nil, err
@@ -102,7 +83,12 @@ func readMessage(
 	if isDataSetPresent(commandDataSet) {
 
 		// create a reader for the data
-		pDataReader, err := newPDataReader(reader, pdu, false)
+		// noticed that we initialize this with the pdu that was being
+		// read at the time that the reading of the command completed
+		// that seems a little contrived
+		// perhaps we need to create a pdu reader class that manages
+		// that state so that we don't have to do this
+		dataReader, err := newPDataReader(reader, commandReader.pdu, false)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +97,7 @@ func readMessage(
 		if shouldReadData {
 
 			// read the data
-			data, err := readData(pDataReader, assoc, pcID)
+			data, err := readData(dataReader, assoc, pcID)
 			if err != nil {
 				return nil, err
 			}
@@ -122,7 +108,7 @@ func readMessage(
 		} else {
 
 			// otherwise, add the data reader to the message
-			message.pDataReader = pDataReader
+			message.dataReader = dataReader
 		}
 	}
 
@@ -176,24 +162,24 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
-	if err := writeCommand(writer, assoc, message.pcID, message.Command()); err != nil {
+	if err := writeCommand(writer, assoc, message.pcID, message.command); err != nil {
 		return err
 	}
 
-	if message.Data() != nil {
+	if message.data != nil {
 
 		transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(message.pcID)
 		if err != nil {
 			return err
 		}
 
-		if err := writeData(writer, assoc, message.pcID, message.Command(), transferSyntax); err != nil {
+		if err := writeData(writer, assoc, message.pcID, message.data, transferSyntax); err != nil {
 			return err
 		}
 	}
 
-	if message.PDataReader() != nil {
-		if err := copyDataFromReader(writer, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.PDataReader()); err != nil {
+	if message.dataReader != nil {
+		if err := copyDataFromReader(writer, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.dataReader); err != nil {
 			return err
 		}
 	}
