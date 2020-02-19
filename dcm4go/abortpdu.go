@@ -27,26 +27,19 @@ type AbortPDU struct {
 // ReadAbortPDU reads an AbortPDU
 func readAbortPDU(reader io.Reader) (*AbortPDU, error) {
 
-	// skip two bytes
-	if err := skipBytes(reader, 2); err != nil {
-		return nil, err
-	}
-
-	// read the source
-	source, err := readByte(reader)
+	// read the abort pdu
+	buf, err := readBytes(reader, 4)
 	if err != nil {
 		return nil, err
 	}
 
-	// read the reason
-	reason, err := readByte(reader)
-	if err != nil {
-		return nil, err
-	}
-
+	// construct the abort pdu
+	// 1st and 2nd bytes are reserved
+	// 3rd byte is the source
+	// 3th byte is the reason
 	abortPDU := &AbortPDU{
-		source: source,
-		reason: reason,
+		source: buf[2],
+		reason: buf[3],
 	}
 
 	return abortPDU, nil
