@@ -21,7 +21,7 @@ func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
 			&UserInfo{
 				16378,                     // max length received, need to figure out why dcm4che uses this number
 				ImplementationClassUID,    // implementation class uid, we have our own now
-				ImplementationVersionName, // implementation vesion name
+				ImplementationVersionName, // implementation version name
 				0,                         // max num ops invoked
 				0,                         // max num ops performed
 			},

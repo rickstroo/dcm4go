@@ -50,7 +50,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 			return nil, err
 		}
 
-		if subItemType == 0x51 { // maximum length
+		if subItemType == maxLengthItemType { // maximum length
 
 			// read the length
 			length, err := readShort(reader, binary.BigEndian)
@@ -70,7 +70,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 			}
 			userInfo.maxLenReceived = maxLenReceived
 
-		} else if subItemType == 0x52 { // implementation class UID
+		} else if subItemType == implClassUIDItemType { // implementation class UID
 
 			// read the length
 			length, err := readShort(reader, binary.BigEndian)
@@ -85,7 +85,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 			}
 			userInfo.implClassUID = implClassUID
 
-		} else if subItemType == 0x53 { // maximum number operations
+		} else if subItemType == maxNumOpsItemType { // maximum number operations
 
 			// read the length
 			length, err := readShort(reader, binary.BigEndian)
@@ -112,7 +112,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 			}
 			userInfo.maxNumOpsPerformed = maxNumOpsPerformed
 
-		} else if subItemType == 0x55 { // implementation version name
+		} else if subItemType == implVersionNameItemType { // implementation version name
 
 			// read the length
 			length, err := readShort(reader, binary.BigEndian)
@@ -153,7 +153,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 func writeUserInfo(writer io.Writer, userInfo *UserInfo) error {
 
 	// write the item type
-	if err := writeByte(writer, 0x50); err != nil {
+	if err := writeByte(writer, userInfoItemType); err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func writeUserInfo(writer io.Writer, userInfo *UserInfo) error {
 func writeMaxLenReceived(writer io.Writer, userInfo *UserInfo) error {
 
 	// write the sub item type
-	if err := writeByte(writer, 0x51); err != nil {
+	if err := writeByte(writer, maxLengthItemType); err != nil {
 		return err
 	}
 
@@ -221,7 +221,7 @@ func writeMaxLenReceived(writer io.Writer, userInfo *UserInfo) error {
 func writeImplClassUID(writer io.Writer, userInfo *UserInfo) error {
 
 	// write the sub item type
-	if err := writeByte(writer, 0x52); err != nil {
+	if err := writeByte(writer, implClassUIDItemType); err != nil {
 		return err
 	}
 
@@ -247,7 +247,7 @@ func writeImplClassUID(writer io.Writer, userInfo *UserInfo) error {
 func writeMaxNumOps(writer io.Writer, userInfo *UserInfo) error {
 
 	// write the sub item type
-	if err := writeByte(writer, 0x53); err != nil {
+	if err := writeByte(writer, maxNumOpsItemType); err != nil {
 		return err
 	}
 
@@ -278,7 +278,7 @@ func writeMaxNumOps(writer io.Writer, userInfo *UserInfo) error {
 func writeImplVersionName(writer io.Writer, userInfo *UserInfo) error {
 
 	// write the sub item type
-	if err := writeByte(writer, 0x55); err != nil {
+	if err := writeByte(writer, implVersionNameItemType); err != nil {
 		return err
 	}
 
