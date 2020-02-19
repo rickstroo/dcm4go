@@ -170,12 +170,13 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
-// writeRequest writes a request.  the command is required.  the data and
+// writeMessage writes a message.  a message can be a request or
+// a response.  the command is required.  the data and
 // reader are optional.  it's assumed that only one of the data or
 // reader will be passed, but we don't enforce that.  perhaps there are
 // some interesting situations where you want to write some constructed
 // data, and then follow that up with data copied from a reader.
-func (assoc *Assoc) writeRequest(
+func (assoc *Assoc) writeMessage(
 	presContext *PresContext,
 	command *Object,
 	data *Object,
@@ -278,8 +279,8 @@ func (assoc *Assoc) copyDataFromReader(
 	return nil
 }
 
-// readRequest reads a request
-func (assoc *Assoc) readRequest(
+// readMessage reads a message.  a message can be a request or a response.
+func (assoc *Assoc) readMessage(
 	presContext *PresContext,
 	readData bool, // if true, then we read the data into an object if present
 ) (
@@ -288,7 +289,7 @@ func (assoc *Assoc) readRequest(
 	*PDataReader, // data available from a reader
 	error,
 ) {
-	return nil, nil, nil, fmt.Errorf("Assoc.readRequest(): not implemented")
+	return nil, nil, nil, fmt.Errorf("Assoc.readMessage(): not implemented")
 }
 
 // Close closes the association's connection
