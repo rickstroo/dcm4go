@@ -96,8 +96,10 @@ func echo3(remoteAddr string, local string) {
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.ReleaseAssoc())
+		check(assoc.RequestRelease())
 		log.Printf("released association")
+		check(assoc.Close())
+		log.Printf("closed association")
 	}()
 
 	// send the echo

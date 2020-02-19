@@ -40,8 +40,8 @@ func main() {
 	paths := strings.Split(path, ",")
 
 	store1(paths, remote)
-	//	store2(paths, remote, local)
-	//	store3(paths, remote, local)
+	store2(paths, remote, local)
+	store3(paths, remote, local)
 }
 
 // this is about the simplest way to send files
@@ -95,8 +95,10 @@ func store3(paths []string, remoteAddr string, local string) {
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.ReleaseAssoc())
+		check(assoc.RequestRelease())
 		log.Printf("released association")
+		check(assoc.Close())
+		log.Printf("closed association")
 	}()
 
 	// send the files
