@@ -170,31 +170,11 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
-// func (assoc *Assoc) writeCommand(pc *PresContext, command *Object) error {
-// 	// write the command
-// 	return assoc.writeObject(pc, command, true, ImplicitVRLittleEndianTS)
-// }
-//
-// func (assoc *Assoc) writeData(pc *PresContext, data *Object) error {
-//
-// 	// find the transfer syntax
-// 	ts, err := assoc.findAcceptedTransferSyntax(pc.id)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	// write the data
-// 	return assoc.writeObject(pc, data, false, ts)
-// }
-
-// // WriteResponse writes a response to the association
-// func (assoc *Assoc) WriteResponse(pcID byte, command *Object, data *Object) error {
-// 	message := &Message{pcID, command, data}
-// 	return assoc.WriteRequestOrResponse(message)
-// }
-
 // writeRequest writes a request.  the command is required.  the data and
-// reader are optional, and mutually exclusive.
+// reader are optional.  it's assumed that only one of the data or
+// reader will be passed, but we don't enforce that.  perhaps there are
+// some interesting situations where you want to write some constructed
+// data, and then follow that up with data copied from a reader.
 func (assoc *Assoc) writeRequest(
 	presContext *PresContext,
 	command *Object,
@@ -202,12 +182,13 @@ func (assoc *Assoc) writeRequest(
 	reader io.Reader,
 ) error {
 
-	// write the command
+	// write the command, always using implicit vr little endian ts
 	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
 
-	if data != nil { // write the data if present
+	// write the data if present
+	if data != nil {
 
 		// find the transfer syntax
 		transferSyntax, err := assoc.findAcceptedTransferSyntax(presContext.id)
@@ -215,18 +196,19 @@ func (assoc *Assoc) writeRequest(
 			return err
 		}
 
-		// write the data
+		// write the data, using the transfer syntax negotiated for this pc
 		if err := assoc.writeObject(presContext, data, false, transferSyntax); err != nil {
 			return err
 		}
+	}
 
-	} else if reader != nil { // or copy data from the reader if present
+	// copy data from the reader if present
+	if reader != nil {
 
 		// copy the data
 		if err := assoc.copyDataFromReader(presContext, reader); err != nil {
-			return nil
+			return err
 		}
-
 	}
 
 	// return success
@@ -241,8 +223,13 @@ func (assoc *Assoc) writeObject(
 	transferSyntax *TransferSyntax,
 ) error {
 
-	// create a writer to write the data to
-	pDataWriter := newPDataWriter(assoc.conn, presContext.id, isCommand, assoc.assocRQPDU.userInfo.maxLenReceived)
+	// create a pdatawriter to write the object to
+	pDataWriter := newPDataWriter(
+		assoc.conn,                               // write to the association connection
+		presContext.id,                           // pc id for each pdv
+		isCommand,                                // is command or data
+		assoc.assocRQPDU.userInfo.maxLenReceived, // max length of pdu
+	)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
@@ -252,8 +239,7 @@ func (assoc *Assoc) writeObject(
 		return err
 	}
 
-	// flush to the underlying writer
-	// passing true means we are done writing this object
+	// flush the data writer, true means we are done writing this object
 	if err := pDataWriter.Flush(true); err != nil {
 		return err
 	}
@@ -267,14 +253,15 @@ func (assoc *Assoc) copyDataFromReader(
 	presContext *PresContext,
 	reader io.Reader,
 ) error {
-	// create a pdatawriter to copy the data to
-	// it knows how to create pdus and pdvs as required
-	// since it implements a writer, we can then simply copy the data
+
+	// create a pdatawriter to write the data to
+	// it knows how to create pdus and
+	// since it implements a writer, we can use a copy method
 	pDataWriter := newPDataWriter(
-		assoc.conn,                               // the writer is the association connection
-		presContext.id,                           // write using the same presentation context id as in the request
+		assoc.conn,                               // write to the association connection
+		presContext.id,                           // pc id for each pdv
 		false,                                    // false means we are writing data
-		assoc.assocRQPDU.userInfo.maxLenReceived, // the max length of each PDU written
+		assoc.assocRQPDU.userInfo.maxLenReceived, // max length of each pdu
 	)
 
 	// copy the data
@@ -282,8 +269,7 @@ func (assoc *Assoc) copyDataFromReader(
 		return err
 	}
 
-	// flush the data writer
-	// passing true means we are done writing this object
+	// flush the data writer, true means we are done writing this object
 	if err := pDataWriter.Flush(true); err != nil {
 		return err
 	}
@@ -297,7 +283,7 @@ func (assoc *Assoc) Close() error {
 
 	// attempt to close the connection
 	if err := assoc.conn.Close(); err != nil {
-		return nil
+		return err
 	}
 
 	// return success
