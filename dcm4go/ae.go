@@ -24,23 +24,23 @@ import (
 
 // AE represents an application entity
 type AE struct {
-	aeTitle string
-	host    string
-	port    string
+	title string
+	host  string
+	port  string
 }
 
 // NewAE parses an address and returns a filled in AE
 func NewAE(addr string) *AE {
-	aeTitle, host, port := parseAddr(addr)
+	title, host, port := parseAddr(addr)
 	return &AE{
-		aeTitle: aeTitle,
-		host:    host,
-		port:    port,
+		title: title,
+		host:  host,
+		port:  port,
 	}
 }
 
 // parseAddr parses an address of the form 'ae@host:port' and returns the
-// 'ae' and 'host:port' parts separately
+// 'ae', 'host' and 'port' parts separately
 func parseAddr(addr string) (string, string, string) {
 	s := strings.Split(addr, "@")
 	if len(s) == 1 {
@@ -53,17 +53,17 @@ func parseAddr(addr string) (string, string, string) {
 	return s[0], t[0], t[1]
 }
 
-// AETitle returns an AE's AE Title
-func (ae *AE) AETitle() string {
-	return ae.aeTitle
+// Title returns an AE's Title
+func (ae *AE) Title() string {
+	return ae.title
 }
 
-// Host returns an AE's Host, if present
+// Host returns an AE's Host
 func (ae *AE) Host() string {
 	return ae.host
 }
 
-// Port returns an AE's Port, if present
+// Port returns an AE's Port
 func (ae *AE) Port() string {
 	return ae.port
 }
@@ -85,7 +85,7 @@ func (ae *AE) RequestAssoc(
 	}
 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 
-	requestor, err := RequestAssoc(conn, ae.AETitle(), remoteAE.AETitle(), capabilities, opts)
+	requestor, err := RequestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
 	if err != nil {
 		return nil, err
 	}
