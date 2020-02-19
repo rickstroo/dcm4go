@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// associate negotiation results
+// associate negotiation results for presentation contexts
 const (
 	pcAcceptance                   = 0x00
 	pcUserRejection                = 0x01
@@ -292,25 +292,12 @@ func (assoc *Assoc) copyDataFromReader(
 	return nil
 }
 
-// ReleaseAssoc releases the association and closes the connection
-func (assoc *Assoc) ReleaseAssoc() error {
+// Close closes the association's connection
+func (assoc *Assoc) Close() error {
 
-	// release the association
-	if assoc != nil {
-		if err := assoc.RequestRelease(); err != nil {
-			log.Printf("while releasing association, caught error %v", err)
-		}
-		log.Printf("released association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
-	}
-
-	// close the connection
-	if assoc.conn != nil {
-		if err := assoc.conn.Close(); err != nil {
-			log.Printf("while closing connection, caught error %v", err)
-		}
-		log.Printf("closed connection from %v to %v", assoc.conn.LocalAddr(), assoc.conn.RemoteAddr())
-
-		assoc.conn = nil
+	// attempt to close the connection
+	if err := assoc.conn.Close(); err != nil {
+		return nil
 	}
 
 	// return success

@@ -68,10 +68,17 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 
 	// ensure the association gets released
 	defer func() {
-		if err := assoc.ReleaseAssoc(); err != nil {
+		if err := assoc.RequestRelease(); err != nil {
 			log.Printf("while releasing association, caught error %v", err)
+		} else {
+			log.Printf("released association")
 		}
-		log.Printf("released association")
+
+		if err := assoc.Close(); err != nil {
+			log.Printf("while closing association, caught error %v", err)
+		} else {
+			log.Printf("closed association")
+		}
 	}()
 
 	// send the files

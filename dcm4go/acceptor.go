@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// AcceptorAssoc is a type of Assoc, used by Acceptors of associations.
+// AcceptorAssoc is a type of Assoc, used by acceptors of associations.
 type AcceptorAssoc struct {
 	Assoc
 }
