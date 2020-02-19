@@ -278,6 +278,19 @@ func (assoc *Assoc) copyDataFromReader(
 	return nil
 }
 
+// readRequest reads a request
+func (assoc *Assoc) readRequest(
+	presContext *PresContext,
+	readData bool, // if true, then we read the data into an object if present
+) (
+	*Object, // command
+	*Object, // data read into an object
+	*PDataReader, // data available from a reader
+	error,
+) {
+	return nil, nil, nil, fmt.Errorf("Assoc.readRequest(): not implemented")
+}
+
 // Close closes the association's connection
 func (assoc *Assoc) Close() error {
 
