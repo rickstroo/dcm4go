@@ -9,9 +9,10 @@ import (
 
 // Message presents the requests and responses that are passed between AEs
 type Message struct {
-	pcID    byte
-	command *Object
-	data    *Object
+	pcID        byte
+	command     *Object
+	data        *Object
+	pDataReader *PDataReader
 }
 
 var messageID uint16
@@ -37,6 +38,11 @@ func (message *Message) String() string {
 	return s
 }
 
+// PCID returns the presentation context id of the message
+func (message *Message) PCID() byte {
+	return message.pcID
+}
+
 // Command returns the command portion of the message
 func (message *Message) Command() *Object {
 	return message.command
@@ -47,16 +53,24 @@ func (message *Message) Data() *Object {
 	return message.data
 }
 
-// PCID returns the presentation context id of the message
-func (message *Message) PCID() byte {
-	return message.pcID
+// PDataReader returns the data reader
+func (message *Message) PDataReader() *PDataReader {
+	return message.pDataReader
 }
 
 func isDataSetPresent(commandDataSetType uint16) bool {
 	return commandDataSetType != 0x0101
 }
 
-func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
+func readMessage(
+	reader io.Reader,
+	assoc *Assoc,
+	pdu *PDU,
+	shouldReadData bool,
+) (
+	*Message,
+	error,
+) {
 
 	// create a reader for the command
 	commandReader, err := newPDataReader(reader, pdu, true)
@@ -67,7 +81,7 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 	// get the presentation context id from the reader
 	pcID := commandReader.pdv.pcID
 
-	// read the command
+	// read the command from the pdu
 	command, err := readCommand(commandReader, assoc)
 	if err != nil {
 		return nil, err
@@ -79,57 +93,41 @@ func readMessage(reader io.Reader, assoc *Assoc, pdu *PDU) (*Message, error) {
 		return nil, err
 	}
 
+	// create a message
+	message := &Message{
+		pcID:    pcID,
+		command: command,
+	}
+
 	if isDataSetPresent(commandDataSet) {
 
 		// create a reader for the data
-		dataReader, err := newPDataReader(reader, pdu, false)
+		pDataReader, err := newPDataReader(reader, pdu, false)
 		if err != nil {
 			return nil, err
 		}
 
-		// // find the affected sop class uid
-		// affectedSOPClassUID, err := command.asString(AffectedSOPClassUIDTag, 0)
-		// if err != nil {
-		// 	return nil, err
-		// }
+		// should we read the data, or pass the data reader back to the caller?
+		if shouldReadData {
 
-		// // if there is a handler for this command, call it
-		// commandHandler, ok := assoc.ae.commandHandlers[affectedSOPClassUID]
-		// if ok && (commandHandler != nil) {
-		//
-		// 	// call the handler, which will return the data, which may be potentially nil
-		// 	// if the handler decides to consume the data itself
-		// 	data, err := commandHandler.HandleCommand(assoc, pcID, command, dataReader)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		//
-		// 	// return the request with command and data
-		// 	return &Message{pcID, command, data}, nil
-		// }
+			// read the data
+			data, err := readData(pDataReader, assoc, pcID)
+			if err != nil {
+				return nil, err
+			}
 
-		// if no handler, read the data ourselves
-		data, err := readData(dataReader, assoc, pcID)
-		if err != nil {
-			return nil, err
-		}
+			// add the data to the message
+			message.data = data
 
-		// return the request with command and data
-		return &Message{pcID, command, data}, nil
-	}
+		} else {
 
-	// return the request with command and no data
-	return &Message{pcID, command, nil}, nil
-}
-
-// findAcceptedTransferSyntax
-func (assoc *Assoc) findAcceptedTransferSyntax(pcid byte) (*TransferSyntax, error) {
-	for _, presContext := range assoc.assocACPDU.presContexts {
-		if presContext.id == pcid {
-			return findTransferSyntax(presContext.transferSyntaxes[0])
+			// otherwise, add the data reader to the message
+			message.pDataReader = pDataReader
 		}
 	}
-	return nil, fmt.Errorf("no supported transfer syntax found for presentation context id %d", pcid)
+
+	// return the message
+	return message, nil
 }
 
 func readCommand(reader io.Reader, assoc *Assoc) (*Object, error) {
@@ -159,13 +157,7 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 	decoder := newDecoder(1024)
 
 	// find the negotiated transfer syntax for the data
-	acPresContext, err := assoc.findAcceptedPresContextByPCID(pcID)
-	if err != nil {
-		return nil, err
-	}
-
-	// now, find the transfer syntax
-	transferSyntax, err := findTransferSyntax(acPresContext.transferSyntaxes[0])
+	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
 	if err != nil {
 		return nil, err
 	}
@@ -188,19 +180,23 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 		return err
 	}
 
-	if message.Data() == nil {
-		return nil
+	if message.Data() != nil {
+
+		transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(message.pcID)
+		if err != nil {
+			return err
+		}
+
+		if err := writeData(writer, assoc, message.pcID, message.Command(), transferSyntax); err != nil {
+			return err
+		}
 	}
 
-	transferSyntax, err := assoc.findAcceptedTransferSyntax(message.pcID)
-	if err != nil {
-		return err
+	if message.PDataReader() != nil {
+		if err := copyDataFromReader(writer, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.PDataReader()); err != nil {
+			return err
+		}
 	}
-
-	if err := writeData(writer, assoc, message.pcID, message.Command(), transferSyntax); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -249,5 +245,37 @@ func writeData(writer io.Writer, assoc *Assoc, pcID byte, data *Object, transfer
 	}
 
 	// all is well
+	return nil
+}
+
+// copyDataFromReader copies the data from a reader to a stream of PDUs and PDVs
+func copyDataFromReader(
+	writer io.Writer,
+	pcID byte,
+	maxBufLen uint32,
+	reader io.Reader,
+) error {
+
+	// create a pdatawriter to write the data to
+	// it knows how to create pdus and
+	// since it implements a writer, we can use a copy method
+	pDataWriter := newPDataWriter(
+		writer,    // write to the association connection
+		pcID,      // pc id for each pdv
+		false,     // false means we are writing data
+		maxBufLen, // max length of each pdu
+	)
+
+	// copy the data
+	if _, err := io.Copy(pDataWriter, reader); err != nil {
+		return err
+	}
+
+	// flush the data writer, true means we are done writing this object
+	if err := pDataWriter.Flush(true); err != nil {
+		return err
+	}
+
+	// return success
 	return nil
 }

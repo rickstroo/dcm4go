@@ -155,7 +155,7 @@ func (assoc *Assoc) ReadRequestOrResponse() (*Message, error) {
 
 	// is this a data transfer request?
 	if pdu.pduType == pDataTFPDU {
-		message, err := readMessage(assoc.conn, assoc, pdu)
+		message, err := readMessage(assoc.conn, assoc, pdu, true)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +192,7 @@ func (assoc *Assoc) writeMessage(
 	if data != nil {
 
 		// find the transfer syntax
-		transferSyntax, err := assoc.findAcceptedTransferSyntax(presContext.id)
+		transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(presContext.id)
 		if err != nil {
 			return err
 		}
