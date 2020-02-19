@@ -38,7 +38,7 @@ func (handler *BasicCEchoHandler) HandleRequest(
 	}
 
 	// write the response
-	if err := assoc.writeCommandOnly(pc, response); err != nil {
+	if err := assoc.writeRequest(pc, response, nil, nil); err != nil {
 		return err
 	}
 
@@ -85,7 +85,7 @@ func (handler *BasicCStoreHandler) HandleRequest(
 	fmt.Printf("response is %v\n", response)
 
 	// write the response
-	err = assoc.writeCommandOnly(pc, response)
+	err = assoc.writeRequest(pc, response, nil, nil)
 	if err != nil {
 		return err
 	}

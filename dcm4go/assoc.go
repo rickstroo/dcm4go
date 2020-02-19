@@ -193,15 +193,42 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 // 	return assoc.WriteRequestOrResponse(message)
 // }
 
-// writeCommandOnly writes a request with no data
-func (assoc *Assoc) writeCommandOnly(
+// writeRequest writes a request.  the command is required.  the data and
+// reader are optional, and mutually exclusive.
+func (assoc *Assoc) writeRequest(
 	presContext *PresContext,
 	command *Object,
+	data *Object,
+	reader io.Reader,
 ) error {
+
 	// write the command
 	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
+
+	if data != nil { // write the data if present
+
+		// find the transfer syntax
+		transferSyntax, err := assoc.findAcceptedTransferSyntax(presContext.id)
+		if err != nil {
+			return err
+		}
+
+		// write the data
+		if err := assoc.writeObject(presContext, data, false, transferSyntax); err != nil {
+			return err
+		}
+
+	} else if reader != nil { // or copy data from the reader if present
+
+		// copy the data
+		if err := assoc.copyDataFromReader(presContext, reader); err != nil {
+			return nil
+		}
+
+	}
+
 	// return success
 	return nil
 }
@@ -232,52 +259,6 @@ func (assoc *Assoc) writeObject(
 	}
 
 	// all is well
-	return nil
-}
-
-// writeCommandWithData writes a request with data
-func (assoc *Assoc) writeCommandWithData(
-	presContext *PresContext,
-	command *Object,
-	data *Object,
-) error {
-	// write the command
-	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
-		return err
-	}
-
-	// find the transfer syntax
-	transferSyntax, err := assoc.findAcceptedTransferSyntax(presContext.id)
-	if err != nil {
-		return err
-	}
-
-	// write the data
-	if err := assoc.writeObject(presContext, data, false, transferSyntax); err != nil {
-		return err
-	}
-
-	// return success
-	return nil
-}
-
-// writeCommandWithDataFromReader writes a request with data from a reader
-func (assoc *Assoc) writeCommandWithDataFromReader(
-	presContext *PresContext,
-	command *Object,
-	reader io.Reader,
-) error {
-	// write the command
-	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
-		return err
-	}
-
-	// copy the data
-	if err := assoc.copyDataFromReader(presContext, reader); err != nil {
-		return nil
-	}
-
-	// return success
 	return nil
 }
 
