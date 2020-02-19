@@ -77,12 +77,11 @@ func (ae *AE) RequestAssoc(
 	*RequestorAssoc,
 	error,
 ) {
-
-	requestor, err := RequestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
+	assoc, err := RequestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
 	if err != nil {
 		return nil, err
 	}
-	return requestor, nil
+	return assoc, nil
 }
 
 // AcceptAssoc waits for an association request
