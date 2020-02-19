@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"os"
 	"time"
 
@@ -85,8 +86,13 @@ func echo3(remoteAddr string, local string) {
 	// create the remote AE
 	remoteAE := dcm4go.NewAE(remoteAddr)
 
+	// connect to the remote
+	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
+	check(err)
+	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
+
 	// create an association
-	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
 	check(err)
 	log.Printf(
 		"created association from %s to %s",
@@ -98,8 +104,8 @@ func echo3(remoteAddr string, local string) {
 	defer func() {
 		check(assoc.RequestRelease())
 		log.Printf("released association")
-		check(assoc.Close())
-		log.Printf("closed association")
+		check(conn.Close())
+		log.Printf("closed connection")
 	}()
 
 	// send the echo
