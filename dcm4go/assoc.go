@@ -282,7 +282,7 @@ func (assoc *Assoc) copyDataFromReader(
 // readMessage reads a message.  a message can be a request or a response.
 func (assoc *Assoc) readMessage(
 	presContext *PresContext,
-	readData bool, // if true, then we read the data into an object if present
+	readData bool, // if true, and data present, read the data into an object
 ) (
 	*Object, // command
 	*Object, // data read into an object
@@ -290,16 +290,4 @@ func (assoc *Assoc) readMessage(
 	error,
 ) {
 	return nil, nil, nil, fmt.Errorf("Assoc.readMessage(): not implemented")
-}
-
-// Close closes the association's connection
-func (assoc *Assoc) Close() error {
-
-	// attempt to close the connection
-	if err := assoc.conn.Close(); err != nil {
-		return err
-	}
-
-	// return success
-	return nil
 }

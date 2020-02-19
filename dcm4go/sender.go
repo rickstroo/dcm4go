@@ -2,6 +2,7 @@ package dcm4go
 
 import (
 	"log"
+	"net"
 	"os"
 	"time"
 )
@@ -55,8 +56,15 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 	// create the remote AE
 	remoteAE := NewAE(remoteAddr)
 
+	// connect to the remote
+	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
+	if err != nil {
+		return err
+	}
+	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
+
 	// create an association
-	assoc, err := localAE.RequestAssoc(remoteAE, capabilities, assocOpts)
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
 	if err != nil {
 		return err
 	}
@@ -74,10 +82,10 @@ func (sender *Sender) send(paths []string, remoteAddr string) error {
 			log.Printf("released association")
 		}
 
-		if err := assoc.Close(); err != nil {
-			log.Printf("while closing association, caught error %v", err)
+		if err := conn.Close(); err != nil {
+			log.Printf("while closing connection, caught error %v", err)
 		} else {
-			log.Printf("closed association")
+			log.Printf("closed connection")
 		}
 	}()
 
