@@ -9,20 +9,18 @@ import (
 // the stream of bytes from one or more PDVs that can be contained in
 // one or more PDUs.
 type PDataReader struct {
-	reader    io.Reader // the underlying reader
-	pdu       *PDU      // the PDU we are reading from
-	pdv       *PDV      // the PDV that we are reading from
-	isCommand bool      // are we reading a command or a data set?
+	pduReader *pduReader // the underlying pdu reader
+	pdv       *PDV       // the PDV that we are reading from
+	isCommand bool       // are we reading a command or a data set?
 }
 
 // newPDataReader constructs and initializes a PDataReader
-// the reader is used to read additional pdus if required
-// the pdu is used to read pdvs
+// the pdu reader is used to read additional pdus if required
 // isCommand indicates whether we are reading a command or data
-func newPDataReader(reader io.Reader, pdu *PDU, isCommand bool) (*PDataReader, error) {
+func newPDataReader(pduReader *pduReader, isCommand bool) (*PDataReader, error) {
 
 	// read the first PDV
-	pdv, err := readPDV(pdu)
+	pdv, err := readPDV(pduReader)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +31,7 @@ func newPDataReader(reader io.Reader, pdu *PDU, isCommand bool) (*PDataReader, e
 	}
 
 	// construct a reader and return
-	return &PDataReader{reader, pdu, pdv, isCommand}, nil
+	return &PDataReader{pduReader, pdv, isCommand}, nil
 }
 
 // Read implements the Reader interface
@@ -81,7 +79,7 @@ func (pDataReader *PDataReader) Read(buf []byte) (int, error) {
 func (pDataReader *PDataReader) nextPDV() error {
 
 	// it's not the last, so we read another pdv
-	pdv, err := readPDV(pDataReader.pdu)
+	pdv, err := readPDV(pDataReader.pduReader)
 
 	//	fmt.Printf("after readPDV, err is %v\n", err)
 
@@ -100,7 +98,7 @@ func (pDataReader *PDataReader) nextPDV() error {
 
 		// otherwise, it means that we've reached the end of the PDU
 		// and we need to read another one from the underlying reader
-		pdu, err := readPDU(pDataReader.reader)
+		pdu, err := pDataReader.pduReader.nextPDU()
 
 		//		fmt.Printf("after readPDU, err is %v\n", err)
 
@@ -118,7 +116,9 @@ func (pDataReader *PDataReader) nextPDV() error {
 		}
 
 		// remember the pdu that we've read
-		pDataReader.pdu = pdu
+		// nope, we don't need to remember that any more as
+		// the pdu reader remembers that for us
+		//pDataReader.pdu = pdu
 
 		//	fmt.Printf("and we will try the read again")
 

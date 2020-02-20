@@ -25,6 +25,7 @@ const (
 // Assoc represents a DICOM association
 type Assoc struct {
 	conn       net.Conn
+	pduReader  *pduReader
 	ae         *AE
 	assocRQPDU *AssocRQPDU
 	assocACPDU *AssocACPDU
@@ -155,7 +156,7 @@ func (assoc *Assoc) ReadRequestOrResponse() (*Message, error) {
 
 	// is this a data transfer request?
 	if pdu.pduType == pDataTFPDU {
-		message, err := readMessage(assoc.conn, assoc, pdu, true)
+		message, err := readMessage(assoc, true)
 		if err != nil {
 			return nil, err
 		}
@@ -279,15 +280,72 @@ func (assoc *Assoc) copyDataFromReader(
 	return nil
 }
 
-// readMessage reads a message.  a message can be a request or a response.
-func (assoc *Assoc) readMessage(
-	presContext *PresContext,
-	readData bool, // if true, and data present, read the data into an object
-) (
-	*Object, // command
-	*Object, // data read into an object
-	*PDataReader, // data available from a reader
-	error,
-) {
-	return nil, nil, nil, fmt.Errorf("Assoc.readMessage(): not implemented")
-}
+// // readMessage reads a message.  a message can be a request or a response.
+// func (assoc *Assoc) readMessage(
+// 	presContext *PresContext,
+// 	readData bool, // if true, and data present, read the data into an object
+// ) (
+// 	*Object, // command
+// 	*Object, // data read into an object
+// 	*PDataReader, // data available from a reader
+// 	error,
+// ) {
+//
+// 		// create a reader for the command
+// 		commandReader, err := newPDataReader(reader, pdu, true)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+//
+// 		// get the presentation context id from the reader
+// 		pcID := commandReader.pdv.pcID
+//
+// 		// read the command from the pdu
+// 		command, err := readCommand(commandReader, assoc)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+//
+// 		// get the command data set
+// 		commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+//
+// 		// create a message
+// 		message := &Message{
+// 			pcID:    pcID,
+// 			command: command,
+// 		}
+//
+// 		if isDataSetPresent(commandDataSet) {
+//
+// 			// create a reader for the data
+// 			pDataReader, err := newPDataReader(reader, pdu, false)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+//
+// 			// should we read the data, or pass the data reader back to the caller?
+// 			if shouldReadData {
+//
+// 				// read the data
+// 				data, err := readData(pDataReader, assoc, pcID)
+// 				if err != nil {
+// 					return nil, err
+// 				}
+//
+// 				// add the data to the message
+// 				message.data = data
+//
+// 			} else {
+//
+// 				// otherwise, add the data reader to the message
+// 				message.pDataReader = pDataReader
+// 			}
+// 		}
+//
+// 		// return the message
+// 		return message, nil
+// 	return nil, nil, nil, fmt.Errorf("Assoc.readMessage(): not implemented")
+// }

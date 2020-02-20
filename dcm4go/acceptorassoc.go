@@ -27,8 +27,11 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	// read programs, I will implement the logic of the state
 	// machine in the AcceptAssoc and RequestAssoc structs.
 
+	// create a pdu reader
+	pduReader := newPDUReader(conn)
+
 	// read a pdu
-	pdu, err := readPDU(conn)
+	pdu, err := pduReader.nextPDU()
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +63,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	}
 
 	// read the associate request
-	assocRQPDU, err := readAssocRQPDU(pdu)
+	assocRQPDU, err := readAssocRQPDU(pduReader)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +97,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	assoc := &AcceptorAssoc{
 		Assoc{
 			conn:       conn,
+			pduReader:  pduReader,
 			ae:         ae,
 			assocRQPDU: assocRQPDU,
 			assocACPDU: assocACPDU,
@@ -213,7 +217,7 @@ func (assoc *Assoc) ReadRequest() (*Message, error) {
 func (assoc *Assoc) Serve() error {
 
 	// read a pdu
-	pdu, err := readPDU(assoc.conn)
+	pdu, err := assoc.pduReader.nextPDU()
 	if err != nil {
 		return err
 	}
@@ -225,7 +229,7 @@ func (assoc *Assoc) Serve() error {
 
 		log.Printf("received release request, attempting to release association\n")
 
-		if err := readReleaseRQPDU(pdu); err != nil {
+		if err := readReleaseRQPDU(assoc.pduReader); err != nil {
 			return err
 		}
 
@@ -268,7 +272,7 @@ func (assoc *Assoc) Serve() error {
 	log.Printf("attempting to accept data transfer\n")
 
 	// create a reader for the command
-	commandReader, err := newPDataReader(assoc.Conn(), pdu, true)
+	commandReader, err := newPDataReader(assoc.pduReader, true)
 	if err != nil {
 		return err
 	}
@@ -277,7 +281,7 @@ func (assoc *Assoc) Serve() error {
 	pcID := commandReader.pdv.pcID
 
 	// read the command
-	command, err := readCommand(commandReader, assoc)
+	command, err := readCommand(commandReader)
 	if err != nil {
 		return err
 	}
@@ -297,7 +301,7 @@ func (assoc *Assoc) Serve() error {
 	}
 
 	// get a data reader if required
-	dataReader, err := getDataReader(commandDataSet, assoc, pdu)
+	dataReader, err := getDataReader(commandDataSet, assoc)
 	if err != nil {
 		return err
 	}
@@ -311,13 +315,13 @@ func (assoc *Assoc) Serve() error {
 	return nil
 }
 
-func getDataReader(commandDataSet uint16, assoc *Assoc, pdu *PDU) (*PDataReader, error) {
+func getDataReader(commandDataSet uint16, assoc *Assoc) (*PDataReader, error) {
 
 	// check to see if data is present
 	if isDataSetPresent(commandDataSet) {
 
 		// create a reader for the data
-		dataReader, err := newPDataReader(assoc.Conn(), pdu, false)
+		dataReader, err := newPDataReader(assoc.pduReader, false)
 		if err != nil {
 			return nil, err
 		}

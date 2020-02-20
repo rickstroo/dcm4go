@@ -43,9 +43,7 @@ func isDataSetPresent(commandDataSetType uint16) bool {
 }
 
 func readMessage(
-	reader io.Reader,
 	assoc *Assoc,
-	pdu *PDU,
 	shouldReadData bool,
 ) (
 	*Message,
@@ -54,7 +52,7 @@ func readMessage(
 
 	// create a reader for the command
 	// start by reading from the pdu that was provided
-	commandReader, err := newPDataReader(reader, pdu, true)
+	commandReader, err := newPDataReader(assoc.pduReader, true)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +61,7 @@ func readMessage(
 	pcID := commandReader.pdv.pcID
 
 	// read the command from the pdu
-	command, err := readCommand(commandReader, assoc)
+	command, err := readCommand(commandReader)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +86,8 @@ func readMessage(
 		// that seems a little contrived
 		// perhaps we need to create a pdu reader class that manages
 		// that state so that we don't have to do this
-		dataReader, err := newPDataReader(reader, commandReader.pdu, false)
+		// fixed it.  created a pdu reader class.
+		dataReader, err := newPDataReader(assoc.pduReader, false)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +115,7 @@ func readMessage(
 	return message, nil
 }
 
-func readCommand(reader io.Reader, assoc *Assoc) (*Object, error) {
+func readCommand(reader io.Reader) (*Object, error) {
 
 	// create a counting reader
 	countingReader := newCountingReader(reader)
@@ -162,7 +161,7 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 // WriteMessage writes the message
 func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 
-	if err := writeCommand(writer, assoc, message.pcID, message.command); err != nil {
+	if err := writeCommand(writer, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.command); err != nil {
 		return err
 	}
 
@@ -173,7 +172,7 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 			return err
 		}
 
-		if err := writeData(writer, assoc, message.pcID, message.data, transferSyntax); err != nil {
+		if err := writeData(writer, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.data, transferSyntax); err != nil {
 			return err
 		}
 	}
@@ -187,10 +186,10 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 }
 
 // writeCommand writes the command portion of the message
-func writeCommand(writer io.Writer, assoc *Assoc, pcID byte, command *Object) error {
+func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, pcID, true, assoc.assocRQPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(writer, pcID, true, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
@@ -211,10 +210,10 @@ func writeCommand(writer io.Writer, assoc *Assoc, pcID byte, command *Object) er
 }
 
 // // writeData writes the data portion of the message
-func writeData(writer io.Writer, assoc *Assoc, pcID byte, data *Object, transferSyntax *TransferSyntax) error {
+func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, transferSyntax *TransferSyntax) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, pcID, false, assoc.assocRQPDU.userInfo.maxLenReceived)
+	pDataWriter := newPDataWriter(writer, pcID, false, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
