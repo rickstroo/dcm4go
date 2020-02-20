@@ -11,10 +11,7 @@ type pduReader struct {
 
 // newPDUReader constructs a new pduReader
 func newPDUReader(reader io.Reader) *pduReader {
-	pduReader := &pduReader{
-		reader: reader,
-	}
-	return pduReader
+	return &pduReader{reader: reader}
 }
 
 // nextPDU reads the next pdu from the underlying reader

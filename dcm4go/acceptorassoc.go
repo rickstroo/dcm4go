@@ -27,8 +27,9 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	// read programs, I will implement the logic of the state
 	// machine in the AcceptAssoc and RequestAssoc structs.
 
-	// create a pdu reader
+	// create a pdu reader and pdu writer
 	pduReader := newPDUReader(conn)
+	pduWriter := newPDUWriter(conn)
 
 	// read a pdu
 	pdu, err := pduReader.nextPDU()
@@ -54,7 +55,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 		}
 
 		// attempt to write it
-		if err := abortPDU.Write(conn); err != nil {
+		if err := abortPDU.Write(pduWriter); err != nil {
 			return nil, err
 		}
 
@@ -81,7 +82,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	if assocRJPDU != nil {
 
 		// write the associate reject pdu
-		if err := assocRJPDU.Write(conn); err != nil {
+		if err := assocRJPDU.Write(pduWriter); err != nil {
 			return nil, err
 		}
 		// let the caller know that the associate request was rejected
@@ -89,7 +90,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	}
 
 	// otherwise, write the associate accept pdu
-	if err := assocACPDU.Write(conn); err != nil {
+	if err := assocACPDU.Write(pduWriter); err != nil {
 		return nil, err
 	}
 
@@ -98,6 +99,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 		Assoc{
 			conn:       conn,
 			pduReader:  pduReader,
+			pduWriter:  pduWriter,
 			ae:         ae,
 			assocRQPDU: assocRQPDU,
 			assocACPDU: assocACPDU,
@@ -235,7 +237,7 @@ func (assoc *Assoc) Serve() error {
 
 		// construct a release response pdu
 		releaseRPPDU := &ReleaseRPPDU{}
-		if err := releaseRPPDU.Write(assoc.conn); err != nil {
+		if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
 			return err
 		}
 
@@ -261,7 +263,7 @@ func (assoc *Assoc) Serve() error {
 		}
 
 		// attempt to write it
-		if err := abortPDU.Write(assoc.conn); err != nil {
+		if err := abortPDU.Write(assoc.pduWriter); err != nil {
 			return err
 		}
 

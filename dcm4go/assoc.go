@@ -26,6 +26,7 @@ const (
 type Assoc struct {
 	conn       net.Conn
 	pduReader  *pduReader
+	pduWriter  *pduWriter
 	ae         *AE
 	assocRQPDU *AssocRQPDU
 	assocACPDU *AssocACPDU
