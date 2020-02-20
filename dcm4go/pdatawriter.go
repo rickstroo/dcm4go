@@ -71,7 +71,7 @@ func (pDataWriter *PDataWriter) Flush(isLast bool) error {
 	pdv.pdvLength = uint32(pDataWriter.buf.Len() + 2) // need to add two bytes for the pcID and mch
 
 	// create a pdu
-	pdu := &PDU{}
+	pdu := &pdu{}
 	pdu.pduType = pDataTFPDU
 	pdu.pduLength = uint32(pdv.pdvLength + 4) // need to add four bytes for the PDV length
 

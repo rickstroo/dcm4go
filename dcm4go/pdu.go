@@ -8,8 +8,8 @@ import (
 	"io"
 )
 
-// PDU represents a DICOM protocol data unit (i.e. PDU)
-type PDU struct {
+// pdu represents a DICOM protocol data unit (i.e. PDU)
+type pdu struct {
 	pduType     byte
 	pduLength   uint32
 	limitReader io.Reader
@@ -26,17 +26,17 @@ const (
 )
 
 // Read implements the Reader interface
-func (pdu *PDU) Read(buf []byte) (int, error) {
+func (pdu *pdu) Read(buf []byte) (int, error) {
 	return pdu.limitReader.Read(buf)
 }
 
 // String returns a string representation of a PDU
-func (pdu *PDU) String() string {
+func (pdu *pdu) String() string {
 	return fmt.Sprintf("{pduType:%v,pduLength:%v}", pdu.pduType, pdu.pduLength)
 }
 
 // readPDU reads a PDU from a reader
-func readPDU(reader io.Reader) (*PDU, error) {
+func readPDU(reader io.Reader) (*pdu, error) {
 
 	// get the pdu type
 	pduType, err := readByte(reader)
@@ -59,10 +59,10 @@ func readPDU(reader io.Reader) (*PDU, error) {
 	limitReader := io.LimitReader(reader, int64(pduLength))
 
 	// construct and return a PDU
-	return &PDU{pduType, pduLength, limitReader}, nil
+	return &pdu{pduType, pduLength, limitReader}, nil
 }
 
-func (pdu *PDU) Write(writer io.Writer) error {
+func (pdu *pdu) Write(writer io.Writer) error {
 	if err := writeByte(writer, pdu.pduType); err != nil {
 		return err
 	}
@@ -75,6 +75,6 @@ func (pdu *PDU) Write(writer io.Writer) error {
 	return nil
 }
 
-func writePDU(writer io.Writer, pdu *PDU) error {
+func writePDU(writer io.Writer, pdu *pdu) error {
 	return pdu.Write(writer)
 }

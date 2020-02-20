@@ -291,7 +291,7 @@ func (machine *Machine) ae2() error {
 	return nil
 }
 
-func (machine *Machine) ae3(pdu *PDU) error {
+func (machine *Machine) ae3(pdu *pdu) error {
 	// call the associate accept handler
 	// go to state 4
 	machine.state = sta4
@@ -299,7 +299,7 @@ func (machine *Machine) ae3(pdu *PDU) error {
 	return nil
 }
 
-func (machine *Machine) ae4(pdu *PDU) error {
+func (machine *Machine) ae4(pdu *pdu) error {
 	// call the associate reject handler
 	// close the connection
 	// go to state 1
@@ -322,7 +322,7 @@ func (machine *Machine) ae5() error {
 	return nil
 }
 
-func (machine *Machine) ae6(pdu *PDU) error {
+func (machine *Machine) ae6(pdu *pdu) error {
 
 	// read the associate request
 	assocRQPDU, err := readAssocRQPDU(pdu)
@@ -410,7 +410,7 @@ func (machine *Machine) dt1() error {
 	return nil
 }
 
-func (machine *Machine) dt2(pdu *PDU) error {
+func (machine *Machine) dt2(pdu *pdu) error {
 	return nil
 }
 
@@ -420,7 +420,7 @@ func (machine *Machine) ar1() error {
 	return nil
 }
 
-func (machine *Machine) ar2(pdu *PDU) error {
+func (machine *Machine) ar2(pdu *pdu) error {
 	// issue A-RELEASE indication primitive
 	// next state is sta8
 	return nil
@@ -519,7 +519,7 @@ func (machine *Machine) aa2() error {
 	return nil
 }
 
-func (machine *Machine) aa3(pdu *PDU) error {
+func (machine *Machine) aa3(pdu *pdu) error {
 	// if (service-user initiated abort)
 	// issue A-ABORT indication and close transport connection
 	// otherwise (service-provider initiated abort)
@@ -554,7 +554,7 @@ func (machine *Machine) aa5() error {
 	return nil
 }
 
-func (machine *Machine) aa6(pdu *PDU) error {
+func (machine *Machine) aa6(pdu *pdu) error {
 	// ignore the PDU (just skip the rest of the bytes)
 	skipBytes(pdu, pdu.pduLength)
 	// go to state 13

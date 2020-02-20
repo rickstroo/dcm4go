@@ -57,7 +57,7 @@ func (abortPDU *AbortPDU) Write(writer io.Writer) error {
 	}
 
 	// construct the base pdu
-	pdu := &PDU{
+	pdu := &pdu{
 		pduType:   aAbortPDU,        // the type
 		pduLength: uint32(len(buf)), // the length
 	}

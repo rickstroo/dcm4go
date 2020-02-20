@@ -20,7 +20,7 @@ func readReleaseRQPDU(reader io.Reader) error {
 func writeReleaseRQPDU(writer io.Writer) error {
 
 	// construct a pdu
-	pdu := &PDU{aReleaseRQPDU, 0x04, nil}
+	pdu := &pdu{aReleaseRQPDU, 0x04, nil}
 
 	// write the pdu header
 	if err := writePDU(writer, pdu); err != nil {

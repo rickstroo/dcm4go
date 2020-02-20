@@ -6,7 +6,7 @@ import "io"
 
 type pduReader struct {
 	reader io.Reader // underlying reader
-	pdu    *PDU      // current pdu
+	pdu    *pdu      // current pdu
 }
 
 // newPDUReader constructs a new pduReader
@@ -15,7 +15,7 @@ func newPDUReader(reader io.Reader) *pduReader {
 }
 
 // nextPDU reads the next pdu from the underlying reader
-func (pduReader *pduReader) nextPDU() (*PDU, error) {
+func (pduReader *pduReader) nextPDU() (*pdu, error) {
 	pdu, err := readPDU(pduReader.reader)
 	if err != nil {
 		return nil, err

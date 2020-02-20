@@ -33,7 +33,7 @@ func (releaseRPPDU *ReleaseRPPDU) Write(writer io.Writer) error {
 	}
 
 	// construct the base pdu
-	pdu := &PDU{
+	pdu := &pdu{
 		pduType:   aReleaseRPPDU,    // the type
 		pduLength: uint32(len(buf)), // the length
 	}
