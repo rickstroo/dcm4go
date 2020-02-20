@@ -60,7 +60,7 @@ func (pDataWriter *PDataWriter) Write(buf []byte) (int, error) {
 func (pDataWriter *PDataWriter) Flush(isLast bool) error {
 
 	// create a PDV
-	pdv := &PDV{}
+	pdv := &pdv{}
 	pdv.pcID = pDataWriter.pcID
 	if pDataWriter.isCommand {
 		pdv.mch = pdv.mch | 0x01

@@ -10,7 +10,7 @@ import (
 // one or more PDUs.
 type PDataReader struct {
 	pduReader *pduReader // the underlying pdu reader
-	pdv       *PDV       // the PDV that we are reading from
+	pdv       *pdv       // the PDV that we are reading from
 	isCommand bool       // are we reading a command or a data set?
 }
 
@@ -148,7 +148,7 @@ func (pDataReader *PDataReader) nextPDV() error {
 	return nil
 }
 
-func checkCommand(isCommand bool, pdv *PDV) error {
+func checkCommand(isCommand bool, pdv *pdv) error {
 
 	// check that pdv type matches what is expected
 	if isCommand {

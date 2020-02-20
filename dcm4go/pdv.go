@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-// PDV represents a DICOM protocol data value (i.e. PDV)
-type PDV struct {
+// pdv represents a DICOM protocol data value (i.e. PDV)
+type pdv struct {
 	pdvLength   uint32
 	pcID        byte
 	mch         byte
@@ -15,17 +15,17 @@ type PDV struct {
 }
 
 // Read implements the Reader interface
-func (pdv *PDV) Read(buf []byte) (int, error) {
+func (pdv *pdv) Read(buf []byte) (int, error) {
 	return pdv.limitReader.Read(buf)
 }
 
 // String returns a string representation of a PDU
-func (pdv *PDV) String() string {
+func (pdv *pdv) String() string {
 	return fmt.Sprintf("{pdvLength:%v,pcID:%v,mch:0x%1X}", pdv.pdvLength, pdv.pcID, pdv.mch)
 }
 
 // readPDV reads a PDV from a reader
-func readPDV(reader io.Reader) (*PDV, error) {
+func readPDV(reader io.Reader) (*pdv, error) {
 
 	// read the pdv length
 	pdvLength, err := readLong(reader, binary.BigEndian)
@@ -57,18 +57,18 @@ func readPDV(reader io.Reader) (*PDV, error) {
 	limitReader := io.LimitReader(reader, int64(pdvLength-2))
 
 	// construct and return a PDV
-	return &PDV{pdvLength, pcID, mch, limitReader}, nil
+	return &pdv{pdvLength, pcID, mch, limitReader}, nil
 }
 
-func (pdv *PDV) isCommand() bool {
+func (pdv *pdv) isCommand() bool {
 	return pdv.mch&0x01 == 0x01
 }
 
-func (pdv *PDV) isLast() bool {
+func (pdv *pdv) isLast() bool {
 	return pdv.mch&0x02 == 0x02
 }
 
-func writePDV(writer io.Writer, pdv *PDV) error {
+func writePDV(writer io.Writer, pdv *pdv) error {
 	if err := writeLong(writer, pdv.pdvLength, binary.BigEndian); err != nil {
 		return err
 	}
