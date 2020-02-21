@@ -12,7 +12,7 @@ type Message struct {
 	pcID       byte
 	command    *Object
 	data       *Object
-	dataReader *PDataReader
+	dataReader *pdvReader
 }
 
 var messageID uint16
@@ -52,7 +52,7 @@ func readMessage(
 
 	// create a reader for the command
 	// start by reading from the pdu that was provided
-	commandReader, err := newPDataReader(assoc.pduReader, true)
+	commandReader, err := newPDVReader(assoc.pduReader, true)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func readMessage(
 		// perhaps we need to create a pdu reader class that manages
 		// that state so that we don't have to do this
 		// fixed it.  created a pdu reader class.
-		dataReader, err := newPDataReader(assoc.pduReader, false)
+		dataReader, err := newPDVReader(assoc.pduReader, false)
 		if err != nil {
 			return nil, err
 		}
@@ -189,19 +189,19 @@ func writeMessage(writer io.Writer, assoc *Assoc, message *Message) error {
 func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, pcID, true, maxBufLen)
+	pdvWriter := newPDVWriter(writer, pcID, true, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
 	// write the command with group length
-	if err := encoder.writeObjectWithGroupLength(pDataWriter, 0x0000, command, ImplicitVRLittleEndianTS); err != nil {
+	if err := encoder.writeObjectWithGroupLength(pdvWriter, 0x0000, command, ImplicitVRLittleEndianTS); err != nil {
 		return err
 	}
 
 	// flush to the underlying writer
 	// passing true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
+	if err := pdvWriter.Flush(true); err != nil {
 		return err
 	}
 
@@ -213,19 +213,19 @@ func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object
 func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, transferSyntax *TransferSyntax) error {
 
 	// create a writer to write the data to
-	pDataWriter := newPDataWriter(writer, pcID, false, maxBufLen)
+	pdvWriter := newPDVWriter(writer, pcID, false, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
 
 	// write the command to the buffer
-	if err := encoder.writeObject(pDataWriter, data, transferSyntax); err != nil {
+	if err := encoder.writeObject(pdvWriter, data, transferSyntax); err != nil {
 		return err
 	}
 
 	// flush to the underlying writer
 	// passing true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
+	if err := pdvWriter.Flush(true); err != nil {
 		return err
 	}
 
@@ -241,10 +241,10 @@ func copyDataFromReader(
 	reader io.Reader,
 ) error {
 
-	// create a pdatawriter to write the data to
+	// create a pdvWriter to write the data to
 	// it knows how to create pdus and
 	// since it implements a writer, we can use a copy method
-	pDataWriter := newPDataWriter(
+	pdvWriter := newPDVWriter(
 		writer,    // write to the association connection
 		pcID,      // pc id for each pdv
 		false,     // false means we are writing data
@@ -252,12 +252,12 @@ func copyDataFromReader(
 	)
 
 	// copy the data
-	if _, err := io.Copy(pDataWriter, reader); err != nil {
+	if _, err := io.Copy(pdvWriter, reader); err != nil {
 		return err
 	}
 
 	// flush the data writer, true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
+	if err := pdvWriter.Flush(true); err != nil {
 		return err
 	}
 

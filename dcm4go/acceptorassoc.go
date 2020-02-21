@@ -274,7 +274,7 @@ func (assoc *Assoc) Serve() error {
 	log.Printf("attempting to accept data transfer\n")
 
 	// create a reader for the command
-	commandReader, err := newPDataReader(assoc.pduReader, true)
+	commandReader, err := newPDVReader(assoc.pduReader, true)
 	if err != nil {
 		return err
 	}
@@ -317,13 +317,13 @@ func (assoc *Assoc) Serve() error {
 	return nil
 }
 
-func getDataReader(commandDataSet uint16, assoc *Assoc) (*PDataReader, error) {
+func getDataReader(commandDataSet uint16, assoc *Assoc) (*pdvReader, error) {
 
 	// check to see if data is present
 	if isDataSetPresent(commandDataSet) {
 
 		// create a reader for the data
-		dataReader, err := newPDataReader(assoc.pduReader, false)
+		dataReader, err := newPDVReader(assoc.pduReader, false)
 		if err != nil {
 			return nil, err
 		}

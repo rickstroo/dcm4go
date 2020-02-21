@@ -227,7 +227,7 @@ func (assoc *Assoc) writeObject(
 ) error {
 
 	// create a pdatawriter to write the object to
-	pDataWriter := newPDataWriter(
+	pdvWriter := newPDVWriter(
 		assoc.conn,                               // write to the association connection
 		presContext.id,                           // pc id for each pdv
 		isCommand,                                // is command or data
@@ -238,12 +238,12 @@ func (assoc *Assoc) writeObject(
 	encoder := newEncoder()
 
 	// write the command to the buffer
-	if err := encoder.writeObject(pDataWriter, object, transferSyntax); err != nil {
+	if err := encoder.writeObject(pdvWriter, object, transferSyntax); err != nil {
 		return err
 	}
 
 	// flush the data writer, true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
+	if err := pdvWriter.Flush(true); err != nil {
 		return err
 	}
 
@@ -260,7 +260,7 @@ func (assoc *Assoc) copyDataFromReader(
 	// create a pdatawriter to write the data to
 	// it knows how to create pdus and
 	// since it implements a writer, we can use a copy method
-	pDataWriter := newPDataWriter(
+	pdvWriter := newPDVWriter(
 		assoc.conn,                               // write to the association connection
 		presContext.id,                           // pc id for each pdv
 		false,                                    // false means we are writing data
@@ -268,12 +268,12 @@ func (assoc *Assoc) copyDataFromReader(
 	)
 
 	// copy the data
-	if _, err := io.Copy(pDataWriter, reader); err != nil {
+	if _, err := io.Copy(pdvWriter, reader); err != nil {
 		return err
 	}
 
 	// flush the data writer, true means we are done writing this object
-	if err := pDataWriter.Flush(true); err != nil {
+	if err := pdvWriter.Flush(true); err != nil {
 		return err
 	}
 
