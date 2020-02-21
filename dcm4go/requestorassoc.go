@@ -145,7 +145,7 @@ func (assoc *RequestorAssoc) Echo() error {
 	}
 
 	// create a verification request
-	request := newCEchoRequest()
+	request := NewCEchoRequest()
 
 	// write the verification request
 	if err := assoc.writeMessage(presContex, request, nil, nil); err != nil {
@@ -205,7 +205,7 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	}
 
 	// create a group zero object
-	request := newCStoreRequest(sopClassUID, sopInstanceUID)
+	request := NewCStoreRequest(sopClassUID, sopInstanceUID)
 
 	// write the request, with data coming from the reader of the rest of the file
 	if err := assoc.writeMessage(presContex, request, nil, reader); err != nil {

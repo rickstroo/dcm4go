@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -66,25 +67,25 @@ func (handler *MyCStoreHandler) Capabilities() []*dcm4go.Capability {
 // HandleRequest handles a DICOM C-Store request
 func (handler *MyCStoreHandler) HandleRequest(
 	assoc *dcm4go.Assoc,
-	pc *dcm4go.PresContext,
+	presContext *dcm4go.PresContext,
 	request *dcm4go.Object,
-	reader *dcm4go.PDataReader,
+	reader io.Reader,
 ) error {
 
 	// store the data
-	if err := handler.StoreToFile(assoc, pc.ID(), request, reader); err != nil {
+	if err := handler.StoreToFile(assoc, presContext.ID(), request, reader); err != nil {
 		return err
 	}
 
 	// create a response
-	response, err := dcm4go.NewCStoreResponse(assoc, request)
+	response, err := dcm4go.NewCStoreResponse(request)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("response is %v\n", response)
 
 	// write the response
-	err = assoc.WriteResponse(pc.ID(), response, nil)
+	err = assoc.WriteResponse(presContext, response, nil)
 	if err != nil {
 		return err
 	}
@@ -97,7 +98,7 @@ func (handler *MyCStoreHandler) StoreToFile(
 	assoc *dcm4go.Assoc,
 	pcID byte,
 	command *dcm4go.Object,
-	pDataReader *dcm4go.PDataReader,
+	reader io.Reader,
 ) error {
 
 	// construct the file meta information
@@ -119,7 +120,7 @@ func (handler *MyCStoreHandler) StoreToFile(
 	defer file.Close()
 
 	// write the file meta information
-	if err := dcm4go.WriteFile(file, fmi, pDataReader); err != nil {
+	if err := dcm4go.WriteFile(file, fmi, reader); err != nil {
 		return err
 	}
 

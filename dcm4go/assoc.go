@@ -172,6 +172,11 @@ func (assoc *Assoc) WriteRequestOrResponse(message *Message) error {
 	return writeMessage(assoc.conn, assoc, message)
 }
 
+// WriteResponse writes a response
+func (assoc *Assoc) WriteResponse(presContext *PresContext, command *Object, data *Object) error {
+	return assoc.writeMessage(presContext, command, data, nil)
+}
+
 // writeMessage writes a message.  a message can be a request or
 // a response.  the command is required.  the data and
 // reader are optional.  it's assumed that only one of the data or

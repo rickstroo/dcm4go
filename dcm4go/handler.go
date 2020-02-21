@@ -11,7 +11,7 @@ import (
 // A Handler handles a DICOM request.
 type Handler interface {
 	Capabilities() []*Capability
-	HandleRequest(*Assoc, *PresContext, *Object, *pdvReader) error
+	HandleRequest(*Assoc, *PresContext, *Object, io.Reader) error
 }
 
 // A BasicCEchoHandler provides a handler for C-Echo requests
@@ -28,11 +28,11 @@ func (handler *BasicCEchoHandler) HandleRequest(
 	assoc *Assoc,
 	pc *PresContext,
 	request *Object,
-	reader *pdvReader,
+	reader io.Reader,
 ) error {
 
 	// create a response
-	response, err := newCEchoResponse(request)
+	response, err := NewCEchoResponse(request)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (handler *BasicCStoreHandler) HandleRequest(
 	assoc *Assoc,
 	pc *PresContext,
 	request *Object,
-	reader *pdvReader,
+	reader io.Reader,
 ) error {
 
 	// discard the data
@@ -78,7 +78,7 @@ func (handler *BasicCStoreHandler) HandleRequest(
 	fmt.Printf("discarded %d bytes\n", num)
 
 	// create a response
-	response, err := newCStoreResponse(request)
+	response, err := NewCStoreResponse(request)
 	if err != nil {
 		return err
 	}

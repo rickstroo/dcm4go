@@ -86,18 +86,18 @@ func newResponse(
 	return response, nil
 }
 
-// newCEchoRequest constructs a C-Echo request message
-func newCEchoRequest() *Object {
+// NewCEchoRequest constructs a C-Echo request message
+func NewCEchoRequest() *Object {
 	return newRequest(VerificationUID, CEchoRQ, NoDataSetCode)
 }
 
-// newCEchoResponse constructs a C-Echo response message based on the C-Echo request message
-func newCEchoResponse(request *Object) (*Object, error) {
+// NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message
+func NewCEchoResponse(request *Object) (*Object, error) {
 	return newResponse(request, NoDataSetCode, SuccessStatusCode)
 }
 
-// newCStoreRequest constructs a C-Store request message
-func newCStoreRequest(sopClassUID string, sopInstanceUID string) *Object {
+// NewCStoreRequest constructs a C-Store request message
+func NewCStoreRequest(sopClassUID string, sopInstanceUID string) *Object {
 
 	// construct a default request
 	request := newRequest(sopClassUID, CStoreRQ, DataSetCode)
@@ -110,8 +110,8 @@ func newCStoreRequest(sopClassUID string, sopInstanceUID string) *Object {
 	return request
 }
 
-// newCStoreResponse constructs a C-Store response message based on the C-Store request message
-func newCStoreResponse(request *Object) (*Object, error) {
+// NewCStoreResponse constructs a C-Store response message based on the C-Store request message
+func NewCStoreResponse(request *Object) (*Object, error) {
 
 	// construct a default response
 	response, err := newResponse(request, NoDataSetCode, SuccessStatusCode)
