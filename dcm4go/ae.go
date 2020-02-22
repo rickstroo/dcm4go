@@ -3,7 +3,6 @@
 package dcm4go
 
 import (
-	"fmt"
 	"net"
 	"strings"
 )
@@ -87,11 +86,15 @@ func (ae *AE) RequestAssoc(
 // AcceptAssoc waits for an association request
 func (ae *AE) AcceptAssoc(
 	conn net.Conn,
-	capabilities []*Capability,
+	handlers []Handler,
 	opts *AssocOpts,
 ) (
 	*AcceptorAssoc,
 	error,
 ) {
-	return nil, fmt.Errorf("AE.AcceptAssoc(): not implemented")
+	assoc, err := AcceptAssoc(conn, ae, handlers)
+	if err != nil {
+		return nil, err
+	}
+	return assoc, nil
 }

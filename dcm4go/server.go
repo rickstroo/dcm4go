@@ -119,7 +119,7 @@ func (server *Server) Serve(listener net.Listener) error {
 		log.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 
 		// handle the connection, eventually as a goroutine
-		go server.Handle(conn)
+		server.Handle(conn)
 
 		// if shut down, exit
 		if server.IsShutDown {
@@ -172,7 +172,7 @@ func (server *Server) handle(conn net.Conn) error {
 
 	// handle the requests
 	for {
-		if err := assoc.Serve(); err != nil {
+		if err := assoc.Serve(nil); err != nil {
 			if err != io.EOF {
 				return err
 			}

@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rickstroo/dcm4go/dcm4go"
@@ -13,9 +16,11 @@ import (
 // simple error management
 func check(err error) {
 	if err != nil {
-		fmt.Printf("panic: %v\n", err)
+		log.Fatalf("error is %v", err)
 	}
 }
+
+var shutdown = false
 
 // the main function
 func main() {
@@ -25,19 +30,107 @@ func main() {
 	aeTitle := "DCMRCV"
 	folder := "tmp/"
 
-	// create handlers for C-Echo and C-Store
-	handlers := []dcm4go.Handler{
-		&dcm4go.BasicCEchoHandler{},
-		&MyCStoreHandler{Folder: folder},
+	// bind to a listening port
+	listener, err := net.Listen("tcp", addr)
+	check(err)
+	log.Printf("opened listener on %v\n", listener.Addr())
+
+	// listen for connections
+	for {
+
+		// wait for connection
+		log.Printf("waiting for connection on %v\n", listener.Addr())
+		conn, err := listener.Accept()
+		check(err)
+		log.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
+
+		// create a c-store handler
+		myCStoreHandler := &MyCStoreHandler{
+			Folder: folder,
+		}
+
+		// create handlers for C-Echo and C-Store
+		handlers := []dcm4go.Handler{
+			&dcm4go.BasicCEchoHandler{},
+			&MyCStoreHandler{Folder: folder},
+		}
+
+		// handle the connection, eventually as a goroutine
+		handle(conn, aeTitle, handlers, myCStoreHandler)
+
+		// if shut down, exit
+		if shutdown {
+			break
+		}
 	}
 
-	server := &dcm4go.Server{
-		Addr:     addr,
-		AETitle:  aeTitle,
-		Handlers: handlers,
+	check(listener.Close())
+	log.Printf("closed listener on %v\n", listener.Addr())
+
+	// // create handlers for C-Echo and C-Store
+	// handlers := []dcm4go.Handler{
+	// 	&dcm4go.BasicCEchoHandler{},
+	// 	&MyCStoreHandler{Folder: folder},
+	// }
+	//
+	// server := &dcm4go.Server{
+	// 	Addr:     addr,
+	// 	AETitle:  aeTitle,
+	// 	Handlers: handlers,
+	// }
+	//
+	// check(server.ListenAndServe())
+}
+
+func handle(conn net.Conn, aeTitle string, handlers []dcm4go.Handler, handler dcm4go.Handler) {
+
+	// ensure the connection gets closed
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("while closing connection, caught error %v", err)
+		} else {
+			log.Printf("closed connection")
+		}
+	}()
+
+	// gather all the capabilities of all the handlers
+	//capabilities := handler.Capabilities()
+	//log.Printf("capabilities is %v\n", capabilities)
+
+	// create an ae for this server
+	ae := dcm4go.NewAE(aeTitle)
+
+	// define some options for the association
+	assocOpts := &dcm4go.AssocOpts{
+		WriteTimeOut: 10 * time.Second,
+		ReadTimeOut:  10 * time.Second,
+		MaxBufLen:    16 * 1024,
 	}
 
-	check(server.ListenAndServe())
+	// attempt to accepet an association
+	assoc, err := ae.AcceptAssoc(conn, handlers, assocOpts)
+	if err != nil {
+		log.Printf("error occured while attempting to accept association, %v", err)
+		return
+	}
+	log.Printf("accepted association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
+
+	// handle the requests
+	for {
+		if err := assoc.Serve(handler); err != nil {
+			if err != io.EOF {
+				log.Printf("error occured while handling a request, %v", err)
+				return
+			}
+			break
+		}
+	}
+
+	log.Printf("closed association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
+
+	// all is well
+	return
+
 }
 
 // A MyCStoreHandler handles C-Store requests
@@ -71,6 +164,15 @@ func (handler *MyCStoreHandler) HandleRequest(
 	request *dcm4go.Object,
 	reader io.Reader,
 ) error {
+
+	commandField, err := request.AsShort(dcm4go.CommandFieldTag, 0)
+	if err != nil {
+		return err
+	}
+	if commandField == dcm4go.CEchoRQ {
+		basicCEchoHandler := &dcm4go.BasicCEchoHandler{}
+		return basicCEchoHandler.HandleRequest(assoc, presContext, request, reader)
+	}
 
 	// store the data
 	if err := handler.StoreToFile(assoc, presContext.ID(), request, reader); err != nil {

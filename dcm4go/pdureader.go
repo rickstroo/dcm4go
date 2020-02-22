@@ -16,10 +16,15 @@ func newPDUReader(reader io.Reader) *pduReader {
 
 // nextPDU reads the next pdu from the underlying reader
 func (pduReader *pduReader) nextPDU() (*pdu, error) {
+	// read the pdu
 	pdu, err := readPDU(pduReader.reader)
 	if err != nil {
 		return nil, err
 	}
+	// remember the pdu
+	pduReader.pdu = pdu
+	// return the pdu so that we can inspect the type
+	// perhaps we should just return the type
 	return pdu, nil
 }
 

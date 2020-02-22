@@ -75,8 +75,12 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("assocACPDU is %v\n", assocACPDU)
-	log.Printf("assocRJPDU is %v\n", assocRJPDU)
+	if assocACPDU != nil {
+		log.Printf("assocACPDU is %v\n", assocACPDU)
+	}
+	if assocRJPDU != nil {
+		log.Printf("assocRJPDU is %v\n", assocRJPDU)
+	}
 
 	// was association rejected
 	if assocRJPDU != nil {
@@ -216,7 +220,7 @@ func (assoc *Assoc) ReadRequest() (*Message, error) {
 }
 
 // Serve reads and services a single request
-func (assoc *Assoc) Serve() error {
+func (assoc *Assoc) Serve(handler Handler) error {
 
 	// read a pdu
 	pdu, err := assoc.pduReader.nextPDU()
@@ -290,11 +294,11 @@ func (assoc *Assoc) Serve() error {
 	log.Printf("command is %v\n", command)
 
 	// find the persentation context by id
-	pc, err := assoc.findAcceptedPresContextByPCID(pcID)
+	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
 	if err != nil {
 		return err
 	}
-	log.Printf("pc is %v\n", pc)
+	log.Printf("presContext is %v\n", presContext)
 
 	// get the command data set
 	commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
@@ -308,9 +312,13 @@ func (assoc *Assoc) Serve() error {
 		return err
 	}
 
-	// call the handler for the command
-	if err := pc.handler.HandleRequest(assoc, pc, command, dataReader); err != nil {
-		return err
+	if handler != nil {
+		handler.HandleRequest(assoc, presContext, command, dataReader)
+	} else {
+		// call the handler for the command
+		if err := presContext.handler.HandleRequest(assoc, presContext, command, dataReader); err != nil {
+			return err
+		}
 	}
 
 	// all is well
