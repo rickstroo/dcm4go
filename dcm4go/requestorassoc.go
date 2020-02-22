@@ -17,8 +17,8 @@ type RequestorAssoc struct {
 	Assoc
 }
 
-// RequestAssoc is used to request an association.
-func RequestAssoc(
+// requestAssoc is used to request an association.
+func requestAssoc(
 	conn net.Conn,
 	localAETitle string,
 	remoteAETitle string,

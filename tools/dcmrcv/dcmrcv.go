@@ -21,6 +21,7 @@ func check(err error) {
 }
 
 var shutdown = false
+var folder = "tmp/"
 
 // the main function
 func main() {
@@ -28,7 +29,6 @@ func main() {
 	// set variables, will parse from command line later
 	addr := "localhost:4104"
 	aeTitle := "DCMRCV"
-	folder := "tmp/"
 
 	// bind to a listening port
 	listener, err := net.Listen("tcp", addr)
@@ -44,19 +44,13 @@ func main() {
 		check(err)
 		log.Printf("accepted connection on %v from %v\n", conn.LocalAddr(), conn.RemoteAddr())
 
-		// create a c-store handler
-		myCStoreHandler := &MyCStoreHandler{
-			Folder: folder,
-		}
-
-		// create handlers for C-Echo and C-Store
-		handlers := []dcm4go.Handler{
-			&dcm4go.BasicCEchoHandler{},
-			&MyCStoreHandler{Folder: folder},
-		}
-
 		// handle the connection, eventually as a goroutine
-		handle(conn, aeTitle, handlers, myCStoreHandler)
+		// wrap the call so that we can handle errors here
+		func() {
+			if err := handleConnection(conn, aeTitle); err != nil {
+				log.Printf("error occured while handling connection, error is %v", err)
+			}
+		}()
 
 		// if shut down, exit
 		if shutdown {
@@ -66,36 +60,34 @@ func main() {
 
 	check(listener.Close())
 	log.Printf("closed listener on %v\n", listener.Addr())
-
-	// // create handlers for C-Echo and C-Store
-	// handlers := []dcm4go.Handler{
-	// 	&dcm4go.BasicCEchoHandler{},
-	// 	&MyCStoreHandler{Folder: folder},
-	// }
-	//
-	// server := &dcm4go.Server{
-	// 	Addr:     addr,
-	// 	AETitle:  aeTitle,
-	// 	Handlers: handlers,
-	// }
-	//
-	// check(server.ListenAndServe())
 }
 
-func handle(conn net.Conn, aeTitle string, handlers []dcm4go.Handler, handler dcm4go.Handler) {
+// handleConnection does the actual work, returning an error if it cannot
+func handleConnection(conn net.Conn, aeTitle string) error {
 
 	// ensure the connection gets closed
-	defer func() {
-		if err := conn.Close(); err != nil {
-			log.Printf("while closing connection, caught error %v", err)
-		} else {
-			log.Printf("closed connection")
-		}
-	}()
+	defer conn.Close()
 
-	// gather all the capabilities of all the handlers
-	//capabilities := handler.Capabilities()
-	//log.Printf("capabilities is %v\n", capabilities)
+	// create some capabilities
+	defaultTransferSyntaxes := []string{
+		dcm4go.ImplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRBigEndianUID,
+	}
+	capabilities := []*dcm4go.Capability{
+		&dcm4go.Capability{ // verification
+			AbstractSyntax:   dcm4go.VerificationUID,
+			TransferSyntaxes: defaultTransferSyntaxes,
+		},
+		&dcm4go.Capability{ // storage
+			AbstractSyntax:   dcm4go.EnhancedXAImageStorageUID,
+			TransferSyntaxes: defaultTransferSyntaxes,
+		},
+		&dcm4go.Capability{ // storage
+			AbstractSyntax:   dcm4go.GeneralECGWaveformStorageUID,
+			TransferSyntaxes: defaultTransferSyntaxes,
+		},
+	}
 
 	// create an ae for this server
 	ae := dcm4go.NewAE(aeTitle)
@@ -108,74 +100,81 @@ func handle(conn net.Conn, aeTitle string, handlers []dcm4go.Handler, handler dc
 	}
 
 	// attempt to accepet an association
-	assoc, err := ae.AcceptAssoc(conn, handlers, assocOpts)
+	assoc, err := ae.AcceptAssoc(conn, capabilities, assocOpts)
 	if err != nil {
-		log.Printf("error occured while attempting to accept association, %v", err)
-		return
+		return err
 	}
 	log.Printf("accepted association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
 	// handle the requests
 	for {
-		if err := assoc.Serve(handler); err != nil {
+		presContext, request, err := assoc.ReadRequest()
+		if err != nil {
 			if err != io.EOF {
-				log.Printf("error occured while handling a request, %v", err)
-				return
+				return err
 			}
 			break
 		}
+		log.Printf("request is %v", request)
+		if err := handleRequest(assoc, presContext, request); err != nil {
+			return err
+		}
 	}
 
-	log.Printf("closed association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
+	log.Printf("released association to %q from %q\n", assoc.CalledAETitle(), assoc.CallingAETitle())
 
-	// all is well
-	return
-
+	// return success
+	return nil
 }
 
-// A MyCStoreHandler handles C-Store requests
-type MyCStoreHandler struct {
-	Folder string // folder in which to store the DICOM objects
-}
-
-// Capabilities returns the capabilities of a my C-Store handler
-func (handler *MyCStoreHandler) Capabilities() []*dcm4go.Capability {
-	defaultTransferSyntaxes := []string{
-		dcm4go.ImplicitVRLittleEndianUID,
-		dcm4go.ExplicitVRLittleEndianUID,
-		dcm4go.ExplicitVRBigEndianUID,
-	}
-	return []*dcm4go.Capability{
-		&dcm4go.Capability{
-			AbstractSyntax:   dcm4go.EnhancedXAImageStorageUID,
-			TransferSyntaxes: defaultTransferSyntaxes,
-		},
-		&dcm4go.Capability{
-			AbstractSyntax:   dcm4go.GeneralECGWaveformStorageUID,
-			TransferSyntaxes: defaultTransferSyntaxes,
-		},
-	}
-}
-
-// HandleRequest handles a DICOM C-Store request
-func (handler *MyCStoreHandler) HandleRequest(
-	assoc *dcm4go.Assoc,
+func handleRequest(
+	assoc *dcm4go.AcceptorAssoc,
 	presContext *dcm4go.PresContext,
 	request *dcm4go.Object,
-	reader io.Reader,
 ) error {
-
 	commandField, err := request.AsShort(dcm4go.CommandFieldTag, 0)
 	if err != nil {
 		return err
 	}
-	if commandField == dcm4go.CEchoRQ {
-		basicCEchoHandler := &dcm4go.BasicCEchoHandler{}
-		return basicCEchoHandler.HandleRequest(assoc, presContext, request, reader)
+	switch commandField {
+	case dcm4go.CEchoRQ:
+		return handleEchoRequest(assoc, presContext, request)
+	case dcm4go.CStoreRQ:
+		return handleCStoreRequest(assoc, presContext, request)
+	default:
+		return dcm4go.ErrUnexpectedRequest
+	}
+}
+
+func handleEchoRequest(
+	assoc *dcm4go.AcceptorAssoc,
+	presContext *dcm4go.PresContext,
+	request *dcm4go.Object,
+) error {
+
+	// create a response
+	response, err := dcm4go.NewCEchoResponse(request)
+	if err != nil {
+		return err
 	}
 
+	// write the response
+	if err := assoc.WriteResponse(presContext, response, nil); err != nil {
+		return err
+	}
+
+	// all is well
+	return nil
+}
+
+func handleCStoreRequest(
+	assoc *dcm4go.AcceptorAssoc,
+	presContext *dcm4go.PresContext,
+	request *dcm4go.Object,
+) error {
+
 	// store the data
-	if err := handler.StoreToFile(assoc, presContext.ID(), request, reader); err != nil {
+	if err := storeToFile(assoc, presContext, request); err != nil {
 		return err
 	}
 
@@ -195,22 +194,21 @@ func (handler *MyCStoreHandler) HandleRequest(
 	return nil
 }
 
-// StoreToFile stores the DICOM object to a file
-func (handler *MyCStoreHandler) StoreToFile(
-	assoc *dcm4go.Assoc,
-	pcID byte,
+// storeToFile stores the DICOM object to a file
+func storeToFile(
+	assoc *dcm4go.AcceptorAssoc,
+	presContext *dcm4go.PresContext,
 	command *dcm4go.Object,
-	reader io.Reader,
 ) error {
 
 	// construct the file meta information
-	fmi, err := dcm4go.CreateFileMetaInfo(assoc, pcID, command)
+	fmi, err := dcm4go.CreateFileMetaInfo(&assoc.Assoc, presContext.ID(), command)
 	if err != nil {
 		return err
 	}
 
 	// create a unique file name
-	path := handler.Folder + uuid.New().String() + ".dcm" + ".tmp"
+	path := folder + uuid.New().String() + ".dcm" + ".tmp"
 
 	// open a new file
 	file, err := os.Create(path)
@@ -218,8 +216,14 @@ func (handler *MyCStoreHandler) StoreToFile(
 		return err
 	}
 
-	// ensure the file is closed when we are finished
+	// ensure the file is closed in case of early termination
 	defer file.Close()
+
+	// get a reader for the data set
+	reader, err := assoc.DataReader()
+	if err != nil {
+		return err
+	}
 
 	// write the file meta information
 	if err := dcm4go.WriteFile(file, fmi, reader); err != nil {
@@ -243,6 +247,6 @@ func (handler *MyCStoreHandler) StoreToFile(
 		return err
 	}
 
-	// return success, it's okay to return nil for data if we manage it
+	// return success
 	return nil
 }

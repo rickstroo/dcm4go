@@ -76,7 +76,7 @@ func (ae *AE) RequestAssoc(
 	*RequestorAssoc,
 	error,
 ) {
-	assoc, err := RequestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
+	assoc, err := requestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +86,13 @@ func (ae *AE) RequestAssoc(
 // AcceptAssoc waits for an association request
 func (ae *AE) AcceptAssoc(
 	conn net.Conn,
-	handlers []Handler,
+	capabilities []*Capability,
 	opts *AssocOpts,
 ) (
 	*AcceptorAssoc,
 	error,
 ) {
-	assoc, err := AcceptAssoc(conn, ae, handlers)
+	assoc, err := acceptAssoc(conn, ae, capabilities)
 	if err != nil {
 		return nil, err
 	}

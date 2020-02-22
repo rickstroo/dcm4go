@@ -17,8 +17,8 @@ type AcceptorAssoc struct {
 	Assoc
 }
 
-// AcceptAssoc accepts an association
-func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, error) {
+// acceptAssoc accepts an association
+func acceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAssoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -71,7 +71,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, handlers)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func AcceptAssoc(conn net.Conn, ae *AE, handlers []Handler) (*AcceptorAssoc, err
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocACPDU, *AssocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) (*AssocACPDU, *AssocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -137,7 +137,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocA
 
 	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, handlers)
+		acPresContext, err := negotiatePresContext(rqPresContext, capabilities)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -148,10 +148,10 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, handlers []Handler) (*AssocA
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*PresContext, error) {
+func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability) (*PresContext, error) {
 
 	// look for a capability for this abstract syntax
-	handler, capability, found := findCapability(rqPresContext.abstractSyntax, handlers)
+	capability, found := findCapability(rqPresContext.abstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
@@ -160,7 +160,6 @@ func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*Pres
 			"",                           // no abstract syntax
 			nil,                          // no transfer syntaxes
 			pcAbstractSyntaxNotSupported, // failure
-			nil,                          // no handler
 		}
 		return acPresContext, nil
 	}
@@ -173,7 +172,6 @@ func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*Pres
 				"",                        // no abstract syntax
 				[]string{rqTansferSyntax}, // the transfer syntax
 				pcAcceptance,              // success
-				handler,                   // the handler
 			}
 			return acPresContext, nil
 		}
@@ -185,7 +183,6 @@ func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*Pres
 		"",                             // no abstract syntax
 		nil,                            // no transfer syntaxes
 		pcTransferSyntaxesNotSupported, // failure
-		nil,                            // no handler
 	}
 
 	// return the accepted presentation context
@@ -193,15 +190,13 @@ func negotiatePresContext(rqPresContext *PresContext, handlers []Handler) (*Pres
 }
 
 // findCapability searches for a capability for an abstract syntax
-func findCapability(abstractSyntax string, handlers []Handler) (Handler, *Capability, bool) {
-	for _, handler := range handlers {
-		for _, capability := range handler.Capabilities() {
-			if abstractSyntax == capability.AbstractSyntax {
-				return handler, capability, true
-			}
+func findCapability(abstractSyntax string, capabilities []*Capability) (*Capability, bool) {
+	for _, capability := range capabilities {
+		if abstractSyntax == capability.AbstractSyntax {
+			return capability, true
 		}
 	}
-	return nil, nil, false
+	return nil, false
 }
 
 // contains looks for a string in a set of strings
@@ -214,18 +209,13 @@ func contains(ses []string, t string) bool {
 	return false
 }
 
-// ReadRequest reads a request from the association
-func (assoc *Assoc) ReadRequest() (*Message, error) {
-	return assoc.ReadRequestOrResponse()
-}
-
-// Serve reads and services a single request
-func (assoc *Assoc) Serve(handler Handler) error {
+// ReadRequest reads and a request
+func (assoc *Assoc) ReadRequest() (*PresContext, *Object, error) {
 
 	// read a pdu
 	pdu, err := assoc.pduReader.nextPDU()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	log.Printf("pdu is %v\n", pdu)
 
@@ -236,23 +226,23 @@ func (assoc *Assoc) Serve(handler Handler) error {
 		log.Printf("received release request, attempting to release association\n")
 
 		if err := readReleaseRQPDU(assoc.pduReader); err != nil {
-			return err
+			return nil, nil, err
 		}
 
 		// construct a release response pdu
 		releaseRPPDU := &ReleaseRPPDU{}
 		if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
-			return err
+			return nil, nil, err
 		}
 
 		// return EOF to indicate that the association is released
-		return io.EOF
+		return nil, nil, io.EOF
 	}
 
 	// is this an abort request?  if so, simply return EOF
 	if pdu.pduType == aAbortPDU {
 		log.Printf("received abort request, aborting association\n")
-		return io.EOF
+		return nil, nil, io.EOF
 	}
 
 	// if anything other than an data transfer request, we abort
@@ -268,11 +258,11 @@ func (assoc *Assoc) Serve(handler Handler) error {
 
 		// attempt to write it
 		if err := abortPDU.Write(assoc.pduWriter); err != nil {
-			return err
+			return nil, nil, err
 		}
 
 		// let the caller know why we were not able to negotiate an association
-		return ErrUnexpectedPDU
+		return nil, nil, ErrUnexpectedPDU
 	}
 
 	log.Printf("attempting to accept data transfer\n")
@@ -280,66 +270,36 @@ func (assoc *Assoc) Serve(handler Handler) error {
 	// create a reader for the command
 	commandReader, err := newPDVReader(assoc.pduReader, true)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// get the presentation context id from the reader
 	pcID := commandReader.pdv.pcID
 
-	// read the command
-	command, err := readCommand(commandReader)
-	if err != nil {
-		return err
-	}
-	log.Printf("command is %v\n", command)
-
 	// find the persentation context by id
 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	log.Printf("presContext is %v\n", presContext)
 
-	// get the command data set
-	commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
+	// read the command
+	command, err := readCommand(commandReader)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	log.Printf("command is %v\n", command)
 
-	// get a data reader if required
-	dataReader, err := getDataReader(commandDataSet, assoc)
-	if err != nil {
-		return err
-	}
-
-	if handler != nil {
-		handler.HandleRequest(assoc, presContext, command, dataReader)
-	} else {
-		// call the handler for the command
-		if err := presContext.handler.HandleRequest(assoc, presContext, command, dataReader); err != nil {
-			return err
-		}
-	}
-
-	// all is well
-	return nil
+	// return the presentation context and the command
+	return presContext, command, nil
 }
 
-func getDataReader(commandDataSet uint16, assoc *Assoc) (*pdvReader, error) {
-
-	// check to see if data is present
-	if isDataSetPresent(commandDataSet) {
-
-		// create a reader for the data
-		dataReader, err := newPDVReader(assoc.pduReader, false)
-		if err != nil {
-			return nil, err
-		}
-
-		// return the data reader
-		return dataReader, nil
+// DataReader returns a reader for the data
+func (assoc *Assoc) DataReader() (io.Reader, error) {
+	// create a reader for the data
+	dataReader, err := newPDVReader(assoc.pduReader, false)
+	if err != nil {
+		return nil, err
 	}
-
-	// return nothing, as no data reader is required
-	return nil, nil
+	return dataReader, nil
 }

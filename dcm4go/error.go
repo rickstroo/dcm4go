@@ -41,3 +41,14 @@ var ErrNoConn = errors.New("no connection")
 
 // ErrNoAssoc means that there is no association between the client and the server
 var ErrNoAssoc = errors.New("no association")
+
+// ErrUnrecognizedCallingAETitle is returned to client when the calling AE
+// Title is not recognized
+var ErrUnrecognizedCallingAETitle = errors.New("unrecognized calling AE Title")
+
+// ErrUnrecognizedCalledAETitle is returned to client when the called AE
+// Title is not recognized
+var ErrUnrecognizedCalledAETitle = errors.New("unrecognized called AE Title")
+
+// ErrUnexpectedRequest is returned when the request is not expected
+var ErrUnexpectedRequest = errors.New("unexpected request")

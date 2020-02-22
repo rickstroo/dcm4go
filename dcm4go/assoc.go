@@ -30,7 +30,6 @@ type Assoc struct {
 	ae         *AE
 	assocRQPDU *AssocRQPDU
 	assocACPDU *AssocACPDU
-	handlers   []Handler
 }
 
 // AssocOpts impact the behaviour of a Assoc.
@@ -43,13 +42,12 @@ type AssocOpts struct {
 // String returns a string representation of an association
 func (assoc *Assoc) String() string {
 	return fmt.Sprintf(
-		"conn:{local:%v,remote:%v},ae:%v,assocRQPDU:%v,assocACPDU:%v,handlers:%v",
+		"conn:{local:%v,remote:%v},ae:%v,assocRQPDU:%v,assocACPDU:%v",
 		assoc.conn.LocalAddr(),
 		assoc.conn.RemoteAddr(),
 		assoc.ae,
 		assoc.assocRQPDU,
 		assoc.assocACPDU,
-		assoc.handlers,
 	)
 }
 
@@ -285,73 +283,3 @@ func (assoc *Assoc) copyDataFromReader(
 	// return success
 	return nil
 }
-
-// // readMessage reads a message.  a message can be a request or a response.
-// func (assoc *Assoc) readMessage(
-// 	presContext *PresContext,
-// 	readData bool, // if true, and data present, read the data into an object
-// ) (
-// 	*Object, // command
-// 	*Object, // data read into an object
-// 	*PDataReader, // data available from a reader
-// 	error,
-// ) {
-//
-// 		// create a reader for the command
-// 		commandReader, err := newPDataReader(reader, pdu, true)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		// get the presentation context id from the reader
-// 		pcID := commandReader.pdv.pcID
-//
-// 		// read the command from the pdu
-// 		command, err := readCommand(commandReader, assoc)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		// get the command data set
-// 		commandDataSet, err := command.asShort(CommandDataSetTypeTag, 0)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-//
-// 		// create a message
-// 		message := &Message{
-// 			pcID:    pcID,
-// 			command: command,
-// 		}
-//
-// 		if isDataSetPresent(commandDataSet) {
-//
-// 			// create a reader for the data
-// 			pDataReader, err := newPDataReader(reader, pdu, false)
-// 			if err != nil {
-// 				return nil, err
-// 			}
-//
-// 			// should we read the data, or pass the data reader back to the caller?
-// 			if shouldReadData {
-//
-// 				// read the data
-// 				data, err := readData(pDataReader, assoc, pcID)
-// 				if err != nil {
-// 					return nil, err
-// 				}
-//
-// 				// add the data to the message
-// 				message.data = data
-//
-// 			} else {
-//
-// 				// otherwise, add the data reader to the message
-// 				message.pDataReader = pDataReader
-// 			}
-// 		}
-//
-// 		// return the message
-// 		return message, nil
-// 	return nil, nil, nil, fmt.Errorf("Assoc.readMessage(): not implemented")
-// }

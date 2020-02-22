@@ -40,30 +40,30 @@ func main() {
 
 	paths := strings.Split(path, ",")
 
-	store1(paths, remote)
-	store2(paths, remote, local)
+	// store1(paths, remote)
+	// store2(paths, remote, local)
 	store3(paths, remote, local)
 }
 
-// this is about the simplest way to send files
-func store1(paths []string, remoteAddr string) {
-	check(dcm4go.Send(paths, remoteAddr))
-}
+// // this is about the simplest way to send files
+// func store1(paths []string, remoteAddr string) {
+// 	check(dcm4go.Send(paths, remoteAddr))
+// }
 
-// if one wants more control, create a sender with options
-func store2(paths []string, remoteAddr string, local string) {
-
-	opts := &dcm4go.SenderOpts{
-		LocalAETitle:   local,
-		ConnectTimeOut: 30 * time.Second,
-		WriteTimeOut:   10 * time.Second,
-		ReadTimeOut:    10 * time.Second,
-	}
-	sender := &dcm4go.Sender{
-		Opts: opts,
-	}
-	check(sender.Send(paths, remoteAddr))
-}
+// // if one wants more control, create a sender with options
+// func store2(paths []string, remoteAddr string, local string) {
+//
+// 	opts := &dcm4go.SenderOpts{
+// 		LocalAETitle:   local,
+// 		ConnectTimeOut: 30 * time.Second,
+// 		WriteTimeOut:   10 * time.Second,
+// 		ReadTimeOut:    10 * time.Second,
+// 	}
+// 	sender := &dcm4go.Sender{
+// 		Opts: opts,
+// 	}
+// 	check(sender.Send(paths, remoteAddr))
+// }
 
 // if one wants more control, create a sender with options
 func store3(paths []string, remoteAddr string, local string) {
