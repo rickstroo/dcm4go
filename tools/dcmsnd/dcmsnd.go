@@ -40,33 +40,11 @@ func main() {
 
 	paths := strings.Split(path, ",")
 
-	// store1(paths, remote)
-	// store2(paths, remote, local)
-	store3(paths, remote, local)
+	store(paths, remote, local)
 }
 
-// // this is about the simplest way to send files
-// func store1(paths []string, remoteAddr string) {
-// 	check(dcm4go.Send(paths, remoteAddr))
-// }
-
-// // if one wants more control, create a sender with options
-// func store2(paths []string, remoteAddr string, local string) {
-//
-// 	opts := &dcm4go.SenderOpts{
-// 		LocalAETitle:   local,
-// 		ConnectTimeOut: 30 * time.Second,
-// 		WriteTimeOut:   10 * time.Second,
-// 		ReadTimeOut:    10 * time.Second,
-// 	}
-// 	sender := &dcm4go.Sender{
-// 		Opts: opts,
-// 	}
-// 	check(sender.Send(paths, remoteAddr))
-// }
-
 // if one wants more control, create a sender with options
-func store3(paths []string, remoteAddr string, local string) {
+func store(paths []string, remoteAddr string, local string) {
 
 	// create a local AE
 	localAE := dcm4go.NewAE(local)
@@ -90,6 +68,12 @@ func store3(paths []string, remoteAddr string, local string) {
 	check(err)
 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 
+	// ensure the connection gets closed
+	defer func() {
+		check(conn.Close())
+		log.Printf("closed connection")
+	}()
+
 	// create an association
 	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
 	check(err)
@@ -103,8 +87,6 @@ func store3(paths []string, remoteAddr string, local string) {
 	defer func() {
 		check(assoc.RequestRelease())
 		log.Printf("released association")
-		check(conn.Close())
-		log.Printf("closed connection")
 	}()
 
 	// send the files
