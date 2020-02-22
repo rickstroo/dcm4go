@@ -60,3 +60,22 @@ func (attribute *Attribute) asString(index int) (string, error) {
 	}
 	return strings[index], nil
 }
+
+// Fragment encapsulates pixel data
+type Fragment struct {
+	offset uint32
+	length uint32
+}
+
+// Encapsulated contains an ordered list of fragments
+type Encapsulated struct {
+	fragments []*Fragment
+}
+
+func (encapsulated *Encapsulated) add(fragment *Fragment) {
+	encapsulated.fragments = append(encapsulated.fragments, fragment)
+}
+
+func newEncapsulated() *Encapsulated {
+	return &Encapsulated{make([]*Fragment, 0, 10)}
+}
