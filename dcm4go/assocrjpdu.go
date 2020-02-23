@@ -47,35 +47,25 @@ func (assocRJPDU *AssocRJPDU) String() string {
 
 func readAssocRJPDU(reader io.Reader) (*AssocRJPDU, error) {
 
-	// skip a byte as per the standard
-	if err := skipByte(reader); err != nil {
-		return nil, err
-	}
-
-	// read the result
-	result, err := readByte(reader)
+	// read the rest of the pdu
+	buf, err := readBytes(reader, 4)
 	if err != nil {
 		return nil, err
 	}
 
-	// read the source
-	source, err := readByte(reader)
-	if err != nil {
-		return nil, err
-	}
+	// read the result, source and reason
+	result := buf[1]
+	source := buf[2]
+	reason := buf[3]
 
-	// read the reason
-	reason, err := readByte(reader)
-	if err != nil {
-		return nil, err
-	}
-
+	// build the pdu
 	assocRJPDU := &AssocRJPDU{
 		result: result,
 		source: source,
 		reason: reason,
 	}
 
+	// return the pdu
 	return assocRJPDU, nil
 }
 
