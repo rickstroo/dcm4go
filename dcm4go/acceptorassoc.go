@@ -210,96 +210,16 @@ func contains(ses []string, t string) bool {
 }
 
 // ReadRequest reads and a request
-func (assoc *Assoc) ReadRequest() (*PresContext, *Object, error) {
-
-	// read a pdu
-	pdu, err := assoc.pduReader.nextPDU()
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("pdu is %v\n", pdu)
-
-	// is this an association release request?
-	/// if so, write release response and return EOF
-	if pdu.pduType == aReleaseRQPDU {
-
-		log.Printf("received release request, attempting to release association\n")
-
-		if err := readReleaseRQPDU(assoc.pduReader); err != nil {
-			return nil, nil, err
-		}
-
-		// construct a release response pdu
-		releaseRPPDU := &ReleaseRPPDU{}
-		if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
-			return nil, nil, err
-		}
-
-		// return EOF to indicate that the association is released
-		return nil, nil, io.EOF
-	}
-
-	// is this an abort request?  if so, simply return EOF
-	if pdu.pduType == aAbortPDU {
-		log.Printf("received abort request, aborting association\n")
-		return nil, nil, io.EOF
-	}
-
-	// if anything other than an data transfer request, we abort
-	if pdu.pduType != pDataTFPDU {
-
-		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
-
-		// construct an abort pdu
-		abortPDU := &AbortPDU{
-			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
-			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
-		}
-
-		// attempt to write it
-		if err := abortPDU.Write(assoc.pduWriter); err != nil {
-			return nil, nil, err
-		}
-
-		// let the caller know why we were not able to negotiate an association
-		return nil, nil, ErrUnexpectedPDU
-	}
-
-	log.Printf("attempting to accept data transfer\n")
-
-	// create a reader for the command
-	commandReader, err := newPDVReader(assoc.pduReader, true)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// get the presentation context id from the reader
-	pcID := commandReader.pdv.pcID
-
-	// find the persentation context by id
-	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("presContext is %v\n", presContext)
-
-	// read the command
-	command, err := readCommand(commandReader)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("command is %v\n", command)
-
-	// return the presentation context and the command
-	return presContext, command, nil
+func (assoc *AcceptorAssoc) ReadRequest() (*PresContext, *Object, error) {
+	return assoc.readMessage()
 }
 
-// DataReader returns a reader for the data
-func (assoc *Assoc) DataReader() (io.Reader, error) {
-	// create a reader for the data
-	dataReader, err := newPDVReader(assoc.pduReader, false)
-	if err != nil {
-		return nil, err
-	}
-	return dataReader, nil
+// WriteResponse writes a response from an acceptor
+func (assoc *AcceptorAssoc) WriteResponse(
+	presContext *PresContext,
+	command *Object,
+	data *Object,
+	reader io.Reader,
+) error {
+	return assoc.writeMessage(presContext, command, data, reader)
 }

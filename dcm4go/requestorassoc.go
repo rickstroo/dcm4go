@@ -135,6 +135,21 @@ func (assoc *Assoc) RequestRelease() error {
 	return nil
 }
 
+// WriteRequest writes a request
+func (assoc *RequestorAssoc) WriteRequest(
+	presContext *PresContext,
+	command *Object,
+	data *Object,
+	reader io.Reader,
+) error {
+	return assoc.writeMessage(presContext, command, data, reader)
+}
+
+// ReadResponse reads a response
+func (assoc *RequestorAssoc) ReadResponse() (*PresContext, *Object, error) {
+	return assoc.readMessage()
+}
+
 // Echo sends a DICOM C-Echo request
 func (assoc *RequestorAssoc) Echo() error {
 
@@ -148,18 +163,18 @@ func (assoc *RequestorAssoc) Echo() error {
 	request := NewCEchoRequest()
 
 	// write the verification request
-	if err := assoc.writeMessage(presContex, request, nil, nil); err != nil {
+	if err := assoc.WriteRequest(presContex, request, nil, nil); err != nil {
 		return err
 	}
 
 	// read the response
-	response, err := assoc.ReadRequestOrResponse()
+	_, response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
 
 	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
+	status, err := response.asShort(StatusTag, 0)
 	if err != nil {
 		return err
 	}
@@ -208,18 +223,18 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	request := NewCStoreRequest(sopClassUID, sopInstanceUID)
 
 	// write the request, with data coming from the reader of the rest of the file
-	if err := assoc.writeMessage(presContex, request, nil, reader); err != nil {
+	if err := assoc.WriteRequest(presContex, request, nil, reader); err != nil {
 		return err
 	}
 
 	// read the response
-	response, err := assoc.ReadRequestOrResponse()
+	_, response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
 
 	// get the status
-	status, err := response.command.asShort(StatusTag, 0)
+	status, err := response.asShort(StatusTag, 0)
 	if err != nil {
 		return err
 	}

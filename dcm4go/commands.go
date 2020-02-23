@@ -32,6 +32,13 @@ const (
 	HighPriorityCode = 0x0001
 )
 
+var messageID uint16
+
+func nextMessageID() uint16 {
+	messageID++
+	return messageID
+}
+
 // newRequest constructs a request message
 func newRequest(
 	affectedSOPClassUID string,
