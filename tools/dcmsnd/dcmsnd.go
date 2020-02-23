@@ -40,11 +40,11 @@ func main() {
 
 	paths := strings.Split(path, ",")
 
-	store(paths, remote, local)
+	stores(paths, remote, local)
 }
 
 // if one wants more control, create a sender with options
-func store(paths []string, remoteAddr string, local string) {
+func stores(paths []string, remoteAddr string, local string) {
 
 	// create a local AE
 	localAE := dcm4go.NewAE(local)
@@ -91,22 +91,42 @@ func store(paths []string, remoteAddr string, local string) {
 
 	// send the files
 	for _, path := range paths {
-
-		// open the file
-		file, err := os.Open(path)
-		if err != nil {
-			log.Printf("error while opening file, %v", err)
-			continue
-		}
-
-		// send the file
-		if err := assoc.Store(file); err != nil {
+		if err := store(assoc, path); err != nil {
 			log.Printf("error while sending file, %v", err)
 		}
+	}
+}
 
-		// close the file
+// store sends a single file.
+// we do this in a function so that we can use the defer
+// statement to ensure that the file is closed.
+func store(assoc *dcm4go.RequestorAssoc, path string) error {
+
+	// open the file
+	file, err := os.Open(path)
+	if err != nil {
+		log.Printf("error while opening file, %v", err)
+		return err
+	}
+
+	// ensure the file gets closed
+	defer func() {
 		if err := file.Close(); err != nil {
 			log.Printf("error while closing file, %v", err)
 		}
+		log.Printf("closed file")
+	}()
+
+	// send the file
+	if err := assoc.Store(file); err != nil {
+		log.Printf("error while sending file, %v", err)
+		return err
 	}
+
+	// close the file
+	if err := file.Close(); err != nil {
+		log.Printf("error while closing file, %v", err)
+	}
+
+	return nil
 }
