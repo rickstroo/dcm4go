@@ -201,14 +201,36 @@ func storeToFile(
 	command *dcm4go.Object,
 ) error {
 
+	// create a unique file name
+	path := folder + uuid.New().String() + ".dcm" + ".tmp"
+
+	// store the file
+	if err := store(assoc, path, presContext, command); err != nil {
+		return err
+	}
+
+	// rename the file
+	if err := os.Rename(path, strings.TrimSuffix(path, ".tmp")); err != nil {
+		return err
+	}
+
+	// return success
+	return nil
+}
+
+// store stores the DICOM object to a file
+func store(
+	assoc *dcm4go.AcceptorAssoc,
+	path string,
+	presContext *dcm4go.PresContext,
+	command *dcm4go.Object,
+) error {
+
 	// construct the file meta information
 	fmi, err := dcm4go.CreateFileMetaInfo(&assoc.Assoc, presContext.ID(), command)
 	if err != nil {
 		return err
 	}
-
-	// create a unique file name
-	path := folder + uuid.New().String() + ".dcm" + ".tmp"
 
 	// open a new file
 	file, err := os.Create(path)
@@ -235,16 +257,6 @@ func storeToFile(
 	// to be sure the file is flushed from memory and stored
 	// to some storage media
 	if err := file.Sync(); err != nil {
-		return err
-	}
-
-	// close file
-	if err := file.Close(); err != nil {
-		return err
-	}
-
-	// rename the file
-	if err := os.Rename(path, strings.TrimSuffix(path, ".tmp")); err != nil {
 		return err
 	}
 
