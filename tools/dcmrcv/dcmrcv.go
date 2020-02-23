@@ -159,7 +159,7 @@ func handleEchoRequest(
 	}
 
 	// write the response
-	if err := assoc.WriteResponse(presContext, response, nil); err != nil {
+	if err := assoc.WriteResponse(presContext, response, nil, nil); err != nil {
 		return err
 	}
 
@@ -186,7 +186,7 @@ func handleCStoreRequest(
 	fmt.Printf("response is %v\n", response)
 
 	// write the response
-	err = assoc.WriteResponse(presContext, response, nil)
+	err = assoc.WriteResponse(presContext, response, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -219,16 +219,17 @@ func storeToFile(
 	// ensure the file is closed in case of early termination
 	defer file.Close()
 
-	// get a reader for the data set
-	reader, err := assoc.DataReader()
-	if err != nil {
+	// write the file meta information
+	if err := dcm4go.WriteFileMetaInfo(file, fmi); err != nil {
 		return err
 	}
 
-	// write the file meta information
-	if err := dcm4go.WriteFile(file, fmi, reader); err != nil {
+	// copy the data
+	num, err := assoc.CopyData(file)
+	if err != nil {
 		return err
 	}
+	log.Printf("copied %d bytes", num)
 
 	// sync the file, because we really really really want
 	// to be sure the file is flushed from memory and stored

@@ -109,8 +109,8 @@ func ReadGroupTwo(reader io.Reader, bulkDataThreshold uint32) (*Object, error) {
 	return object, nil
 }
 
-// WriteFile writes a DICOM file
-func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
+// WriteFileMetaInfo writes a DICOM file
+func WriteFileMetaInfo(writer io.Writer, fmi *Object) error {
 
 	// write the leading 128 zeroes
 	var zeros [128]byte
@@ -128,12 +128,6 @@ func WriteFile(writer io.Writer, fmi *Object, reader io.Reader) error {
 
 	// write the fmi
 	if err := encoder.writeObjectWithGroupLength(writer, 0x0002, fmi, ImplicitVRLittleEndianTS); err != nil {
-		return err
-	}
-
-	// copy the data
-	_, err := io.Copy(writer, reader)
-	if err != nil {
 		return err
 	}
 

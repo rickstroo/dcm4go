@@ -387,15 +387,23 @@ func (assoc *Assoc) copyDataFromReader(
 	return nil
 }
 
-// DataReader returns a reader for the data
-// Perhaps we should consider replacing this with WriteTo or ReadFrom methods
-func (assoc *Assoc) DataReader() (io.Reader, error) {
+// CopyData copies data from the association input stream to a writer
+func (assoc *Assoc) CopyData(writer io.Writer) (int64, error) {
+
 	// create a reader for the data
 	dataReader, err := newPDVReader(assoc.pduReader, false)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return dataReader, nil
+
+	// copy the data
+	num, err := io.Copy(writer, dataReader)
+	if err != nil {
+		return num, err
+	}
+
+	// return the number of bytes copied
+	return num, nil
 }
 
 // ReadData reads a data set from the input stream
