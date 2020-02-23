@@ -126,6 +126,7 @@ func store(assoc *dcm4go.RequestorAssoc, path string) error {
 	// close the file
 	if err := file.Close(); err != nil {
 		log.Printf("error while closing file, %v", err)
+		return err
 	}
 
 	return nil
