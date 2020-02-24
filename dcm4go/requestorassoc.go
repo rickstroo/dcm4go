@@ -26,17 +26,21 @@ func requestAssoc(
 	opts *AssocOpts,
 ) (*RequestorAssoc, error) {
 
+	// create a pdu reader and pdu writer
+	pduReader := newPDUReader(conn)
+	pduWriter := newPDUWriter(conn)
+
 	// put together an association request pdu
 	assocRQPDU := newAssocRQPDU(remoteAETitle, localAETitle, capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
-	if err := writeAssocRQPDU(conn, assocRQPDU); err != nil {
+	if err := writeAssocRQPDU(pduWriter, assocRQPDU); err != nil {
 		return nil, err
 	}
 
 	// read the response
-	pdu, err := readPDU(conn)
+	pdu, err := pduReader.nextPDU()
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +49,7 @@ func requestAssoc(
 	// is this an abort request?  if so, return error
 	if pdu.pduType == aAbortPDU {
 		log.Printf("received an abort pdu")
-		abortPDU, err := readAbortPDU(pdu)
+		abortPDU, err := readAbortPDU(pduReader)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +59,7 @@ func requestAssoc(
 	// if this an associate reuject?  if so, return error
 	if pdu.pduType == aAssociateRJPDU {
 		log.Printf("received a rejection pdu")
-		assocRJPDU, err := readAssocRJPDU(pdu)
+		assocRJPDU, err := readAssocRJPDU(pduReader)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +73,7 @@ func requestAssoc(
 		return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
 	}
 
-	assocACPDU, err := readAssocACPDU(pdu)
+	assocACPDU, err := readAssocACPDU(pduReader)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +83,8 @@ func requestAssoc(
 	assoc := &RequestorAssoc{
 		Assoc{
 			conn:       conn,
+			pduReader:  pduReader,
+			pduWriter:  pduWriter,
 			assocRQPDU: assocRQPDU,
 			assocACPDU: assocACPDU,
 		},
@@ -93,13 +99,13 @@ func requestAssoc(
 func (assoc *Assoc) RequestRelease() error {
 
 	// write a request release pdu
-	if err := writeReleaseRQPDU(assoc.conn); err != nil {
+	if err := writeReleaseRQPDU(assoc.pduWriter); err != nil {
 		return err
 	}
 	log.Printf("wrote a release request\n")
 
 	// read the response
-	pdu, err := readPDU(assoc.conn)
+	pdu, err := assoc.pduReader.nextPDU()
 	if err != nil {
 		return err
 	}
@@ -110,14 +116,14 @@ func (assoc *Assoc) RequestRelease() error {
 
 		log.Printf("received an abort pdu")
 
-		abortPDU, err := readAbortPDU(pdu)
+		abortPDU, err := readAbortPDU(assoc.pduReader)
 		if err != nil {
 			return err
 		}
 		log.Printf("read abort pdu, %v", abortPDU)
 
-		// all is well
-		return nil
+		// return eof
+		return io.EOF
 	}
 
 	if pdu.pduType != aReleaseRPPDU {
@@ -125,7 +131,7 @@ func (assoc *Assoc) RequestRelease() error {
 	}
 
 	log.Printf("received a release response pdu")
-	releaseRPPDU, err := readReleaseRPPDU(pdu)
+	releaseRPPDU, err := readReleaseRPPDU(assoc.pduReader)
 	if err != nil {
 		return err
 	}
@@ -135,57 +141,54 @@ func (assoc *Assoc) RequestRelease() error {
 	return nil
 }
 
-// // WriteRequest writes a request
-// func (assoc *RequestorAssoc) WriteRequest(
-// 	pcID byte,
-// 	command *Object,
-// 	data *Object,
-// 	reader io.Reader,
-// ) error {
-//
-// 	// write the command
-// 	if err := assoc.WriteCommand(pcID, command); err != nil {
-// 		return err
-// 	}
-//
-// 	// if there is data to be written, write it
-// 	if data != nil {
-// 		if err := assoc.WriteData(pcID, data); err != nil {
-// 			return err
-// 		}
-// 	}
-//
-// 	// if there is data to be copied, copy it
-// 	if reader != nil {
-// 		num, err := assoc.CopyDataFrom(pcID, reader)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		log.Printf("copied %d bytes", num)
-// 	}
-//
-// 	// return success
-// 	return nil
-// }
+// WriteRequest writes a request
+func (assoc *RequestorAssoc) WriteRequest(pcID byte, command *Object) error {
+	return assoc.WriteCommand(pcID, command)
+}
 
-// // ReadResponse reads a response
-// func (assoc *RequestorAssoc) ReadResponse() (*PresContext, *Object, error) {
-//
-// 	// read the command and the presentation context id
-// 	pcID, command, err := assoc.ReadCommand()
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-//
-// 	// look for the presentation context
-// 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-//
-// 	// return the presentation context and the command
-// 	return presContext, command, nil
-// }
+// ReadResponse reads a response
+func (assoc *RequestorAssoc) ReadResponse() (byte, *Object, error) {
+
+	// attempt to read a data pdu
+	if err := assoc.isDataTFPDU(); err != nil {
+		return 0, nil, err
+	}
+
+	return assoc.ReadCommand()
+}
+
+// isDataTFPDU reads the next PDU and validates that it is a data PDU
+func (assoc *RequestorAssoc) isDataTFPDU() error {
+
+	// read the next PDU
+	pdu, err := assoc.pduReader.nextPDU()
+	if err != nil {
+		return err
+	}
+
+	// is this an abort request?  if so, just return EOF
+	if pdu.pduType == aAbortPDU {
+
+		log.Printf("received an abort pdu")
+
+		abortPDU, err := readAbortPDU(assoc.pduReader)
+		if err != nil {
+			return err
+		}
+		log.Printf("read abort pdu, %v", abortPDU)
+
+		// return eof
+		return io.EOF
+	}
+
+	// is this not a data transfer request?
+	if pdu.pduType != pDataTFPDU {
+		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+	}
+
+	// return success
+	return nil
+}
 
 // Echo sends a DICOM C-Echo request
 func (assoc *RequestorAssoc) Echo() error {
@@ -200,12 +203,12 @@ func (assoc *RequestorAssoc) Echo() error {
 	request := NewCEchoRequest()
 
 	// write the verification request
-	if err := assoc.WriteCommand(presContext.ID(), request); err != nil {
+	if err := assoc.WriteRequest(presContext.ID(), request); err != nil {
 		return err
 	}
 
 	// read the response
-	_, response, err := assoc.ReadCommand()
+	_, response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
@@ -260,7 +263,7 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	command := NewCStoreRequest(sopClassUID, sopInstanceUID)
 
 	// write the request, with data coming from the reader of the rest of the file
-	if err := assoc.WriteCommand(presContext.ID(), command); err != nil {
+	if err := assoc.WriteRequest(presContext.ID(), command); err != nil {
 		return err
 	}
 
@@ -272,7 +275,7 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	log.Printf("wrote %d bytes to the association", num)
 
 	// read the response
-	_, response, err := assoc.ReadCommand()
+	_, response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}

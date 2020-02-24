@@ -6,6 +6,7 @@
 package dcm4go
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -209,54 +210,64 @@ func contains(ses []string, t string) bool {
 	return false
 }
 
-// // ReadRequest reads and a request
-// func (assoc *AcceptorAssoc) ReadRequest() (*PresContext, *Object, error) {
-//
-// 	// read the command and the presentation context id
-// 	pcID, command, err := assoc.ReadCommand()
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-//
-// 	// look for the presentation context
-// 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
-// 	if err != nil {
-// 		return nil, nil, err
-// 	}
-//
-// 	// return the presentation context and the command
-// 	return presContext, command, nil
-// }
+// ReadRequest read a request
+func (assoc *AcceptorAssoc) ReadRequest() (byte, *Object, error) {
 
-// // WriteResponse writes a response from an acceptor
-// func (assoc *AcceptorAssoc) WriteResponse(
-// 	pcID byte,
-// 	command *Object,
-// 	data *Object,
-// 	reader io.Reader,
-// ) error {
-//
-// 	// write the command
-// 	if err := assoc.WriteCommand(pcID, command); err != nil {
-// 		return err
-// 	}
-//
-// 	// if there is data to be written, write it
-// 	if data != nil {
-// 		if err := assoc.WriteData(pcID, data); err != nil {
-// 			return err
-// 		}
-// 	}
-//
-// 	// if there is data to be copied, copy it
-// 	if reader != nil {
-// 		num, err := assoc.CopyDataFrom(pcID, reader)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		log.Printf("copied %d bytes", num)
-// 	}
-//
-// 	// return success
-// 	return nil
-// }
+	// attempt to read a data pdu
+	if err := assoc.isDataTFPDU(); err != nil {
+		return 0, nil, err
+	}
+
+	// read the command
+	return assoc.ReadCommand()
+}
+
+// isDataTFPDU reads the next PDU and validates that it is a data PDU
+func (assoc *AcceptorAssoc) isDataTFPDU() error {
+
+	// read the next PDU
+	pdu, err := assoc.pduReader.nextPDU()
+	if err != nil {
+		return err
+	}
+
+	// is this an association release request?  if so, write response and return EOF
+	if pdu.pduType == aReleaseRQPDU {
+		if err := readReleaseRQPDU(pdu); err != nil {
+			return err
+		}
+		releaseRPPDU := &ReleaseRPPDU{}
+		if err := releaseRPPDU.Write(assoc.conn); err != nil {
+			return err
+		}
+		return io.EOF
+	}
+
+	// is this an abort request?  if so, just return EOF
+	if pdu.pduType == aAbortPDU {
+
+		log.Printf("received an abort pdu")
+
+		abortPDU, err := readAbortPDU(assoc.pduReader)
+		if err != nil {
+			return err
+		}
+		log.Printf("read abort pdu, %v", abortPDU)
+
+		// return eof
+		return io.EOF
+	}
+
+	// is this not a data transfer request?
+	if pdu.pduType != pDataTFPDU {
+		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+	}
+
+	// return success
+	return nil
+}
+
+// WriteResponse writes a response
+func (assoc *AcceptorAssoc) WriteResponse(pcID byte, command *Object) error {
+	return assoc.WriteCommand(pcID, command)
+}
