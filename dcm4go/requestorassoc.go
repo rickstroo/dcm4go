@@ -135,26 +135,63 @@ func (assoc *Assoc) RequestRelease() error {
 	return nil
 }
 
-// WriteRequest writes a request
-func (assoc *RequestorAssoc) WriteRequest(
-	presContext *PresContext,
-	command *Object,
-	data *Object,
-	reader io.Reader,
-) error {
-	return assoc.writeMessage(presContext, command, data, reader)
-}
+// // WriteRequest writes a request
+// func (assoc *RequestorAssoc) WriteRequest(
+// 	pcID byte,
+// 	command *Object,
+// 	data *Object,
+// 	reader io.Reader,
+// ) error {
+//
+// 	// write the command
+// 	if err := assoc.WriteCommand(pcID, command); err != nil {
+// 		return err
+// 	}
+//
+// 	// if there is data to be written, write it
+// 	if data != nil {
+// 		if err := assoc.WriteData(pcID, data); err != nil {
+// 			return err
+// 		}
+// 	}
+//
+// 	// if there is data to be copied, copy it
+// 	if reader != nil {
+// 		num, err := assoc.CopyDataFrom(pcID, reader)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		log.Printf("copied %d bytes", num)
+// 	}
+//
+// 	// return success
+// 	return nil
+// }
 
-// ReadResponse reads a response
-func (assoc *RequestorAssoc) ReadResponse() (*PresContext, *Object, error) {
-	return assoc.readMessage()
-}
+// // ReadResponse reads a response
+// func (assoc *RequestorAssoc) ReadResponse() (*PresContext, *Object, error) {
+//
+// 	// read the command and the presentation context id
+// 	pcID, command, err := assoc.ReadCommand()
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+//
+// 	// look for the presentation context
+// 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+//
+// 	// return the presentation context and the command
+// 	return presContext, command, nil
+// }
 
 // Echo sends a DICOM C-Echo request
 func (assoc *RequestorAssoc) Echo() error {
 
 	// find the accepted presentation context for this abstract syntax and any transfer syntax
-	presContex, err := assoc.findAcceptedPresContextByCapability(VerificationUID, "*")
+	presContext, err := assoc.findAcceptedPresContextByCapability(VerificationUID, "*")
 	if err != nil {
 		return err
 	}
@@ -163,12 +200,12 @@ func (assoc *RequestorAssoc) Echo() error {
 	request := NewCEchoRequest()
 
 	// write the verification request
-	if err := assoc.WriteRequest(presContex, request, nil, nil); err != nil {
+	if err := assoc.WriteCommand(presContext.ID(), request); err != nil {
 		return err
 	}
 
 	// read the response
-	_, response, err := assoc.ReadResponse()
+	_, response, err := assoc.ReadCommand()
 	if err != nil {
 		return err
 	}
@@ -214,21 +251,28 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	}
 
 	// find the accepted presentation context for this transfer syntax
-	presContex, err := assoc.findAcceptedPresContextByCapability(sopClassUID, transferSyntaxUID)
+	presContext, err := assoc.findAcceptedPresContextByCapability(sopClassUID, transferSyntaxUID)
 	if err != nil {
 		return err
 	}
 
-	// create a group zero object
-	request := NewCStoreRequest(sopClassUID, sopInstanceUID)
+	// create a c-store request
+	command := NewCStoreRequest(sopClassUID, sopInstanceUID)
 
 	// write the request, with data coming from the reader of the rest of the file
-	if err := assoc.WriteRequest(presContex, request, nil, reader); err != nil {
+	if err := assoc.WriteCommand(presContext.ID(), command); err != nil {
 		return err
 	}
 
+	// copy the data from the reader to the association
+	num, err := assoc.CopyDataFrom(presContext.ID(), reader)
+	if err != nil {
+		return err
+	}
+	log.Printf("wrote %d bytes to the association", num)
+
 	// read the response
-	_, response, err := assoc.ReadResponse()
+	_, response, err := assoc.ReadCommand()
 	if err != nil {
 		return err
 	}

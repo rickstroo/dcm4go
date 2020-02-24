@@ -209,17 +209,54 @@ func contains(ses []string, t string) bool {
 	return false
 }
 
-// ReadRequest reads and a request
-func (assoc *AcceptorAssoc) ReadRequest() (*PresContext, *Object, error) {
-	return assoc.readMessage()
-}
+// // ReadRequest reads and a request
+// func (assoc *AcceptorAssoc) ReadRequest() (*PresContext, *Object, error) {
+//
+// 	// read the command and the presentation context id
+// 	pcID, command, err := assoc.ReadCommand()
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+//
+// 	// look for the presentation context
+// 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+//
+// 	// return the presentation context and the command
+// 	return presContext, command, nil
+// }
 
-// WriteResponse writes a response from an acceptor
-func (assoc *AcceptorAssoc) WriteResponse(
-	presContext *PresContext,
-	command *Object,
-	data *Object,
-	reader io.Reader,
-) error {
-	return assoc.writeMessage(presContext, command, data, reader)
-}
+// // WriteResponse writes a response from an acceptor
+// func (assoc *AcceptorAssoc) WriteResponse(
+// 	pcID byte,
+// 	command *Object,
+// 	data *Object,
+// 	reader io.Reader,
+// ) error {
+//
+// 	// write the command
+// 	if err := assoc.WriteCommand(pcID, command); err != nil {
+// 		return err
+// 	}
+//
+// 	// if there is data to be written, write it
+// 	if data != nil {
+// 		if err := assoc.WriteData(pcID, data); err != nil {
+// 			return err
+// 		}
+// 	}
+//
+// 	// if there is data to be copied, copy it
+// 	if reader != nil {
+// 		num, err := assoc.CopyDataFrom(pcID, reader)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		log.Printf("copied %d bytes", num)
+// 	}
+//
+// 	// return success
+// 	return nil
+// }

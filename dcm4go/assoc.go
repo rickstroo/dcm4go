@@ -7,7 +7,6 @@ package dcm4go
 import (
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -175,158 +174,257 @@ func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax
 // 	return assoc.writeMessage(presContext, command, data, nil)
 // }
 
-// readMessage reads and a request
-func (assoc *Assoc) readMessage() (*PresContext, *Object, error) {
+// // readMessage reads and a request
+// func (assoc *Assoc) readMessage() (*PresContext, *Object, error) {
+//
+// 	// read a pdu
+// 	pdu, err := assoc.pduReader.nextPDU()
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	log.Printf("pdu is %v\n", pdu)
+//
+// 	// is this an association release request?
+// 	/// if so, write release response and return EOF
+// 	if pdu.pduType == aReleaseRQPDU {
+//
+// 		log.Printf("received release request, attempting to release association\n")
+//
+// 		if err := readReleaseRQPDU(assoc.pduReader); err != nil {
+// 			return nil, nil, err
+// 		}
+//
+// 		// construct a release response pdu
+// 		releaseRPPDU := &ReleaseRPPDU{}
+// 		if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
+// 			return nil, nil, err
+// 		}
+//
+// 		// return EOF to indicate that the association is released
+// 		return nil, nil, io.EOF
+// 	}
+//
+// 	// is this an abort request?  if so, simply return EOF
+// 	if pdu.pduType == aAbortPDU {
+// 		log.Printf("received abort request, aborting association\n")
+// 		return nil, nil, io.EOF
+// 	}
+//
+// 	// if anything other than an data transfer request, we abort
+// 	if pdu.pduType != pDataTFPDU {
+//
+// 		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
+//
+// 		// construct an abort pdu
+// 		abortPDU := &AbortPDU{
+// 			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
+// 			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
+// 		}
+//
+// 		// attempt to write it
+// 		if err := abortPDU.Write(assoc.pduWriter); err != nil {
+// 			return nil, nil, err
+// 		}
+//
+// 		// let the caller know why we were not able to negotiate an association
+// 		return nil, nil, ErrUnexpectedPDU
+// 	}
+//
+// 	log.Printf("attempting to accept data transfer\n")
+//
+// 	// create a reader for the command
+// 	commandReader, err := newPDVReader(assoc.pduReader, true)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+//
+// 	// get the presentation context id from the reader
+// 	pcID := commandReader.pdv.pcID
+//
+// 	// find the persentation context by id
+// 	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	log.Printf("presContext is %v\n", presContext)
+//
+// 	// read the command
+// 	command, err := assoc.readCommand(commandReader)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	log.Printf("command is %v\n", command)
+//
+// 	// return the presentation context and the command
+// 	return presContext, command, nil
+// }
+//
+// func (assoc *Assoc) readCommand(reader io.Reader) (*Object, error) {
+//
+// 	// create a counting reader
+// 	countingReader := newCountingReader(reader)
+//
+// 	// create a decoder to read the data
+// 	decoder := newDecoder(0)
+//
+// 	// read the data, assuming explicit VR and big endian for now
+// 	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	// return the command and transfer syntax used to read the command
+// 	return command, nil
+// }
 
-	// read a pdu
-	pdu, err := assoc.pduReader.nextPDU()
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("pdu is %v\n", pdu)
-
-	// is this an association release request?
-	/// if so, write release response and return EOF
-	if pdu.pduType == aReleaseRQPDU {
-
-		log.Printf("received release request, attempting to release association\n")
-
-		if err := readReleaseRQPDU(assoc.pduReader); err != nil {
-			return nil, nil, err
-		}
-
-		// construct a release response pdu
-		releaseRPPDU := &ReleaseRPPDU{}
-		if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
-			return nil, nil, err
-		}
-
-		// return EOF to indicate that the association is released
-		return nil, nil, io.EOF
-	}
-
-	// is this an abort request?  if so, simply return EOF
-	if pdu.pduType == aAbortPDU {
-		log.Printf("received abort request, aborting association\n")
-		return nil, nil, io.EOF
-	}
-
-	// if anything other than an data transfer request, we abort
-	if pdu.pduType != pDataTFPDU {
-
-		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
-
-		// construct an abort pdu
-		abortPDU := &AbortPDU{
-			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
-			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
-		}
-
-		// attempt to write it
-		if err := abortPDU.Write(assoc.pduWriter); err != nil {
-			return nil, nil, err
-		}
-
-		// let the caller know why we were not able to negotiate an association
-		return nil, nil, ErrUnexpectedPDU
-	}
-
-	log.Printf("attempting to accept data transfer\n")
-
-	// create a reader for the command
-	commandReader, err := newPDVReader(assoc.pduReader, true)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// get the presentation context id from the reader
-	pcID := commandReader.pdv.pcID
-
-	// find the persentation context by id
-	presContext, err := assoc.findAcceptedPresContextByPCID(pcID)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("presContext is %v\n", presContext)
-
-	// read the command
-	command, err := assoc.readCommand(commandReader)
-	if err != nil {
-		return nil, nil, err
-	}
-	log.Printf("command is %v\n", command)
-
-	// return the presentation context and the command
-	return presContext, command, nil
-}
-
-func (assoc *Assoc) readCommand(reader io.Reader) (*Object, error) {
-
-	// create a counting reader
-	countingReader := newCountingReader(reader)
-
-	// create a decoder to read the data
-	decoder := newDecoder(0)
-
-	// read the data, assuming explicit VR and big endian for now
-	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS)
-	if err != nil {
-		return nil, err
-	}
-
-	// return the command and transfer syntax used to read the command
-	return command, nil
-}
-
-// writeMessage writes a message.  a message can be a request or
-// a response.  the command is required.  the data and
-// reader are optional.  it's assumed that only one of the data or
-// reader will be passed, but we don't enforce that.  perhaps there are
-// some interesting situations where you want to write some constructed
-// data, and then follow that up with data copied from a reader.
-func (assoc *Assoc) writeMessage(
-	presContext *PresContext,
-	command *Object,
-	data *Object,
-	reader io.Reader,
-) error {
+// WriteCommand writes a command to the association
+func (assoc *Assoc) WriteCommand(pcID byte, command *Object) error {
 
 	// write the command, always using implicit vr little endian ts
-	if err := assoc.writeObject(presContext, command, true, ImplicitVRLittleEndianTS); err != nil {
+	if err := assoc.writeObject(pcID, command, true, ImplicitVRLittleEndianTS); err != nil {
 		return err
-	}
-
-	// write the data if present
-	if data != nil {
-
-		// find the transfer syntax
-		transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(presContext.id)
-		if err != nil {
-			return err
-		}
-
-		// write the data, using the transfer syntax negotiated for this pc
-		if err := assoc.writeObject(presContext, data, false, transferSyntax); err != nil {
-			return err
-		}
-	}
-
-	// copy data from the reader if present
-	if reader != nil {
-
-		// copy the data
-		if err := assoc.copyDataFromReader(presContext, reader); err != nil {
-			return err
-		}
 	}
 
 	// return success
 	return nil
 }
 
+// ReadCommand reads a command from the association
+func (assoc *Assoc) ReadCommand() (byte, *Object, error) {
+
+	// get a command reader
+	commandReader, err := assoc.getCommandReader()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// grab the presentation context id
+	pcID := commandReader.pdv.pcID
+
+	// create a counting reader
+	countingReader := newCountingReader(commandReader)
+
+	// create a decoder to read the data
+	decoder := newDecoder(1024)
+
+	// read the command, assuming the implicit vr little endian ts
+	command, err := decoder.readObject(countingReader, ImplicitVRLittleEndianTS)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	// return the presentation context id and command
+	return pcID, command, nil
+}
+
+// WriteData writes a data set to the association
+func (assoc *Assoc) WriteData(pcID byte, data *Object) error {
+
+	// find the transfer syntax
+	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
+	if err != nil {
+		return err
+	}
+
+	// write the data, using the transfer syntax negotiated for this pc
+	if err := assoc.writeObject(pcID, data, false, transferSyntax); err != nil {
+		return err
+	}
+
+	// return success
+	return nil
+}
+
+// ReadData reads a data set from the association
+func (assoc *Assoc) ReadData(pcID byte) (*Object, error) {
+
+	// get a data reader
+	dataReader, err := assoc.getDataReader(pcID)
+	if err != nil {
+		return nil, err
+	}
+
+	// create a counting reader
+	countingReader := newCountingReader(dataReader)
+
+	// create a decoder to read the data
+	decoder := newDecoder(1024)
+
+	// find the negotiated transfer syntax for the data
+	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(pcID)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("transfer syntax for request data is %v\n", transferSyntax)
+
+	// read the data, assuming the negotiated transfer syntax
+	data, err := decoder.readObject(countingReader, transferSyntax)
+	if err != nil {
+		return nil, err
+	}
+
+	// return the data
+	return data, nil
+}
+
+// CopyyDataTo copies the data set from the association to
+// a writer.  It is modeled after the WriteTo method of the
+// WriterTo interface.  It is used to handle the transmission
+// of large data sets without having to read the entire data set
+// into memory.
+func (assoc *Assoc) CopyyDataTo(pcID byte, writer io.Writer) (int64, error) {
+
+	// get a data reader
+	dataReader, err := assoc.getDataReader(pcID)
+	if err != nil {
+		return 0, err
+	}
+
+	// copy the data from the association to the writer
+	num, err := io.Copy(writer, dataReader)
+	if err != nil {
+		return num, err
+	}
+
+	// return the number of bytes copied
+	return num, nil
+}
+
+// CopyDataFrom copies the data set from a reader to the association, more
+// specifically, writing it to the other end of the association.  It is
+// modelled after the ReadFrom method of the ReaderFrom interface.  It is
+// used to handle the transmission of large data sets without having to
+// read the entire data set into memory.
+func (assoc *Assoc) CopyDataFrom(pcID byte, reader io.Reader) (int64, error) {
+
+	// create a pdatawriter to write the data to
+	// it knows how to create pdus and pdvs
+	// since it implements a writer, we can use a copy method
+	pdvWriter := newPDVWriter(
+		assoc.pduWriter,                          // write to the association connection
+		pcID,                                     // pc id for each pdv
+		false,                                    // false means we are writing data
+		assoc.assocRQPDU.userInfo.maxLenReceived, // max length of each pdu
+	)
+
+	// copy the data from the reader to the association
+	num, err := io.Copy(pdvWriter, reader)
+	if err != nil {
+		return num, err
+	}
+
+	// flush the data writer, true means we are done writing this object
+	if err := pdvWriter.Flush(true); err != nil {
+		return num, err
+	}
+
+	// return success
+	return num, nil
+}
+
 // writeObject writes an object, command or data
 func (assoc *Assoc) writeObject(
-	presContext *PresContext,
+	pcID byte,
 	object *Object,
 	isCommand bool,
 	transferSyntax *TransferSyntax,
@@ -335,7 +433,7 @@ func (assoc *Assoc) writeObject(
 	// create a pdatawriter to write the object to
 	pdvWriter := newPDVWriter(
 		assoc.conn,                               // write to the association connection
-		presContext.id,                           // pc id for each pdv
+		pcID,                                     // pc id for each pdv
 		isCommand,                                // is command or data
 		assoc.assocRQPDU.userInfo.maxLenReceived, // max length of pdu
 	)
@@ -357,101 +455,44 @@ func (assoc *Assoc) writeObject(
 	return nil
 }
 
-// copyDataFromReader copies the data from a reader to a stream of PDUs and PDVs
-func (assoc *Assoc) copyDataFromReader(
-	presContext *PresContext,
-	reader io.Reader,
-) error {
+// getComandReader gets a pdv reader for commands
+func (assoc *Assoc) getCommandReader() (*pdvReader, error) {
 
-	// create a pdatawriter to write the data to
-	// it knows how to create pdus and
-	// since it implements a writer, we can use a copy method
-	pdvWriter := newPDVWriter(
-		assoc.conn,                               // write to the association connection
-		presContext.id,                           // pc id for each pdv
-		false,                                    // false means we are writing data
-		assoc.assocRQPDU.userInfo.maxLenReceived, // max length of each pdu
-	)
-
-	// copy the data
-	if _, err := io.Copy(pdvWriter, reader); err != nil {
-		return err
+	// create a reader for the command
+	commandReader, err := newPDVReader(assoc.pduReader, true)
+	if err != nil {
+		return nil, err
 	}
 
-	// flush the data writer, true means we are done writing this object
-	if err := pdvWriter.Flush(true); err != nil {
-		return err
-	}
-
-	// return success
-	return nil
+	// return the command reader
+	return commandReader, nil
 }
 
-// CopyData copies data from the association input stream to a writer
-func (assoc *Assoc) CopyData(writer io.Writer) (int64, error) {
+// getDataReader gets a pdv reader for data and validates it
+func (assoc *Assoc) getDataReader(pcID byte) (*pdvReader, error) {
 
 	// create a reader for the data
 	dataReader, err := newPDVReader(assoc.pduReader, false)
 	if err != nil {
-		return 0, err
-	}
-
-	// copy the data
-	num, err := io.Copy(writer, dataReader)
-	if err != nil {
-		return num, err
-	}
-
-	// return the number of bytes copied
-	return num, nil
-}
-
-// ReadData reads a data set from the input stream
-func (assoc *Assoc) ReadData(presContext *PresContext) (*Object, error) {
-
-	// create a reader for the data
-	// noticed that we initialize this with the pdu that was being
-	// read at the time that the reading of the command completed
-	// that seems a little contrived
-	// perhaps we need to create a pdu reader class that manages
-	// that state so that we don't have to do this
-	// fixed it.  created a pdu reader class.
-	dataReader, err := newPDVReader(assoc.pduReader, false)
-	if err != nil {
 		return nil, err
 	}
 
-	// read the data
-	data, err := assoc.readData(dataReader, presContext)
-	if err != nil {
-		return nil, err
+	// check that the presentation context id that was passed, presumable
+	// the presentation context id used to read the command, is the same
+	// as the presentation context id being used to read the data set
+	if pcID != dataReader.pdv.pcID {
+		return nil, fmt.Errorf(
+			"presentation context id for data set, %d, is different than for command, %d",
+			pcID,
+			dataReader.pdv.pcID,
+		)
 	}
 
-	// return the data
-	return data, nil
-}
-
-func (assoc *Assoc) readData(reader io.Reader, presContext *PresContext) (*Object, error) {
-
-	// create a counting reader
-	countingReader := newCountingReader(reader)
-
-	// create a decoder to read the data
-	decoder := newDecoder(1024)
-
-	// find the negotiated transfer syntax for the data
-	transferSyntax, err := assoc.findAcceptedTransferSyntaxByPCID(presContext.ID())
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("transfer syntax for request data is %v\n", transferSyntax)
-
-	// read the data, assuming the negotiated transfer syntax
-	data, err := decoder.readObject(countingReader, transferSyntax)
-	if err != nil {
-		return nil, err
+	// check that we are reading data
+	if dataReader.pdv.isCommand() {
+		return nil, fmt.Errorf("expecting a data set PDV, but found a command PVD")
 	}
 
-	// return the data
-	return data, nil
+	// return the data reader
+	return dataReader, nil
 }
