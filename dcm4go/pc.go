@@ -56,6 +56,16 @@ func (presContext *PresContext) Equals(other *PresContext) bool {
 	return true
 }
 
+// contains looks for a string in a set of strings
+func contains(ses []string, t string) bool {
+	for _, s := range ses {
+		if s == t {
+			return true
+		}
+	}
+	return false
+}
+
 // Contained returns true if this capability is contained in a set of other capabilities
 func (presContext *PresContext) Contained(others []*PresContext) bool {
 

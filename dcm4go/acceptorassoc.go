@@ -136,25 +136,25 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*PresContext)
 func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContext) (*PresContext, error) {
 
 	// look for a capability for this abstract syntax
-	capability, found := findCapability(rqPresContext.AbstractSyntax, capabilities)
+	capability, found := findAbstractSyntaxCapability(rqPresContext.AbstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
 		acPresContext := &PresContext{
-			ID:             rqPresContext.ID,             // the id
-			AbstractSyntax: "",                           // no abstract syntax
-			Result:         pcAbstractSyntaxNotSupported, // failure
+			ID:     rqPresContext.ID,             // the id
+			Result: pcAbstractSyntaxNotSupported, // failure
 		}
 		return acPresContext, nil
 	}
 
 	// if we found one, now we look for a matching transfer syntax
-	for _, rqTansferSyntax := range rqPresContext.TransferSyntaxes {
-		if contains(capability.TransferSyntaxes, rqTansferSyntax) {
+	for _, rqTransferSyntax := range rqPresContext.TransferSyntaxes {
+		if findTransferSyntaxCapability(rqTransferSyntax, capability) {
+			// found one
 			acPresContext := &PresContext{
-				ID:               rqPresContext.ID,          // the id
-				TransferSyntaxes: []string{rqTansferSyntax}, // the transfer syntax
-				Result:           pcAcceptance,              // success
+				ID:               rqPresContext.ID,           // the id
+				TransferSyntaxes: []string{rqTransferSyntax}, // the transfer syntax
+				Result:           pcAcceptance,               // success
 			}
 			return acPresContext, nil
 		}
@@ -170,20 +170,20 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContex
 	return acPresContext, nil
 }
 
-// findCapability searches for a capability for an abstract syntax
-func findCapability(abstractSyntax string, capabilities []*PresContext) (*PresContext, bool) {
+// findAbstractSyntaxCapability searches for a capability for an abstract syntax
+func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PresContext) (*PresContext, bool) {
 	for _, capability := range capabilities {
-		if abstractSyntax == capability.AbstractSyntax {
+		if rqAbstractSyntax == capability.AbstractSyntax {
 			return capability, true
 		}
 	}
 	return nil, false
 }
 
-// contains looks for a string in a set of strings
-func contains(ses []string, t string) bool {
-	for _, s := range ses {
-		if s == t {
+// findTransferSyntaxCapability searches for a capability for a transfer syntax
+func findTransferSyntaxCapability(rqTransferSyntax string, capability *PresContext) bool {
+	for _, transferSyntax := range capability.TransferSyntaxes {
+		if rqTransferSyntax == transferSyntax {
 			return true
 		}
 	}
