@@ -66,20 +66,20 @@ func (assoc *Assoc) CallingAETitle() string {
 	return strings.TrimSpace(assoc.assocRQPDU.callingAETitle)
 }
 
-// findAcceptedPresContextByAbstractSyntax searches for a presentation context
+// findAcceptedPCByCapability searches for a presentation context
 // that was accepted for an abstract syntax and transfer syntax.
-func (assoc *Assoc) findAcceptedPresContextByCapability(abstractSyntax string, transferSyntax string) (*PC, error) {
+func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSyntax string) (*PC, error) {
 
 	// find the abstract syntax from the requested presentation contexts, there may be more than one
-	for _, rqPresContext := range assoc.assocRQPDU.pcs {
-		if rqPresContext.AbstractSyntax == abstractSyntax {
+	for _, rqpc := range assoc.assocRQPDU.pcs {
+		if rqpc.AbstractSyntax == abstractSyntax {
 			// now, look for the accepted presentation context for the same pcID that was requested
-			for _, acPresContext := range assoc.assocACPDU.pcs {
+			for _, acpc := range assoc.assocACPDU.pcs {
 				// if it's for the same id, and for the same transfer syntax id, and it was accepted
-				if acPresContext.ID == rqPresContext.ID &&
-					(transferSyntax == "*" || acPresContext.TransferSyntaxes[0] == transferSyntax) &&
-					acPresContext.Result == pcAcceptance {
-					return acPresContext, nil
+				if acpc.ID == rqpc.ID &&
+					(transferSyntax == "*" || acpc.TransferSyntaxes[0] == transferSyntax) &&
+					acpc.Result == pcAcceptance {
+					return acpc, nil
 				}
 			}
 		}
@@ -93,13 +93,13 @@ func (assoc *Assoc) findAcceptedPresContextByCapability(abstractSyntax string, t
 	)
 }
 
-// findAcceptedPresContextByPCID searches for a presentation context
+// findAcceptedPCByPCID searches for a presentation context
 // that was accepted for a presentation context id.
-func (assoc *Assoc) findAcceptedPresContextByPCID(pcid byte) (*PC, error) {
-	for _, acpc := range assoc.assocACPDU.pcs {
+func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*PC, error) {
+	for _, pc := range assoc.assocACPDU.pcs {
 		// find the accepted presentation context for the presentation context id
-		if acpc.ID == pcid && acpc.Result == pcAcceptance {
-			return acpc, nil
+		if pc.ID == pcid && pc.Result == pcAcceptance {
+			return pc, nil
 		}
 	}
 
@@ -110,7 +110,7 @@ func (assoc *Assoc) findAcceptedPresContextByPCID(pcid byte) (*PC, error) {
 // findAcceptedTransferSyntaxByPCID finds the transfer syntax for the presentation
 // context that was accepted for a presentation context id
 func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax, error) {
-	pc, err := assoc.findAcceptedPresContextByPCID(pcid)
+	pc, err := assoc.findAcceptedPCByPCID(pcid)
 	if err != nil {
 		return nil, err
 	}

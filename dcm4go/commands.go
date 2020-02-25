@@ -44,7 +44,7 @@ func newRequest(
 ) (*Message, error) {
 
 	// find the accepted presentation context for this abstract syntax and any transfer syntax
-	pc, err := assoc.findAcceptedPresContextByCapability(affectedSOPClassUID, transferSyntaxUID)
+	pc, err := assoc.findAcceptedPCByCapability(affectedSOPClassUID, transferSyntaxUID)
 	if err != nil {
 		return nil, err
 	}
