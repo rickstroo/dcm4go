@@ -23,8 +23,24 @@ func nextMessageID() uint16 {
 	return messageID
 }
 
+// PCID returns the presentation context of the message
+func (message *Message) PCID() byte {
+	return message.pcID
+}
+
+// Command returns the command of the message
 func (message *Message) Command() *Object {
 	return message.command
+}
+
+// Data returns the data of the message
+func (message *Message) Data() *Object {
+	return message.data
+}
+
+// DataReader returns the data reader
+func (message *Message) DataReader() io.Reader {
+	return message.dataReader
 }
 
 func (message *Message) String() string {

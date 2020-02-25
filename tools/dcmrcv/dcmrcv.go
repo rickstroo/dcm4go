@@ -108,7 +108,7 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 
 	// handle the requests
 	for {
-		presContext, request, err := assoc.ReadRequest()
+		request, err := assoc.ReadRequest()
 		if err != nil {
 			if err != io.EOF {
 				return err
@@ -116,7 +116,7 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 			break
 		}
 		log.Printf("request is %v", request)
-		if err := handleRequest(assoc, presContext, request); err != nil {
+		if err := handleRequest(assoc, request); err != nil {
 			return err
 		}
 	}
@@ -127,30 +127,22 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 	return nil
 }
 
-func handleRequest(
-	assoc *dcm4go.AcceptorAssoc,
-	presContext *dcm4go.PresContext,
-	request *dcm4go.Object,
-) error {
-	commandField, err := request.AsShort(dcm4go.CommandFieldTag, 0)
+func handleRequest(assoc *dcm4go.AcceptorAssoc, request *dcm4go.Message) error {
+	commandField, err := request.Command().AsShort(dcm4go.CommandFieldTag, 0)
 	if err != nil {
 		return err
 	}
 	switch commandField {
 	case dcm4go.CEchoRQ:
-		return handleEchoRequest(assoc, presContext, request)
+		return handleEchoRequest(assoc, request)
 	case dcm4go.CStoreRQ:
-		return handleCStoreRequest(assoc, presContext, request)
+		return handleCStoreRequest(assoc, request)
 	default:
 		return dcm4go.ErrUnexpectedRequest
 	}
 }
 
-func handleEchoRequest(
-	assoc *dcm4go.AcceptorAssoc,
-	presContext *dcm4go.PresContext,
-	request *dcm4go.Object,
-) error {
+func handleEchoRequest(assoc *dcm4go.AcceptorAssoc, request *dcm4go.Message) error {
 
 	// create a response
 	response, err := dcm4go.NewCEchoResponse(request)
@@ -159,7 +151,7 @@ func handleEchoRequest(
 	}
 
 	// write the response
-	if err := assoc.WriteResponse(presContext, response, nil, nil); err != nil {
+	if err := assoc.WriteResponse(response); err != nil {
 		return err
 	}
 
@@ -167,14 +159,10 @@ func handleEchoRequest(
 	return nil
 }
 
-func handleCStoreRequest(
-	assoc *dcm4go.AcceptorAssoc,
-	presContext *dcm4go.PresContext,
-	request *dcm4go.Object,
-) error {
+func handleCStoreRequest(assoc *dcm4go.AcceptorAssoc, request *dcm4go.Message) error {
 
 	// store the data
-	if err := storeToFile(assoc, presContext, request); err != nil {
+	if err := storeToFile(assoc, request); err != nil {
 		return err
 	}
 
@@ -186,7 +174,7 @@ func handleCStoreRequest(
 	fmt.Printf("response is %v\n", response)
 
 	// write the response
-	err = assoc.WriteResponse(presContext, response, nil, nil)
+	err = assoc.WriteResponse(response)
 	if err != nil {
 		return err
 	}
@@ -195,17 +183,13 @@ func handleCStoreRequest(
 }
 
 // storeToFile stores the DICOM object to a file
-func storeToFile(
-	assoc *dcm4go.AcceptorAssoc,
-	presContext *dcm4go.PresContext,
-	command *dcm4go.Object,
-) error {
+func storeToFile(assoc *dcm4go.AcceptorAssoc, request *dcm4go.Message) error {
 
 	// create a unique file name
 	path := folder + uuid.New().String() + ".dcm" + ".tmp"
 
 	// store the file
-	if err := store(assoc, path, presContext, command); err != nil {
+	if err := store(assoc, path, request); err != nil {
 		return err
 	}
 
@@ -219,15 +203,10 @@ func storeToFile(
 }
 
 // store stores the DICOM object to a file
-func store(
-	assoc *dcm4go.AcceptorAssoc,
-	path string,
-	presContext *dcm4go.PresContext,
-	command *dcm4go.Object,
-) error {
+func store(assoc *dcm4go.AcceptorAssoc, path string, request *dcm4go.Message) error {
 
 	// construct the file meta information
-	fmi, err := dcm4go.CreateFileMetaInfo(&assoc.Assoc, presContext.ID(), command)
+	fmi, err := dcm4go.CreateFileMetaInfo(&assoc.Assoc, request.PCID(), request.Command())
 	if err != nil {
 		return err
 	}
@@ -247,7 +226,7 @@ func store(
 	}
 
 	// copy the data
-	num, err := assoc.CopyData(file)
+	num, err := io.Copy(file, request.DataReader())
 	if err != nil {
 		return err
 	}
