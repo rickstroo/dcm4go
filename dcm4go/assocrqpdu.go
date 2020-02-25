@@ -10,7 +10,7 @@ type AssocRQPDU struct {
 }
 
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*Capability) *AssocRQPDU {
+func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*PresContext) *AssocRQPDU {
 
 	presContexts := createPresContexts(capabilities)
 
@@ -32,7 +32,7 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*
 	}
 }
 
-func createPresContexts(capabilities []*Capability) []*PresContext {
+func createPresContexts(capabilities []*PresContext) []*PresContext {
 	presContexts := make([]*PresContext, 0, 5)
 	for i, capability := range capabilities {
 		presContext := &PresContext{

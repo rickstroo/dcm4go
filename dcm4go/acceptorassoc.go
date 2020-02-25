@@ -18,7 +18,7 @@ type AcceptorAssoc struct {
 }
 
 // acceptAssoc accepts an association
-func acceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAssoc, error) {
+func acceptAssoc(conn net.Conn, ae *AE, capabilities []*PresContext) (*AcceptorAssoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -103,7 +103,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAs
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) (*AssocACPDU, *AssocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*PresContext) (*AssocACPDU, *AssocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -133,7 +133,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) 
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability) (*PresContext, error) {
+func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContext) (*PresContext, error) {
 
 	// look for a capability for this abstract syntax
 	capability, found := findCapability(rqPresContext.AbstractSyntax, capabilities)
@@ -171,7 +171,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 }
 
 // findCapability searches for a capability for an abstract syntax
-func findCapability(abstractSyntax string, capabilities []*Capability) (*Capability, bool) {
+func findCapability(abstractSyntax string, capabilities []*PresContext) (*PresContext, bool) {
 	for _, capability := range capabilities {
 		if abstractSyntax == capability.AbstractSyntax {
 			return capability, true

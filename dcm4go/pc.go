@@ -29,6 +29,49 @@ func (presContext *PresContext) String() string {
 	)
 }
 
+// Equals returns true if two capabilities have the same abstract syntax
+// and all the transfer syntaxes are the same.
+func (presContext *PresContext) Equals(other *PresContext) bool {
+
+	// if the abstract syntaxes are not the same, the capabilities are not the same
+	if presContext.AbstractSyntax != other.AbstractSyntax {
+		return false
+	}
+
+	// a quick comparison of the length of the transfer syntaxes can determine
+	// that capabilities are not the same
+	if len(presContext.TransferSyntaxes) != len(other.TransferSyntaxes) {
+		return false
+	}
+
+	// now, let's see if all the transfer syntaxes from the other are contained
+	// in the transfer syntaxes for this capability
+	for _, transferSyntax := range other.TransferSyntaxes {
+		if !contains(presContext.TransferSyntaxes, transferSyntax) {
+			return false
+		}
+	}
+
+	// must be the same
+	return true
+}
+
+// Contained returns true if this capability is contained in a set of other capabilities
+func (presContext *PresContext) Contained(others []*PresContext) bool {
+
+	// see if this capability is equal to any of the others
+	for _, other := range others {
+
+		// if it is equal, this capability is contained in the others
+		if presContext.Equals(other) {
+			return true
+		}
+	}
+
+	// did not find it, so musts be false
+	return false
+}
+
 func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 
 	// read the presentation context id

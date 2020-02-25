@@ -52,8 +52,8 @@ func echo(remoteAddr string, local string) {
 	}
 
 	// set the transfer capabilities
-	capabilities := []*dcm4go.Capability{
-		&dcm4go.Capability{
+	capabilities := []*dcm4go.PresContext{
+		&dcm4go.PresContext{
 			AbstractSyntax:   dcm4go.VerificationUID,
 			TransferSyntaxes: []string{dcm4go.ImplicitVRLittleEndianUID},
 		},

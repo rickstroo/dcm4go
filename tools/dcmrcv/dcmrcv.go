@@ -74,16 +74,16 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 		dcm4go.ExplicitVRLittleEndianUID,
 		dcm4go.ExplicitVRBigEndianUID,
 	}
-	capabilities := []*dcm4go.Capability{
-		&dcm4go.Capability{ // verification
+	capabilities := []*dcm4go.PresContext{
+		&dcm4go.PresContext{ // verification
 			AbstractSyntax:   dcm4go.VerificationUID,
 			TransferSyntaxes: defaultTransferSyntaxes,
 		},
-		&dcm4go.Capability{ // storage
+		&dcm4go.PresContext{ // storage
 			AbstractSyntax:   dcm4go.EnhancedXAImageStorageUID,
 			TransferSyntaxes: defaultTransferSyntaxes,
 		},
-		&dcm4go.Capability{ // storage
+		&dcm4go.PresContext{ // storage
 			AbstractSyntax:   dcm4go.GeneralECGWaveformStorageUID,
 			TransferSyntaxes: defaultTransferSyntaxes,
 		},

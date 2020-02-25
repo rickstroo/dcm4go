@@ -70,7 +70,7 @@ func (ae *AE) Port() string {
 func (ae *AE) RequestAssoc(
 	conn net.Conn,
 	remoteAE *AE,
-	capabilities []*Capability,
+	capabilities []*PresContext,
 	opts *AssocOpts,
 ) (
 	*RequestorAssoc,
@@ -86,7 +86,7 @@ func (ae *AE) RequestAssoc(
 // AcceptAssoc waits for an association request
 func (ae *AE) AcceptAssoc(
 	conn net.Conn,
-	capabilities []*Capability,
+	capabilities []*PresContext,
 	opts *AssocOpts,
 ) (
 	*AcceptorAssoc,

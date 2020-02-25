@@ -23,7 +23,7 @@ type Machine struct {
 	acceptor                  bool
 	serviceUserInitiatedAbort bool
 	aeTitle                   string
-	capabilities              []*Capability
+	capabilities              []*PresContext
 	assocACPDU                *AssocACPDU
 }
 

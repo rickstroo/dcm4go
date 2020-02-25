@@ -22,7 +22,7 @@ func requestAssoc(
 	conn net.Conn,
 	localAE *AE,
 	remoteAE *AE,
-	capabilities []*Capability,
+	capabilities []*PresContext,
 	opts *AssocOpts,
 ) (*RequestorAssoc, error) {
 
