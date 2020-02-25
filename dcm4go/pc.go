@@ -10,6 +10,15 @@ import (
 	"io"
 )
 
+// associate negotiation results for presentation contexts
+const (
+	pcAcceptance                   = 0x00
+	pcUserRejection                = 0x01
+	pcNoReason                     = 0x02
+	pcAbstractSyntaxNotSupported   = 0x03
+	pcTransferSyntaxesNotSupported = 0x04
+)
+
 // PC represents a presentation context
 type PC struct {
 	ID               byte

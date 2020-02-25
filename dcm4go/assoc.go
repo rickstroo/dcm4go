@@ -13,15 +13,6 @@ import (
 	"time"
 )
 
-// associate negotiation results for presentation contexts
-const (
-	pcAcceptance                   = 0x00
-	pcUserRejection                = 0x01
-	pcNoReason                     = 0x02
-	pcAbstractSyntaxNotSupported   = 0x03
-	pcTransferSyntaxesNotSupported = 0x04
-)
-
 // Assoc represents a DICOM association
 type Assoc struct {
 	conn       net.Conn
