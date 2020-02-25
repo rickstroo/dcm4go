@@ -22,18 +22,18 @@ import (
 
 // AE represents an application entity
 type AE struct {
-	title string
-	host  string
-	port  string
+	Title string
+	Host  string
+	Port  string
 }
 
 // NewAE parses an address and returns a filled in AE
 func NewAE(addr string) *AE {
 	title, host, port := parseAddr(addr)
 	return &AE{
-		title: title,
-		host:  host,
-		port:  port,
+		Title: title,
+		Host:  host,
+		Port:  port,
 	}
 }
 
@@ -49,21 +49,6 @@ func parseAddr(addr string) (string, string, string) {
 		return s[0], t[0], ""
 	}
 	return s[0], t[0], t[1]
-}
-
-// Title returns an AE's Title
-func (ae *AE) Title() string {
-	return ae.title
-}
-
-// Host returns an AE's Host
-func (ae *AE) Host() string {
-	return ae.host
-}
-
-// Port returns an AE's Port
-func (ae *AE) Port() string {
-	return ae.port
 }
 
 // RequestAssoc requests an association

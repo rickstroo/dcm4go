@@ -107,7 +107,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*PresContext)
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
-	if calledAETitle != ae.Title() {
+	if calledAETitle != ae.Title {
 		// create and return an associate reject pdu
 		assocRJPDU := &AssocRJPDU{
 			result: resultRejectedPermanent,
