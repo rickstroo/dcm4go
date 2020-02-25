@@ -1,5 +1,7 @@
 package dcm4go
 
+import "io"
+
 const (
 	// CEchoRQ is command field value for C-Echo request
 	CEchoRQ = 0x0030
@@ -34,19 +36,31 @@ const (
 
 // newRequest constructs a request message
 func newRequest(
+	assoc *RequestorAssoc,
 	affectedSOPClassUID string,
+	transferSyntaxUID string,
 	commandField uint16,
 	commandDataSetType uint16,
-) *Message {
+) (*Message, error) {
+
+	// find the accepted presentation context for this abstract syntax and any transfer syntax
+	presContext, err := assoc.findAcceptedPresContextByCapability(affectedSOPClassUID, transferSyntaxUID)
+	if err != nil {
+		return nil, err
+	}
+
 	request := newObject()
 	request.addUID(AffectedSOPClassUIDTag, affectedSOPClassUID)
 	request.addShort(CommandFieldTag, "US", commandField)
 	request.addShort(MessageIDTag, "US", nextMessageID())
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
+
 	message := &Message{
+		pcID:    presContext.ID(),
 		command: request,
 	}
-	return message
+
+	return message, nil
 }
 
 // newResponse constructs a response message
@@ -87,14 +101,15 @@ func newResponse(
 
 	// return the response
 	message := &Message{
+		pcID:    request.PCID(),
 		command: response,
 	}
 	return message, nil
 }
 
 // NewCEchoRequest constructs a C-Echo request message
-func NewCEchoRequest() *Message {
-	return newRequest(VerificationUID, CEchoRQ, NoDataSetCode)
+func NewCEchoRequest(assoc *RequestorAssoc) (*Message, error) {
+	return newRequest(assoc, VerificationUID, "*", CEchoRQ, NoDataSetCode)
 }
 
 // NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message
@@ -103,17 +118,23 @@ func NewCEchoResponse(request *Message) (*Message, error) {
 }
 
 // NewCStoreRequest constructs a C-Store request message
-func NewCStoreRequest(sopClassUID string, sopInstanceUID string) *Message {
+func NewCStoreRequest(assoc *RequestorAssoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string, reader io.Reader) (*Message, error) {
 
 	// construct a default request
-	request := newRequest(sopClassUID, CStoreRQ, DataSetCode)
+	request, err := newRequest(assoc, sopClassUID, transferSyntaxUID, CStoreRQ, DataSetCode)
+	if err != nil {
+		return nil, err
+	}
 
 	// add the C-Store specifics
 	request.Command().addShort(PriorityTag, "US", MediumPriorityCode)
 	request.Command().addUID(AffectedSOPInstanceUIDTag, sopInstanceUID)
 
+	// add the reader
+	request.dataReader = reader
+
 	// return the request
-	return request
+	return request, nil
 }
 
 // NewCStoreResponse constructs a C-Store response message based on the C-Store request message

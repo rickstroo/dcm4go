@@ -40,27 +40,12 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities []*Capability) (*AcceptorAs
 
 	// if abort, we simply exit
 	if pdu.pduType == aAbortPDU {
-		return nil, io.EOF
+		return nil, onAbort(pduReader)
 	}
 
 	// if anything other than an associate request, we abort
 	if pdu.pduType != aAssociateRQPDU {
-
-		log.Printf("unexpected pdu type, %d\n", pdu.pduType)
-
-		// construct an abort pdu
-		abortPDU := &AbortPDU{
-			source: sourceServiceProviderInitiatedAbort, // the provider is initiating the abort
-			reason: reasonUnexpectedPDU,                 // didn't expect this pdu
-		}
-
-		// attempt to write it
-		if err := abortPDU.Write(pduWriter); err != nil {
-			return nil, err
-		}
-
-		// let the caller know why we were not able to negotiate an association
-		return nil, ErrUnexpectedPDU
+		return nil, onUnexpectedPDU(pduReader, pdu)
 	}
 
 	// read the associate request
@@ -253,10 +238,10 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 	}
 
 	// read the message
-	return readMessage(&assoc.Assoc, false)
+	return assoc.readMessage(false)
 }
 
 // WriteResponse writes a response
 func (assoc *AcceptorAssoc) WriteResponse(message *Message) error {
-	return writeMessage(&assoc.Assoc, message)
+	return assoc.writeMessage(message)
 }

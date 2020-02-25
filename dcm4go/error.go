@@ -52,3 +52,6 @@ var ErrUnrecognizedCalledAETitle = errors.New("unrecognized called AE Title")
 
 // ErrUnexpectedRequest is returned when the request is not expected
 var ErrUnexpectedRequest = errors.New("unexpected request")
+
+// ErrAssociationAborted is returned when the association is aborted
+var ErrAssociationAborted = errors.New("association aborted")

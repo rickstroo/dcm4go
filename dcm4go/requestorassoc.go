@@ -44,40 +44,33 @@ func requestAssoc(
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("pdu is %v", pdu)
+	log.Printf("read pdu, %v", pdu)
 
-	// is this an abort request?  if so, return error
+	// is this an abort request?
 	if pdu.pduType == aAbortPDU {
-		log.Printf("received an abort pdu")
-		abortPDU, err := readAbortPDU(pduReader)
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("associate request aborted, %v", abortPDU)
+		return nil, onAbort(pduReader)
 	}
 
 	// if this an associate reuject?  if so, return error
 	if pdu.pduType == aAssociateRJPDU {
-		log.Printf("received a rejection pdu")
 		assocRJPDU, err := readAssocRJPDU(pduReader)
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("assocRJPDU is %v", assocRJPDU)
-
-		return nil, fmt.Errorf("associate request rejected, %s", assocRJPDU)
+		log.Printf("received a associate rejection pdu, %v", assocRJPDU)
+		return nil, fmt.Errorf("associate request rejeced, %w", ErrAssociateRequestRejected)
 	}
 
-	// is this not an associate accept?  if not, return error
+	// is this not an associate accept?
 	if pdu.pduType != aAssociateACPDU {
-		return nil, fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		return nil, onUnexpectedPDU(pduReader, pdu)
 	}
 
 	assocACPDU, err := readAssocACPDU(pduReader)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("assocACPDU is %v", assocACPDU)
+	log.Printf("received a associate acceptance pdu, %v", assocACPDU)
 
 	// create an association from the response
 	assoc := &RequestorAssoc{
@@ -111,31 +104,21 @@ func (assoc *Assoc) RequestRelease() error {
 	}
 	log.Printf("pdu is %v\n", pdu)
 
-	// is this an abort request?  if so, just return EOF
+	// is this an abort request?
 	if pdu.pduType == aAbortPDU {
-
-		log.Printf("received an abort pdu")
-
-		abortPDU, err := readAbortPDU(assoc.pduReader)
-		if err != nil {
-			return err
-		}
-		log.Printf("read abort pdu, %v", abortPDU)
-
-		// return eof
-		return io.EOF
+		return onAbort(assoc.pduReader)
 	}
 
+	// is this not the pdu we are expecting?
 	if pdu.pduType != aReleaseRPPDU {
-		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		return onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
-	log.Printf("received a release response pdu")
 	releaseRPPDU, err := readReleaseRPPDU(assoc.pduReader)
 	if err != nil {
 		return err
 	}
-	log.Printf("read release response pdu, %v", releaseRPPDU)
+	log.Printf("received a release response pdu, %v", releaseRPPDU)
 
 	// all is well
 	return nil
@@ -143,7 +126,7 @@ func (assoc *Assoc) RequestRelease() error {
 
 // WriteRequest writes a request
 func (assoc *RequestorAssoc) WriteRequest(message *Message) error {
-	return writeMessage(&assoc.Assoc, message)
+	return assoc.writeMessage(message)
 }
 
 // ReadResponse reads a response
@@ -157,49 +140,25 @@ func (assoc *RequestorAssoc) ReadResponse() (*Message, error) {
 
 	// is this an abort request?  if so, just return EOF
 	if pdu.pduType == aAbortPDU {
-
-		log.Printf("received an abort pdu")
-
-		abortPDU, err := readAbortPDU(assoc.pduReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("read abort pdu, %v", abortPDU)
-
-		// return eof
-		return nil, io.EOF
+		return nil, onAbort(assoc.pduReader)
 	}
 
 	// is this not a data transfer request?
 	if pdu.pduType != pDataTFPDU {
-		return nil, ErrUnexpectedPDU
+		return nil, onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
-	return readMessage(&assoc.Assoc, false)
-}
-
-// isDataTFPDU reads the next PDU and validates that it is a data PDU
-func (assoc *RequestorAssoc) isDataTFPDU() error {
-
-	// return success
-	return nil
+	return assoc.readMessage(false)
 }
 
 // Echo sends a DICOM C-Echo request
 func (assoc *RequestorAssoc) Echo() error {
 
-	// find the accepted presentation context for this abstract syntax and any transfer syntax
-	presContext, err := assoc.findAcceptedPresContextByCapability(VerificationUID, "*")
+	// create a verification request
+	request, err := NewCEchoRequest(assoc)
 	if err != nil {
 		return err
 	}
-
-	// create a verification request
-	request := NewCEchoRequest()
-
-	// add the presentation context id
-	// this should really be encapsulated as part of the creation of the request
-	request.pcID = presContext.ID()
 
 	// write the verification request
 	if err := assoc.WriteRequest(request); err != nil {
@@ -252,20 +211,11 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 		return err
 	}
 
-	// find the accepted presentation context for this transfer syntax
-	presContext, err := assoc.findAcceptedPresContextByCapability(sopClassUID, transferSyntaxUID)
+	// create a c-store request
+	request, err := NewCStoreRequest(assoc, sopClassUID, sopInstanceUID, transferSyntaxUID, reader)
 	if err != nil {
 		return err
 	}
-
-	// create a c-store request
-	request := NewCStoreRequest(sopClassUID, sopInstanceUID)
-
-	// add the presentation context id
-	request.pcID = presContext.ID()
-
-	// add the reader
-	request.dataReader = reader
 
 	// write the request, with data coming from the reader of the rest of the file
 	if err := assoc.WriteRequest(request); err != nil {
