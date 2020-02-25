@@ -121,7 +121,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) 
 			limitedReader := io.LimitReader(reader, int64(length))
 
 			// read the presentation context
-			pc, err := readPresContext(limitedReader, itemType)
+			pc, err := readPC(limitedReader, itemType)
 			if err != nil {
 				return nil, err
 			}
@@ -229,7 +229,7 @@ func writeVariableItems(writer io.Writer, assocACRQPDU *AssocACRQPDU, itemType b
 		return err
 	}
 
-	if err := writePresContexts(writer, assocACRQPDU.pcs, itemType); err != nil {
+	if err := writePCs(writer, assocACRQPDU.pcs, itemType); err != nil {
 		return err
 	}
 

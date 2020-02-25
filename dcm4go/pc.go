@@ -82,7 +82,7 @@ func (pc *PC) Contained(others []*PC) bool {
 	return false
 }
 
-func readPresContext(reader io.Reader, itemType byte) (*PC, error) {
+func readPC(reader io.Reader, itemType byte) (*PC, error) {
 
 	// read the presentation context id
 	id, err := readByte(reader)
@@ -183,13 +183,13 @@ func readPresContext(reader io.Reader, itemType byte) (*PC, error) {
 	return pc, nil
 }
 
-func writePresContexts(writer io.Writer, pcs []*PC, itemType byte) error {
+func writePCs(writer io.Writer, pcs []*PC, itemType byte) error {
 
 	// for each of the  presentation contexts
 	for _, pc := range pcs {
 
 		// write it
-		if err := writePresContext(writer, pc, itemType); err != nil {
+		if err := writePC(writer, pc, itemType); err != nil {
 			return err
 		}
 	}
@@ -198,7 +198,7 @@ func writePresContexts(writer io.Writer, pcs []*PC, itemType byte) error {
 	return nil
 }
 
-func writePresContext(writer io.Writer, pc *PC, itemType byte) error {
+func writePC(writer io.Writer, pc *PC, itemType byte) error {
 
 	// write item type
 	if err := writeByte(writer, itemType); err != nil {
