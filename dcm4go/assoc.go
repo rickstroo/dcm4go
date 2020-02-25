@@ -56,11 +56,6 @@ func (assoc *Assoc) Conn() net.Conn {
 	return assoc.conn
 }
 
-// AE returns the AE
-func (assoc *Assoc) AE() *AE {
-	return assoc.ae
-}
-
 // CalledAETitle returns called ae title from the association request
 func (assoc *Assoc) CalledAETitle() string {
 	return strings.TrimSpace(assoc.assocRQPDU.calledAETitle)
@@ -77,13 +72,13 @@ func (assoc *Assoc) findAcceptedPresContextByCapability(abstractSyntax string, t
 
 	// find the abstract syntax from the requested presentation contexts, there may be more than one
 	for _, rqPresContext := range assoc.assocRQPDU.presContexts {
-		if rqPresContext.abstractSyntax == abstractSyntax {
+		if rqPresContext.AbstractSyntax == abstractSyntax {
 			// now, look for the accepted presentation context for the same pcID that was requested
 			for _, acPresContext := range assoc.assocACPDU.presContexts {
 				// if it's for the same id, and for the same transfer syntax id, and it was accepted
-				if acPresContext.id == rqPresContext.id &&
-					(transferSyntax == "*" || acPresContext.transferSyntaxes[0] == transferSyntax) &&
-					acPresContext.result == pcAcceptance {
+				if acPresContext.ID == rqPresContext.ID &&
+					(transferSyntax == "*" || acPresContext.TransferSyntaxes[0] == transferSyntax) &&
+					acPresContext.Result == pcAcceptance {
 					return acPresContext, nil
 				}
 			}
@@ -103,7 +98,7 @@ func (assoc *Assoc) findAcceptedPresContextByCapability(abstractSyntax string, t
 func (assoc *Assoc) findAcceptedPresContextByPCID(pcid byte) (*PresContext, error) {
 	for _, acPresContext := range assoc.assocACPDU.presContexts {
 		// find the accepted presentation context for the presentation context id
-		if acPresContext.id == pcid && acPresContext.result == pcAcceptance {
+		if acPresContext.ID == pcid && acPresContext.Result == pcAcceptance {
 			return acPresContext, nil
 		}
 	}
@@ -119,7 +114,7 @@ func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax
 	if err != nil {
 		return nil, err
 	}
-	transferSyntax, err := findTransferSyntax(presContext.transferSyntaxes[0])
+	transferSyntax, err := findTransferSyntax(presContext.TransferSyntaxes[0])
 	if err != nil {
 		return nil, err
 	}

@@ -136,27 +136,25 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*Capability) 
 func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability) (*PresContext, error) {
 
 	// look for a capability for this abstract syntax
-	capability, found := findCapability(rqPresContext.abstractSyntax, capabilities)
+	capability, found := findCapability(rqPresContext.AbstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
 		acPresContext := &PresContext{
-			rqPresContext.id,             // the id
-			"",                           // no abstract syntax
-			nil,                          // no transfer syntaxes
-			pcAbstractSyntaxNotSupported, // failure
+			ID:             rqPresContext.ID,             // the id
+			AbstractSyntax: "",                           // no abstract syntax
+			Result:         pcAbstractSyntaxNotSupported, // failure
 		}
 		return acPresContext, nil
 	}
 
 	// if we found one, now we look for a matching transfer syntax
-	for _, rqTansferSyntax := range rqPresContext.transferSyntaxes {
+	for _, rqTansferSyntax := range rqPresContext.TransferSyntaxes {
 		if contains(capability.TransferSyntaxes, rqTansferSyntax) {
 			acPresContext := &PresContext{
-				rqPresContext.id,          // the id
-				"",                        // no abstract syntax
-				[]string{rqTansferSyntax}, // the transfer syntax
-				pcAcceptance,              // success
+				ID:               rqPresContext.ID,          // the id
+				TransferSyntaxes: []string{rqTansferSyntax}, // the transfer syntax
+				Result:           pcAcceptance,              // success
 			}
 			return acPresContext, nil
 		}
@@ -164,10 +162,8 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*Capability
 
 	// we didn't find a matching transfer syntax, so return a failed acceptance presentation context
 	acPresContext := &PresContext{
-		rqPresContext.id,               // the id
-		"",                             // no abstract syntax
-		nil,                            // no transfer syntaxes
-		pcTransferSyntaxesNotSupported, // failure
+		ID:     rqPresContext.ID,               // the id
+		Result: pcTransferSyntaxesNotSupported, // failure
 	}
 
 	// return the accepted presentation context

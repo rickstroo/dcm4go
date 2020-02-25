@@ -20,8 +20,8 @@ type RequestorAssoc struct {
 // requestAssoc is used to request an association.
 func requestAssoc(
 	conn net.Conn,
-	localAETitle string,
-	remoteAETitle string,
+	localAE *AE,
+	remoteAE *AE,
 	capabilities []*Capability,
 	opts *AssocOpts,
 ) (*RequestorAssoc, error) {
@@ -31,7 +31,7 @@ func requestAssoc(
 	pduWriter := newPDUWriter(conn)
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAETitle, localAETitle, capabilities)
+	assocRQPDU := newAssocRQPDU(remoteAE.Title(), localAE.Title(), capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu

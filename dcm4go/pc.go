@@ -12,25 +12,21 @@ import (
 
 // PresContext represents a presentation context
 type PresContext struct {
-	id               byte
-	abstractSyntax   string
-	transferSyntaxes []string
-	result           byte
-}
-
-// ID returns the id
-func (presContext *PresContext) ID() byte {
-	return presContext.id
+	ID               byte
+	AbstractSyntax   string
+	TransferSyntaxes []string
+	Result           byte
 }
 
 // String returns a string representation of a requested presentation context
 func (presContext *PresContext) String() string {
 	return fmt.Sprintf(
 		"{id:%d,abstractSyntax:%q,transferSyntaxes:%q,result:%d}",
-		presContext.id,
-		presContext.abstractSyntax,
-		presContext.transferSyntaxes,
-		presContext.result)
+		presContext.ID,
+		presContext.AbstractSyntax,
+		presContext.TransferSyntaxes,
+		presContext.Result,
+	)
 }
 
 func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
@@ -165,7 +161,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	byteWriter := new(bytes.Buffer)
 
 	// write the presentation context id
-	if err := writeByte(byteWriter, presContext.id); err != nil {
+	if err := writeByte(byteWriter, presContext.ID); err != nil {
 		return err
 	}
 
@@ -176,7 +172,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 
 	// write the result if accepted presentation context, otherwise write a zero
 	if itemType == acPresContextItemType {
-		if err := writeByte(byteWriter, presContext.result); err != nil {
+		if err := writeByte(byteWriter, presContext.Result); err != nil {
 			return err
 		}
 	} else {
@@ -192,7 +188,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 
 	// write the abstract syntax if requested presentation context
 	if itemType == rqPresContextItemType {
-		if err := writeAbstractSyntax(byteWriter, presContext.abstractSyntax); err != nil {
+		if err := writeAbstractSyntax(byteWriter, presContext.AbstractSyntax); err != nil {
 			return err
 		}
 	}
@@ -200,7 +196,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	// write the transfer syntaxes, works for both types of presentation contexts
 	// requested presentation contexts can have multiple transfer syntaxes
 	// accepted presentation contexts should only have one
-	for _, transferSyntax := range presContext.transferSyntaxes {
+	for _, transferSyntax := range presContext.TransferSyntaxes {
 		if err := writeTransferSyntax(byteWriter, transferSyntax); err != nil {
 			return err
 		}

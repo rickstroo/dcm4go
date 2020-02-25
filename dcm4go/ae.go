@@ -76,7 +76,7 @@ func (ae *AE) RequestAssoc(
 	*RequestorAssoc,
 	error,
 ) {
-	assoc, err := requestAssoc(conn, ae.Title(), remoteAE.Title(), capabilities, opts)
+	assoc, err := requestAssoc(conn, ae, remoteAE, capabilities, opts)
 	if err != nil {
 		return nil, err
 	}

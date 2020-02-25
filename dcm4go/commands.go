@@ -56,7 +56,7 @@ func newRequest(
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
 
 	message := &Message{
-		pcID:    presContext.ID(),
+		pcID:    presContext.ID,
 		command: request,
 	}
 
