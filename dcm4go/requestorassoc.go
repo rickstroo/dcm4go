@@ -142,28 +142,17 @@ func (assoc *Assoc) RequestRelease() error {
 }
 
 // WriteRequest writes a request
-func (assoc *RequestorAssoc) WriteRequest(pcID byte, command *Object) error {
-	return assoc.WriteCommand(pcID, command)
+func (assoc *RequestorAssoc) WriteRequest(message *Message) error {
+	return writeMessage(&assoc.Assoc, message)
 }
 
 // ReadResponse reads a response
-func (assoc *RequestorAssoc) ReadResponse() (byte, *Object, error) {
-
-	// attempt to read a data pdu
-	if err := assoc.isDataTFPDU(); err != nil {
-		return 0, nil, err
-	}
-
-	return assoc.ReadCommand()
-}
-
-// isDataTFPDU reads the next PDU and validates that it is a data PDU
-func (assoc *RequestorAssoc) isDataTFPDU() error {
+func (assoc *RequestorAssoc) ReadResponse() (*Message, error) {
 
 	// read the next PDU
 	pdu, err := assoc.pduReader.nextPDU()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// is this an abort request?  if so, just return EOF
@@ -173,18 +162,24 @@ func (assoc *RequestorAssoc) isDataTFPDU() error {
 
 		abortPDU, err := readAbortPDU(assoc.pduReader)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		log.Printf("read abort pdu, %v", abortPDU)
 
 		// return eof
-		return io.EOF
+		return nil, io.EOF
 	}
 
 	// is this not a data transfer request?
 	if pdu.pduType != pDataTFPDU {
-		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		return nil, ErrUnexpectedPDU
 	}
+
+	return readMessage(&assoc.Assoc, false)
+}
+
+// isDataTFPDU reads the next PDU and validates that it is a data PDU
+func (assoc *RequestorAssoc) isDataTFPDU() error {
 
 	// return success
 	return nil
@@ -202,19 +197,23 @@ func (assoc *RequestorAssoc) Echo() error {
 	// create a verification request
 	request := NewCEchoRequest()
 
+	// add the presentation context id
+	// this should really be encapsulated as part of the creation of the request
+	request.pcID = presContext.ID()
+
 	// write the verification request
-	if err := assoc.WriteRequest(presContext.ID(), request); err != nil {
+	if err := assoc.WriteRequest(request); err != nil {
 		return err
 	}
 
 	// read the response
-	_, response, err := assoc.ReadResponse()
+	response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
 
 	// get the status
-	status, err := response.asShort(StatusTag, 0)
+	status, err := response.Command().asShort(StatusTag, 0)
 	if err != nil {
 		return err
 	}
@@ -260,28 +259,27 @@ func (assoc *RequestorAssoc) Store(reader io.Reader) error {
 	}
 
 	// create a c-store request
-	command := NewCStoreRequest(sopClassUID, sopInstanceUID)
+	request := NewCStoreRequest(sopClassUID, sopInstanceUID)
+
+	// add the presentation context id
+	request.pcID = presContext.ID()
+
+	// add the reader
+	request.dataReader = reader
 
 	// write the request, with data coming from the reader of the rest of the file
-	if err := assoc.WriteRequest(presContext.ID(), command); err != nil {
+	if err := assoc.WriteRequest(request); err != nil {
 		return err
 	}
-
-	// copy the data from the reader to the association
-	num, err := assoc.CopyDataFrom(presContext.ID(), reader)
-	if err != nil {
-		return err
-	}
-	log.Printf("wrote %d bytes to the association", num)
 
 	// read the response
-	_, response, err := assoc.ReadResponse()
+	response, err := assoc.ReadResponse()
 	if err != nil {
 		return err
 	}
 
 	// get the status
-	status, err := response.asShort(StatusTag, 0)
+	status, err := response.Command().asShort(StatusTag, 0)
 	if err != nil {
 		return err
 	}

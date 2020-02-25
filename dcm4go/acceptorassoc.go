@@ -6,7 +6,6 @@
 package dcm4go
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -211,36 +210,26 @@ func contains(ses []string, t string) bool {
 }
 
 // ReadRequest read a request
-func (assoc *AcceptorAssoc) ReadRequest() (byte, *Object, error) {
-
-	// attempt to read a data pdu
-	if err := assoc.isDataTFPDU(); err != nil {
-		return 0, nil, err
-	}
-
-	// read the command
-	return assoc.ReadCommand()
-}
-
-// isDataTFPDU reads the next PDU and validates that it is a data PDU
-func (assoc *AcceptorAssoc) isDataTFPDU() error {
+func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 
 	// read the next PDU
 	pdu, err := assoc.pduReader.nextPDU()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// is this an association release request?  if so, write response and return EOF
 	if pdu.pduType == aReleaseRQPDU {
 		if err := readReleaseRQPDU(pdu); err != nil {
-			return err
+			return nil, err
 		}
+
 		releaseRPPDU := &ReleaseRPPDU{}
 		if err := releaseRPPDU.Write(assoc.conn); err != nil {
-			return err
+			return nil, err
 		}
-		return io.EOF
+
+		return nil, io.EOF
 	}
 
 	// is this an abort request?  if so, just return EOF
@@ -250,24 +239,24 @@ func (assoc *AcceptorAssoc) isDataTFPDU() error {
 
 		abortPDU, err := readAbortPDU(assoc.pduReader)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		log.Printf("read abort pdu, %v", abortPDU)
 
 		// return eof
-		return io.EOF
+		return nil, io.EOF
 	}
 
 	// is this not a data transfer request?
 	if pdu.pduType != pDataTFPDU {
-		return fmt.Errorf("unexpected pdu type, %d", pdu.pduType)
+		return nil, ErrUnexpectedPDU
 	}
 
-	// return success
-	return nil
+	// read the message
+	return readMessage(&assoc.Assoc, false)
 }
 
 // WriteResponse writes a response
-func (assoc *AcceptorAssoc) WriteResponse(pcID byte, command *Object) error {
-	return assoc.WriteCommand(pcID, command)
+func (assoc *AcceptorAssoc) WriteResponse(message *Message) error {
+	return writeMessage(&assoc.Assoc, message)
 }

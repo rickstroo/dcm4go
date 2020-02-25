@@ -32,42 +32,38 @@ const (
 	HighPriorityCode = 0x0001
 )
 
-var messageID uint16
-
-func nextMessageID() uint16 {
-	messageID++
-	return messageID
-}
-
 // newRequest constructs a request message
 func newRequest(
 	affectedSOPClassUID string,
 	commandField uint16,
 	commandDataSetType uint16,
-) *Object {
+) *Message {
 	request := newObject()
 	request.addUID(AffectedSOPClassUIDTag, affectedSOPClassUID)
 	request.addShort(CommandFieldTag, "US", commandField)
 	request.addShort(MessageIDTag, "US", nextMessageID())
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
-	return request
+	message := &Message{
+		command: request,
+	}
+	return message
 }
 
 // newResponse constructs a response message
 func newResponse(
-	request *Object,
+	request *Message,
 	commandDataSetType uint16,
 	statusCode uint16,
-) (*Object, error) {
+) (*Message, error) {
 
 	// use the affected sop class uid from the request
-	affectedSOPClassUID, err := request.asString(AffectedSOPClassUIDTag, 0)
+	affectedSOPClassUID, err := request.Command().asString(AffectedSOPClassUIDTag, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	// use the command field tag from the request
-	commandField, err := request.asShort(CommandFieldTag, 0)
+	commandField, err := request.Command().asShort(CommandFieldTag, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +72,7 @@ func newResponse(
 	commandField |= 0x8000
 
 	// use the message id from the request as the message id responded to
-	messageIDBeingRespondedTo, err := request.asShort(MessageIDTag, 0)
+	messageIDBeingRespondedTo, err := request.Command().asShort(MessageIDTag, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -90,35 +86,38 @@ func newResponse(
 	response.addShort(StatusTag, "US", statusCode)
 
 	// return the response
-	return response, nil
+	message := &Message{
+		command: response,
+	}
+	return message, nil
 }
 
 // NewCEchoRequest constructs a C-Echo request message
-func NewCEchoRequest() *Object {
+func NewCEchoRequest() *Message {
 	return newRequest(VerificationUID, CEchoRQ, NoDataSetCode)
 }
 
 // NewCEchoResponse constructs a C-Echo response message based on the C-Echo request message
-func NewCEchoResponse(request *Object) (*Object, error) {
+func NewCEchoResponse(request *Message) (*Message, error) {
 	return newResponse(request, NoDataSetCode, SuccessStatusCode)
 }
 
 // NewCStoreRequest constructs a C-Store request message
-func NewCStoreRequest(sopClassUID string, sopInstanceUID string) *Object {
+func NewCStoreRequest(sopClassUID string, sopInstanceUID string) *Message {
 
 	// construct a default request
 	request := newRequest(sopClassUID, CStoreRQ, DataSetCode)
 
 	// add the C-Store specifics
-	request.addShort(PriorityTag, "US", MediumPriorityCode)
-	request.addUID(AffectedSOPInstanceUIDTag, sopInstanceUID)
+	request.Command().addShort(PriorityTag, "US", MediumPriorityCode)
+	request.Command().addUID(AffectedSOPInstanceUIDTag, sopInstanceUID)
 
 	// return the request
 	return request
 }
 
 // NewCStoreResponse constructs a C-Store response message based on the C-Store request message
-func NewCStoreResponse(request *Object) (*Object, error) {
+func NewCStoreResponse(request *Message) (*Message, error) {
 
 	// construct a default response
 	response, err := newResponse(request, NoDataSetCode, SuccessStatusCode)
@@ -127,11 +126,11 @@ func NewCStoreResponse(request *Object) (*Object, error) {
 	}
 
 	// use the affected sop instance uid from the request in the response
-	affectedSOPInstanceUID, err := request.asString(AffectedSOPInstanceUIDTag, 0)
+	affectedSOPInstanceUID, err := request.Command().asString(AffectedSOPInstanceUIDTag, 0)
 	if err != nil {
 		return nil, err
 	}
-	response.addUID(AffectedSOPInstanceUIDTag, affectedSOPInstanceUID)
+	response.Command().addUID(AffectedSOPInstanceUIDTag, affectedSOPInstanceUID)
 
 	// return the response
 	return response, nil
