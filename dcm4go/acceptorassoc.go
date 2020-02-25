@@ -18,7 +18,7 @@ type AcceptorAssoc struct {
 }
 
 // acceptAssoc accepts an association
-func acceptAssoc(conn net.Conn, ae *AE, capabilities []*PresContext) (*AcceptorAssoc, error) {
+func acceptAssoc(conn net.Conn, ae *AE, pcs []*PC) (*AcceptorAssoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -56,7 +56,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities []*PresContext) (*AcceptorA
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, pcs)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities []*PresContext) (*AcceptorA
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*PresContext) (*AssocACPDU, *AssocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, pcs []*PC) (*AssocACPDU, *AssocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -121,26 +121,26 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities []*PresContext)
 	assocACPDU := newAssocACPDU(assocRQPDU)
 
 	// negotiate each of the presentation contexts
-	for _, rqPresContext := range assocRQPDU.presContexts {
-		acPresContext, err := negotiatePresContext(rqPresContext, capabilities)
+	for _, rqPresContext := range assocRQPDU.pcs {
+		pc, err := negotiatePresContext(rqPresContext, pcs)
 		if err != nil {
 			return nil, nil, err
 		}
-		assocACPDU.presContexts = append(assocACPDU.presContexts, acPresContext)
+		assocACPDU.pcs = append(assocACPDU.pcs, pc)
 	}
 
 	return assocACPDU, nil, nil
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContext) (*PresContext, error) {
+func negotiatePresContext(rqPresContext *PC, capabilities []*PC) (*PC, error) {
 
 	// look for a capability for this abstract syntax
 	capability, found := findAbstractSyntaxCapability(rqPresContext.AbstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
-		presContext := &PresContext{
+		presContext := &PC{
 			ID:     rqPresContext.ID,             // the id
 			Result: pcAbstractSyntaxNotSupported, // reason for failure
 		}
@@ -154,7 +154,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContex
 
 	// if we didn't find one, return failure
 	if !found {
-		presContext := &PresContext{
+		presContext := &PC{
 			ID:     rqPresContext.ID,               // the id
 			Result: pcTransferSyntaxesNotSupported, // reason for failure
 		}
@@ -164,7 +164,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContex
 	}
 
 	// found one, create an accepted presentation context
-	presContext := &PresContext{
+	presContext := &PC{
 		ID:               rqPresContext.ID,         // the id
 		TransferSyntaxes: []string{transferSyntax}, // the transfer syntax
 		Result:           pcAcceptance,             // acceptance
@@ -175,7 +175,7 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContex
 }
 
 // findAbstractSyntaxCapability searches for a capability for an abstract syntax
-func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PresContext) (*PresContext, bool) {
+func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PC) (*PC, bool) {
 	for _, capability := range capabilities {
 		if rqAbstractSyntax == capability.AbstractSyntax {
 			return capability, true
@@ -185,7 +185,7 @@ func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PresC
 }
 
 // findTransferSyntaxCapability searches for a capability for a transfer syntax
-func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *PresContext) (string, bool) {
+func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *PC) (string, bool) {
 	for _, rqTransferSyntax := range rqTransferSyntaxes {
 		for _, transferSyntax := range capability.TransferSyntaxes {
 			if rqTransferSyntax == transferSyntax {

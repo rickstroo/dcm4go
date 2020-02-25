@@ -10,8 +10,8 @@ import (
 	"io"
 )
 
-// PresContext represents a presentation context
-type PresContext struct {
+// PC represents a presentation context
+type PC struct {
 	ID               byte
 	AbstractSyntax   string
 	TransferSyntaxes []string
@@ -19,35 +19,35 @@ type PresContext struct {
 }
 
 // String returns a string representation of a requested presentation context
-func (presContext *PresContext) String() string {
+func (pc *PC) String() string {
 	return fmt.Sprintf(
 		"{id:%d,abstractSyntax:%q,transferSyntaxes:%q,result:%d}",
-		presContext.ID,
-		presContext.AbstractSyntax,
-		presContext.TransferSyntaxes,
-		presContext.Result,
+		pc.ID,
+		pc.AbstractSyntax,
+		pc.TransferSyntaxes,
+		pc.Result,
 	)
 }
 
 // Equals returns true if two capabilities have the same abstract syntax
 // and all the transfer syntaxes are the same.
-func (presContext *PresContext) Equals(other *PresContext) bool {
+func (pc *PC) Equals(other *PC) bool {
 
 	// if the abstract syntaxes are not the same, the capabilities are not the same
-	if presContext.AbstractSyntax != other.AbstractSyntax {
+	if pc.AbstractSyntax != other.AbstractSyntax {
 		return false
 	}
 
 	// a quick comparison of the length of the transfer syntaxes can determine
 	// that capabilities are not the same
-	if len(presContext.TransferSyntaxes) != len(other.TransferSyntaxes) {
+	if len(pc.TransferSyntaxes) != len(other.TransferSyntaxes) {
 		return false
 	}
 
 	// now, let's see if all the transfer syntaxes from the other are contained
 	// in the transfer syntaxes for this capability
 	for _, transferSyntax := range other.TransferSyntaxes {
-		if !contains(presContext.TransferSyntaxes, transferSyntax) {
+		if !contains(pc.TransferSyntaxes, transferSyntax) {
 			return false
 		}
 	}
@@ -67,13 +67,13 @@ func contains(ses []string, t string) bool {
 }
 
 // Contained returns true if this capability is contained in a set of other capabilities
-func (presContext *PresContext) Contained(others []*PresContext) bool {
+func (pc *PC) Contained(others []*PC) bool {
 
 	// see if this capability is equal to any of the others
 	for _, other := range others {
 
 		// if it is equal, this capability is contained in the others
-		if presContext.Equals(other) {
+		if pc.Equals(other) {
 			return true
 		}
 	}
@@ -82,7 +82,7 @@ func (presContext *PresContext) Contained(others []*PresContext) bool {
 	return false
 }
 
-func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
+func readPresContext(reader io.Reader, itemType byte) (*PC, error) {
 
 	// read the presentation context id
 	id, err := readByte(reader)
@@ -98,7 +98,7 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 	// initialize the reason
 	var reason byte
 
-	if itemType == rqPresContextItemType {
+	if itemType == rqPCItemType {
 		// read the reason
 		if reason, err = readByte(reader); err != nil {
 			return nil, err
@@ -172,7 +172,7 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 	}
 
 	// create the presentation context
-	presContext := &PresContext{
+	pc := &PC{
 		id,               // the pc id
 		abstractSyntax,   // the abstract syntax
 		transferSyntaxes, // the transfer syntaxes
@@ -180,16 +180,16 @@ func readPresContext(reader io.Reader, itemType byte) (*PresContext, error) {
 	}
 
 	// return the presentation context
-	return presContext, nil
+	return pc, nil
 }
 
-func writePresContexts(writer io.Writer, presContexts []*PresContext, itemType byte) error {
+func writePresContexts(writer io.Writer, pcs []*PC, itemType byte) error {
 
 	// for each of the  presentation contexts
-	for _, presContext := range presContexts {
+	for _, pc := range pcs {
 
 		// write it
-		if err := writePresContext(writer, presContext, itemType); err != nil {
+		if err := writePresContext(writer, pc, itemType); err != nil {
 			return err
 		}
 	}
@@ -198,7 +198,7 @@ func writePresContexts(writer io.Writer, presContexts []*PresContext, itemType b
 	return nil
 }
 
-func writePresContext(writer io.Writer, presContext *PresContext, itemType byte) error {
+func writePresContext(writer io.Writer, pc *PC, itemType byte) error {
 
 	// write item type
 	if err := writeByte(writer, itemType); err != nil {
@@ -214,7 +214,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	byteWriter := new(bytes.Buffer)
 
 	// write the presentation context id
-	if err := writeByte(byteWriter, presContext.ID); err != nil {
+	if err := writeByte(byteWriter, pc.ID); err != nil {
 		return err
 	}
 
@@ -224,8 +224,8 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	}
 
 	// write the result if accepted presentation context, otherwise write a zero
-	if itemType == acPresContextItemType {
-		if err := writeByte(byteWriter, presContext.Result); err != nil {
+	if itemType == acPCItemType {
+		if err := writeByte(byteWriter, pc.Result); err != nil {
 			return err
 		}
 	} else {
@@ -240,8 +240,8 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	}
 
 	// write the abstract syntax if requested presentation context
-	if itemType == rqPresContextItemType {
-		if err := writeAbstractSyntax(byteWriter, presContext.AbstractSyntax); err != nil {
+	if itemType == rqPCItemType {
+		if err := writeAbstractSyntax(byteWriter, pc.AbstractSyntax); err != nil {
 			return err
 		}
 	}
@@ -249,7 +249,7 @@ func writePresContext(writer io.Writer, presContext *PresContext, itemType byte)
 	// write the transfer syntaxes, works for both types of presentation contexts
 	// requested presentation contexts can have multiple transfer syntaxes
 	// accepted presentation contexts should only have one
-	for _, transferSyntax := range presContext.TransferSyntaxes {
+	for _, transferSyntax := range pc.TransferSyntaxes {
 		if err := writeTransferSyntax(byteWriter, transferSyntax); err != nil {
 			return err
 		}

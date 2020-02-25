@@ -10,9 +10,14 @@ type AssocRQPDU struct {
 }
 
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*PresContext) *AssocRQPDU {
+func newAssocRQPDU(calledAETitle string, callingAETitle string, pcs []*PC) *AssocRQPDU {
 
-	presContexts := createPresContexts(capabilities)
+	// add presentation context ids
+	// ignore what was provided if anything
+	// ids need to be odd and increasing in order
+	for i, pc := range pcs {
+		pc.ID = byte(i*2 + 1)
+	}
 
 	return &AssocRQPDU{
 		&AssocACRQPDU{
@@ -20,7 +25,7 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*
 			calledAETitle,             // title of the called, as per the standard
 			callingAETitle,            // title of the caller, as per the standard
 			ApplicationContextNameUID, // app context name, as per the standard
-			presContexts,              // pres context list
+			pcs,                       // pres context list
 			&UserInfo{
 				16378,                     // max length received, need to figure out why dcm4che uses this number
 				ImplementationClassUID,    // implementation class uid, we have our own now
@@ -32,25 +37,11 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities []*
 	}
 }
 
-func createPresContexts(capabilities []*PresContext) []*PresContext {
-	presContexts := make([]*PresContext, 0, 5)
-	for i, capability := range capabilities {
-		presContext := &PresContext{
-			byte(i*2 + 1),
-			capability.AbstractSyntax,
-			capability.TransferSyntaxes,
-			byte(0),
-		}
-		presContexts = append(presContexts, presContext)
-	}
-	return presContexts
-}
-
 // readAssocRQPDU reads an associate request
 func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 	// read the association request
-	assocACRQPDU, err := readAssocACRQPDU(reader, rqPresContextItemType)
+	assocACRQPDU, err := readAssocACRQPDU(reader, rqPCItemType)
 	if err != nil {
 		return nil, err
 	}
@@ -61,5 +52,5 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 
 // writeAssocRQPDU writes an associate request
 func writeAssocRQPDU(writer io.Writer, assocRQPDU *AssocRQPDU) error {
-	return writeAssocACRQPDU(writer, assocRQPDU.AssocACRQPDU, aAssociateRQPDU, rqPresContextItemType)
+	return writeAssocACRQPDU(writer, assocRQPDU.AssocACRQPDU, aAssociateRQPDU, rqPCItemType)
 }

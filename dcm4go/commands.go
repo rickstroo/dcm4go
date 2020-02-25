@@ -44,7 +44,7 @@ func newRequest(
 ) (*Message, error) {
 
 	// find the accepted presentation context for this abstract syntax and any transfer syntax
-	presContext, err := assoc.findAcceptedPresContextByCapability(affectedSOPClassUID, transferSyntaxUID)
+	pc, err := assoc.findAcceptedPresContextByCapability(affectedSOPClassUID, transferSyntaxUID)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func newRequest(
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
 
 	message := &Message{
-		pcID:    presContext.ID,
+		pcID:    pc.ID,
 		command: request,
 	}
 

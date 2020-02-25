@@ -172,8 +172,8 @@ func CreateFileMetaInfo(assoc *Assoc, pcID byte, command *Object) (*Object, erro
 
 // ReadCapabilities reads the group two elements of a set of files to figure
 // out what capabilities are required to send the file.
-func ReadCapabilities(paths []string) ([]*PresContext, error) {
-	capabilities := make([]*PresContext, 0, 5)
+func ReadCapabilities(paths []string) ([]*PC, error) {
+	capabilities := make([]*PC, 0, 5)
 	for _, path := range paths {
 		capability, err := ReadCapability(path)
 		if err != nil {
@@ -191,7 +191,7 @@ func ReadCapabilities(paths []string) ([]*PresContext, error) {
 
 // ReadCapability reads the group two elements of a single file to figure
 // out what capabilities are required to send the file.
-func ReadCapability(path string) (*PresContext, error) {
+func ReadCapability(path string) (*PC, error) {
 
 	// open the file, which returns a reader, defer a close
 	file, err := os.Open(path)
@@ -223,9 +223,9 @@ func ReadCapability(path string) (*PresContext, error) {
 	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
 
 	// all is well, return the sop class uid and the transfer syntax uid
-	capability := &PresContext{
+	pc := &PC{
 		AbstractSyntax:   sopClassUID,
 		TransferSyntaxes: []string{transferSyntaxUID},
 	}
-	return capability, nil
+	return pc, nil
 }

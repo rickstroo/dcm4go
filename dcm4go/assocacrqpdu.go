@@ -12,8 +12,8 @@ import (
 // item types and sub item types
 const (
 	appContextItemType      = 0x10
-	rqPresContextItemType   = 0x20
-	acPresContextItemType   = 0x21
+	rqPCItemType            = 0x20
+	acPCItemType            = 0x21
 	abstractSyntaxItemType  = 0x30
 	transferSyntaxItemType  = 0x40
 	userInfoItemType        = 0x50
@@ -29,24 +29,24 @@ type AssocACRQPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	presContexts   []*PresContext
+	pcs            []*PC
 	userInfo       *UserInfo
 }
 
 // String returns a string representation of a AssocACRQPDU
 func (pdu *AssocACRQPDU) String() string {
 	return fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,presContexts:%s,userInfo:%s}",
+		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,pcs:%s,userInfo:%s}",
 		pdu.protocol,
 		strings.TrimSpace(pdu.calledAETitle),
 		strings.TrimSpace(pdu.callingAETitle),
 		pdu.appContextName,
-		pdu.presContexts,
+		pdu.pcs,
 		pdu.userInfo)
 }
 
 // readAssocRACQPDU reads an association accept or request from the reader
-func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU, error) {
+func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) {
 
 	// read the protocol
 	protocol, err := readShort(reader, binary.BigEndian)
@@ -80,7 +80,7 @@ func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU
 	var appContextName string
 
 	// initialize a list of presentation contexts
-	presContexts := make([]*PresContext, 0, 5)
+	pcs := make([]*PC, 0, 5)
 
 	// initialize the user info
 	var userInfo *UserInfo
@@ -115,19 +115,19 @@ func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU
 				return nil, err
 			}
 
-		} else if itemType == presContextItemType { // presentation context item type
+		} else if itemType == pcItemType { // presentation context item type
 
 			// create a limited reader for the requested presentation contextx
 			limitedReader := io.LimitReader(reader, int64(length))
 
 			// read the presentation context
-			presContext, err := readPresContext(limitedReader, itemType)
+			pc, err := readPresContext(limitedReader, itemType)
 			if err != nil {
 				return nil, err
 			}
 
 			// add it to the list of requested presentation contexts
-			presContexts = append(presContexts, presContext)
+			pcs = append(pcs, pc)
 
 		} else if itemType == 0x050 { // user info
 
@@ -152,14 +152,14 @@ func readAssocACRQPDU(reader io.Reader, presContextItemType byte) (*AssocACRQPDU
 			calledAETitle,
 			callingAETitle,
 			appContextName,
-			presContexts,
+			pcs,
 			userInfo,
 		},
 		nil
 }
 
 // writeAssocACRQPDU writes an associate request or accept
-func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, pduType byte, presContextItemType byte) error {
+func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, pduType byte, pcItemType byte) error {
 
 	// write pdu type
 	if err := writeByte(writer, pduType); err != nil {
@@ -201,7 +201,7 @@ func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, pduType byt
 	}
 
 	// write the variable items
-	if err := writeVariableItems(byteWriter, assocACRQPDU, presContextItemType); err != nil {
+	if err := writeVariableItems(byteWriter, assocACRQPDU, pcItemType); err != nil {
 		return err
 	}
 
@@ -229,7 +229,7 @@ func writeVariableItems(writer io.Writer, assocACRQPDU *AssocACRQPDU, itemType b
 		return err
 	}
 
-	if err := writePresContexts(writer, assocACRQPDU.presContexts, itemType); err != nil {
+	if err := writePresContexts(writer, assocACRQPDU.pcs, itemType); err != nil {
 		return err
 	}
 
