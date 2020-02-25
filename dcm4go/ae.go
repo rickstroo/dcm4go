@@ -19,6 +19,12 @@ import (
 // common to both AEs.  Perhaps they should be encapsulated as an AE
 // method and then the Requestor AE and Acceptor AE can be derived from
 // an AE.
+//
+// In the end, decided to stick with an AE, and have different types of
+// associations, one used for acceptors and one used for requestors.  That
+// makes more sense because whether one is an acceptor or requestor is a
+// function of the association.  An AE can be a requestor or an acceptor
+// at different times.
 
 // AE represents an application entity
 type AE struct {
