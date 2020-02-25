@@ -140,34 +140,38 @@ func negotiatePresContext(rqPresContext *PresContext, capabilities []*PresContex
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
-		acPresContext := &PresContext{
+		presContext := &PresContext{
 			ID:     rqPresContext.ID,             // the id
-			Result: pcAbstractSyntaxNotSupported, // failure
+			Result: pcAbstractSyntaxNotSupported, // reason for failure
 		}
-		return acPresContext, nil
+
+		// return the failed presentation context
+		return presContext, nil
 	}
 
-	// if we found one, now we look for a matching transfer syntax
-	for _, rqTransferSyntax := range rqPresContext.TransferSyntaxes {
-		if findTransferSyntaxCapability(rqTransferSyntax, capability) {
-			// found one
-			acPresContext := &PresContext{
-				ID:               rqPresContext.ID,           // the id
-				TransferSyntaxes: []string{rqTransferSyntax}, // the transfer syntax
-				Result:           pcAcceptance,               // success
-			}
-			return acPresContext, nil
+	// look for a matching transfer syntax
+	transferSyntax, found := findTransferSyntaxCapability(rqPresContext.TransferSyntaxes, capability)
+
+	// if we didn't find one, return failure
+	if !found {
+		presContext := &PresContext{
+			ID:     rqPresContext.ID,               // the id
+			Result: pcTransferSyntaxesNotSupported, // reason for failure
 		}
+
+		// return the failed presentation context
+		return presContext, nil
 	}
 
-	// we didn't find a matching transfer syntax, so return a failed acceptance presentation context
-	acPresContext := &PresContext{
-		ID:     rqPresContext.ID,               // the id
-		Result: pcTransferSyntaxesNotSupported, // failure
+	// found one, create an accepted presentation context
+	presContext := &PresContext{
+		ID:               rqPresContext.ID,         // the id
+		TransferSyntaxes: []string{transferSyntax}, // the transfer syntax
+		Result:           pcAcceptance,             // acceptance
 	}
 
 	// return the accepted presentation context
-	return acPresContext, nil
+	return presContext, nil
 }
 
 // findAbstractSyntaxCapability searches for a capability for an abstract syntax
@@ -181,13 +185,15 @@ func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PresC
 }
 
 // findTransferSyntaxCapability searches for a capability for a transfer syntax
-func findTransferSyntaxCapability(rqTransferSyntax string, capability *PresContext) bool {
-	for _, transferSyntax := range capability.TransferSyntaxes {
-		if rqTransferSyntax == transferSyntax {
-			return true
+func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *PresContext) (string, bool) {
+	for _, rqTransferSyntax := range rqTransferSyntaxes {
+		for _, transferSyntax := range capability.TransferSyntaxes {
+			if rqTransferSyntax == transferSyntax {
+				return rqTransferSyntax, true
+			}
 		}
 	}
-	return false
+	return "", false
 }
 
 // ReadRequest read a request
