@@ -61,10 +61,10 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities []*PresContext) (*AcceptorA
 		return nil, err
 	}
 	if assocACPDU != nil {
-		log.Printf("assocACPDU is %v\n", assocACPDU)
+		log.Printf("accepted associate request, assocACPDU is %v\n", assocACPDU)
 	}
 	if assocRJPDU != nil {
-		log.Printf("assocRJPDU is %v\n", assocRJPDU)
+		log.Printf("rejected associate request, assocRJPDU is %v\n", assocRJPDU)
 	}
 
 	// was association rejected
@@ -201,40 +201,34 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 
 	// is this an association release request?  if so, write response and return EOF
 	if pdu.pduType == aReleaseRQPDU {
-		if err := readReleaseRQPDU(pdu); err != nil {
-			return nil, err
-		}
-
-		releaseRPPDU := &ReleaseRPPDU{}
-		if err := releaseRPPDU.Write(assoc.conn); err != nil {
-			return nil, err
-		}
-
-		return nil, io.EOF
+		return nil, assoc.onRelease()
 	}
 
 	// is this an abort request?  if so, just return EOF
 	if pdu.pduType == aAbortPDU {
-
-		log.Printf("received an abort pdu")
-
-		abortPDU, err := readAbortPDU(assoc.pduReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("read abort pdu, %v", abortPDU)
-
-		// return eof
-		return nil, io.EOF
+		return nil, onAbort(assoc.pduReader)
 	}
 
 	// is this not a data transfer request?
 	if pdu.pduType != pDataTFPDU {
-		return nil, ErrUnexpectedPDU
+		return nil, onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
 	// read the message
 	return assoc.readMessage(false)
+}
+
+func (assoc *AcceptorAssoc) onRelease() error {
+	if err := readReleaseRQPDU(assoc.pduReader); err != nil {
+		return err
+	}
+
+	releaseRPPDU := &ReleaseRPPDU{}
+	if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
+		return err
+	}
+
+	return io.EOF
 }
 
 // WriteResponse writes a response
