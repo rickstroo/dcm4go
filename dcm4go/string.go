@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func attributeToString(attribute *Attribute, prefix string) string {
+func attributeToString(attribute *attribute, prefix string) string {
 	s := fmt.Sprintf("{%stag:0x%08X,vr:%s", prefix, attribute.tag, attribute.vr)
 	if attribute.value != nil {
 		switch attribute.vr {

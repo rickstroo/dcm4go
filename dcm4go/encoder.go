@@ -47,7 +47,7 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 	}
 
 	// create an attribute for the group length
-	attribute := &Attribute{toTag(group, 0x00), "UL", []uint32{uint32(buf.Len())}}
+	attribute := &attribute{toTag(group, 0x00), "UL", []uint32{uint32(buf.Len())}}
 	fmt.Printf("group %d length attribute is %v\n", group, attribute)
 
 	// write the attribute to the underlying writer
@@ -65,7 +65,7 @@ func (encoder *Encoder) writeObjectWithGroupLength(writer io.Writer, group uint1
 }
 
 // writeAttributes writes an object to a writer
-func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *Attribute, transferSyntax *transferSyntax) error {
+func (encoder *Encoder) writeAttribute(writer io.Writer, attribute *attribute, transferSyntax *transferSyntax) error {
 
 	// write tag
 	if err := encoder.writeTag(writer, attribute.tag, transferSyntax.byteOrder); err != nil {
@@ -108,7 +108,7 @@ func (encoder *Encoder) writeTag(writer io.Writer, tag uint32, byteOrder binary.
 	return nil
 }
 
-func (encoder *Encoder) writeVR(writer io.Writer, attribute *Attribute, explicitVR bool) error {
+func (encoder *Encoder) writeVR(writer io.Writer, attribute *attribute, explicitVR bool) error {
 	if explicitVR {
 		if err := writeString(writer, attribute.vr); err != nil {
 			return err
@@ -117,7 +117,7 @@ func (encoder *Encoder) writeVR(writer io.Writer, attribute *Attribute, explicit
 	return nil
 }
 
-func (encoder *Encoder) writeLength(writer io.Writer, attribute *Attribute, length uint32, explicitVR bool, byteOrder binary.ByteOrder) error {
+func (encoder *Encoder) writeLength(writer io.Writer, attribute *attribute, length uint32, explicitVR bool, byteOrder binary.ByteOrder) error {
 
 	if explicitVR {
 
@@ -141,7 +141,7 @@ func (encoder *Encoder) writeLength(writer io.Writer, attribute *Attribute, leng
 	return nil
 }
 
-func (encoder *Encoder) writeValue(writer io.Writer, attribute *Attribute, transferSyntax *transferSyntax) error {
+func (encoder *Encoder) writeValue(writer io.Writer, attribute *attribute, transferSyntax *transferSyntax) error {
 
 	switch attribute.vr {
 	// these VRs support multiple text values

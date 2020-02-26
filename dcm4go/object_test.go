@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-func newAttribute(tag uint32) *Attribute {
-	return &Attribute{tag, "", nil}
+func newAttribute(tag uint32) *attribute {
+	return &attribute{tag, "", nil}
 }
 
 func TestAddAttribute(t *testing.T) {

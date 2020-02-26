@@ -26,7 +26,7 @@ func fragmentToJSON(path string, fragment *Fragment) string {
 	return fmt.Sprintf("{\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"}", path, fragment.offset, fragment.length)
 }
 
-func valuesToJSON(attribute *Attribute, format string) string {
+func valuesToJSON(attribute *attribute, format string) string {
 	s := ""
 	switch values := attribute.value.(type) {
 	case []string:
@@ -76,7 +76,7 @@ func cleanUpNumberStrings(ins []string) []string {
 	return outs
 }
 
-func attributeToJSON(path string, attribute *Attribute) string {
+func attributeToJSON(path string, attribute *attribute) string {
 	s := fmt.Sprintf("\"%08X\":{\"vr\":\"%s\"", attribute.tag, attribute.vr)
 	if attribute.value != nil {
 		switch attribute.vr {
@@ -106,7 +106,7 @@ func attributeToJSON(path string, attribute *Attribute) string {
 	return s
 }
 
-func pixelDataToJSON(path string, attribute *Attribute) string {
+func pixelDataToJSON(path string, attribute *attribute) string {
 	switch v := attribute.value.(type) {
 	case *Encapsulated:
 		return encapsulatedToJSON(path, v)
@@ -174,7 +174,7 @@ func prepareJSONObject(object *Object) (*JSONObject, error) {
 	return jsonObject, nil
 }
 
-func prepareJSONAttribute(attribute *Attribute) (*JSONAttribute, error) {
+func prepareJSONAttribute(attribute *attribute) (*JSONAttribute, error) {
 	jsonAttribute := &JSONAttribute{}
 	jsonAttribute.VR = attribute.vr
 	jsonValue, err := prepareJSONValue(attribute)
@@ -185,7 +185,7 @@ func prepareJSONAttribute(attribute *Attribute) (*JSONAttribute, error) {
 	return jsonAttribute, nil
 }
 
-func prepareJSONValue(attribute *Attribute) (interface{}, error) {
+func prepareJSONValue(attribute *attribute) (interface{}, error) {
 	switch attribute.vr {
 	case "DS":
 		// the standard says to format DS values as floats, not strings

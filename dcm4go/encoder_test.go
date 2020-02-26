@@ -21,7 +21,7 @@ func TestEncodeLongAttributeImplicitVRLittleEndianTS(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	attribute := &Attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
+	attribute := &attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
 	buf := new(bytes.Buffer)
 	if err := encoder.writeAttribute(buf, attribute, ImplicitVRLittleEndianTS); err != nil {
 		t.Error(err)
@@ -36,7 +36,7 @@ func TestEncodeLongAttributeExplicitVRLittleEndianTS(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	attribute := &Attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
+	attribute := &attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
 	buf := new(bytes.Buffer)
 	if err := encoder.writeAttribute(buf, attribute, ExplicitVRLittleEndianTS); err != nil {
 		t.Error(err)
@@ -51,7 +51,7 @@ func TestEncodeLongAttributeExplicitVRBigEndianTS(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	attribute := &Attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
+	attribute := &attribute{FileMetaInformationGroupLengthTag, "UL", []uint32{0x04}}
 	buf := new(bytes.Buffer)
 	if err := encoder.writeAttribute(buf, attribute, ExplicitVRBigEndianTS); err != nil {
 		t.Error(err)

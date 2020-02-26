@@ -2,16 +2,16 @@ package dcm4go
 
 // Object cotains all attributes of a DICOM object
 type Object struct {
-	attributes []*Attribute
+	attributes []*attribute
 }
 
 // newObject creates and initializes a new object
 func newObject() *Object {
-	return &Object{make([]*Attribute, 0, 100)}
+	return &Object{make([]*attribute, 0, 100)}
 }
 
 // Attributes returns a reference to the attributes
-func (object *Object) Attributes() []*Attribute {
+func (object *Object) Attributes() []*attribute {
 	return object.attributes
 }
 
@@ -27,7 +27,7 @@ func (object *Object) Attributes() []*Attribute {
 // a list, or we could use a map that we would need
 // to sort before using.  I prefer the list, as I think
 // that will be more efficient.
-func (object *Object) add(attribute *Attribute) {
+func (object *Object) add(attribute *attribute) {
 	object.attributes = append(object.attributes, attribute)
 }
 
@@ -42,7 +42,7 @@ func (object *Object) String() string {
 }
 
 // Find looks for an attribute in an object
-func (object *Object) find(tag uint32) (*Attribute, error) {
+func (object *Object) find(tag uint32) (*attribute, error) {
 	for _, attribute := range object.attributes {
 		if attribute.tag == tag {
 			return attribute, nil
@@ -90,24 +90,24 @@ func (object *Object) AsString(tag uint32, index int) (string, error) {
 
 // addUID adds a UID attribute
 func (object *Object) addUID(tag uint32, uid string) {
-	attribute := &Attribute{tag, "UI", []string{uid}}
+	attribute := &attribute{tag, "UI", []string{uid}}
 	object.add(attribute)
 }
 
 // addText adds a text attribute
 func (object *Object) addText(tag uint32, vr string, text string) {
-	attribute := &Attribute{tag, "UI", []string{text}}
+	attribute := &attribute{tag, "UI", []string{text}}
 	object.add(attribute)
 }
 
 // addShort adds a short attribute
 func (object *Object) addShort(tag uint32, vr string, value uint16) {
-	attribute := &Attribute{tag, vr, []uint16{value}}
+	attribute := &attribute{tag, vr, []uint16{value}}
 	object.add(attribute)
 }
 
 // addLong adds a long attribute
 func (object *Object) addLong(tag uint32, vr string, value uint32) {
-	attribute := &Attribute{tag, vr, []uint32{value}}
+	attribute := &attribute{tag, vr, []uint32{value}}
 	object.add(attribute)
 }

@@ -38,7 +38,7 @@ func (decoder *Decoder) readObject(reader *countingReader, transferSyntax *trans
 }
 
 // readAttribute reads a DICOM attribute from a reader
-func (decoder *Decoder) readAttribute(reader *countingReader, transferSyntax *transferSyntax) (*Attribute, error) {
+func (decoder *Decoder) readAttribute(reader *countingReader, transferSyntax *transferSyntax) (*attribute, error) {
 
 	tag, err := decoder.readTag(reader, transferSyntax.byteOrder)
 	if err != nil {
@@ -75,7 +75,7 @@ func (decoder *Decoder) readAttribute(reader *countingReader, transferSyntax *tr
 		return nil, err
 	}
 
-	return &Attribute{tag, vr, value}, nil
+	return &attribute{tag, vr, value}, nil
 }
 
 // reads the vr of an attribute

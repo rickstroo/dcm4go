@@ -16,7 +16,7 @@ func readReleaseRQPDU(reader io.Reader) error {
 	return nil
 }
 
-// readReleaseRQPDU writes a release request PDU to a writer
+// writeReleaseRQPDU writes a release request PDU to a writer
 func writeReleaseRQPDU(writer io.Writer) error {
 
 	// construct a pdu

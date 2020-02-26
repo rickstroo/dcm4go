@@ -1,19 +1,19 @@
 package dcm4go
 
-// Attribute contains all the properties of a DICOM attribute
-type Attribute struct {
+// attribute contains all the properties of a DICOM attribute
+type attribute struct {
 	tag   uint32
 	vr    string
 	value interface{}
 }
 
 // String returns attribute as a string
-func (attribute *Attribute) String() string {
+func (attribute *attribute) String() string {
 	return attributeToString(attribute, "")
 }
 
 // Text returns attribute as text
-func (attribute *Attribute) Text() string {
+func (attribute *attribute) Text() string {
 	return attributeToText(attribute, "")
 }
 
@@ -26,7 +26,7 @@ func checkIndex(index int, length int) error {
 }
 
 // asShort returns attribute value as a short
-func (attribute *Attribute) asShort(index int) (uint16, error) {
+func (attribute *attribute) asShort(index int) (uint16, error) {
 	shorts, ok := attribute.value.([]uint16)
 	if !ok {
 		return 0, ErrWrongType
@@ -38,7 +38,7 @@ func (attribute *Attribute) asShort(index int) (uint16, error) {
 }
 
 // asLong returns attribute value as a long
-func (attribute *Attribute) asLong(index int) (uint32, error) {
+func (attribute *attribute) asLong(index int) (uint32, error) {
 	longs, ok := attribute.value.([]uint32)
 	if !ok {
 		return 0, ErrWrongType
@@ -50,7 +50,7 @@ func (attribute *Attribute) asLong(index int) (uint32, error) {
 }
 
 // asString returns attribute value as a string
-func (attribute *Attribute) asString(index int) (string, error) {
+func (attribute *attribute) asString(index int) (string, error) {
 	strings, ok := attribute.value.([]string)
 	if !ok {
 		return "", ErrWrongType
