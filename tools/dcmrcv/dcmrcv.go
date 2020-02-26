@@ -77,22 +77,22 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 
 	capabilities := dcm4go.NewCapabilities()
 	capabilities.Add(
-		&dcm4go.Capability{ // verification
-			AbstractSyntax:   dcm4go.VerificationUID,
-			TransferSyntaxes: defaultTransferSyntaxes,
-		},
+		dcm4go.NewCapability(
+			dcm4go.VerificationUID,
+			[]string{dcm4go.ImplicitVRLittleEndianUID},
+		),
 	)
 	capabilities.Add(
-		&dcm4go.Capability{ // storage
-			AbstractSyntax:   dcm4go.EnhancedXAImageStorageUID,
-			TransferSyntaxes: defaultTransferSyntaxes,
-		},
+		dcm4go.NewCapability(
+			dcm4go.EnhancedXAImageStorageUID,
+			defaultTransferSyntaxes,
+		),
 	)
 	capabilities.Add(
-		&dcm4go.Capability{ // storage
-			AbstractSyntax:   dcm4go.GeneralECGWaveformStorageUID,
-			TransferSyntaxes: defaultTransferSyntaxes,
-		},
+		dcm4go.NewCapability(
+			dcm4go.GeneralECGWaveformStorageUID,
+			defaultTransferSyntaxes,
+		),
 	)
 
 	// create an ae for this server

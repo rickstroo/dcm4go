@@ -54,10 +54,10 @@ func echo(remoteAddr string, local string) {
 	// set the transfer capabilities
 	capabilities := dcm4go.NewCapabilities()
 	capabilities.Add(
-		&dcm4go.Capability{
-			AbstractSyntax:   dcm4go.VerificationUID,
-			TransferSyntaxes: []string{dcm4go.ImplicitVRLittleEndianUID},
-		},
+		dcm4go.NewCapability(
+			dcm4go.VerificationUID,
+			[]string{dcm4go.ImplicitVRLittleEndianUID},
+		),
 	)
 
 	// create the remote AE

@@ -181,6 +181,9 @@ func ReadCapabilities(paths []string) (*Capabilities, error) {
 		}
 		fmt.Printf("capability is %v\n", capability)
 
+		// add the capability
+		// recall that this will only add the capability if the capability
+		// is unique
 		capabilities.Add(capability)
 	}
 	return capabilities, nil
@@ -220,9 +223,6 @@ func ReadCapability(path string) (*Capability, error) {
 	fmt.Printf("transfer syntax uid is %q\n", transferSyntaxUID)
 
 	// all is well, return the sop class uid and the transfer syntax uid
-	capability := &Capability{
-		AbstractSyntax:   sopClassUID,
-		TransferSyntaxes: []string{transferSyntaxUID},
-	}
+	capability := NewCapability(sopClassUID, []string{transferSyntaxUID})
 	return capability, nil
 }
