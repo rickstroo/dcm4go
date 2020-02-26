@@ -14,7 +14,7 @@ import (
 // the output follow the DICOM specification.  one of the articles that i
 // found useful is at http://choly.ca/post/go-json-marshalling/
 
-func encapsulatedToJSON(path string, encapsulated *Encapsulated) string {
+func encapsulatedToJSON(path string, encapsulated *encapsulated) string {
 	s := ",\"DataFragment\":["
 	for _, fragment := range encapsulated.fragments {
 		s += fragmentToJSON(path, fragment) + ","
@@ -22,7 +22,7 @@ func encapsulatedToJSON(path string, encapsulated *Encapsulated) string {
 	return strings.TrimSuffix(s, ",") + "]"
 }
 
-func fragmentToJSON(path string, fragment *Fragment) string {
+func fragmentToJSON(path string, fragment *fragment) string {
 	return fmt.Sprintf("{\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"}", path, fragment.offset, fragment.length)
 }
 
@@ -99,7 +99,7 @@ func attributeToJSON(path string, attribute *attribute) string {
 		case "OB", "OL", "OV", "OW", "UN":
 			s += pixelDataToJSON(path, attribute)
 		case "SQ":
-			s += fmt.Sprintf(",\"Value\":[%s]", sequenceToJSON(path, attribute.value.(*Sequence)))
+			s += fmt.Sprintf(",\"Value\":[%s]", sequenceToJSON(path, attribute.value.(*sequence)))
 		}
 	}
 	s += "}"
@@ -108,18 +108,18 @@ func attributeToJSON(path string, attribute *attribute) string {
 
 func pixelDataToJSON(path string, attribute *attribute) string {
 	switch v := attribute.value.(type) {
-	case *Encapsulated:
+	case *encapsulated:
 		return encapsulatedToJSON(path, v)
 	case []byte:
 		return fmt.Sprintf(",\"InlineBinary\":\"%s\"", base64.StdEncoding.EncodeToString(v))
-	case *Fragment:
+	case *fragment:
 		return fmt.Sprintf(",\"BulkDataURI\":\"file:%s?offset=%d&length=%d\"", path, v.offset, v.length)
 	default:
 		return ""
 	}
 }
 
-func sequenceToJSON(path string, sequence *Sequence) string {
+func sequenceToJSON(path string, sequence *sequence) string {
 	s := ""
 	for _, object := range sequence.objects {
 		s += ObjectToJSON(path, object) + ","
@@ -199,7 +199,7 @@ func prepareJSONValue(attribute *attribute) (interface{}, error) {
 		switch attribute.value.(type) {
 		case []byte:
 			// do nothing, json converts byte slice to base64
-		case []*Fragment:
+		case []*fragment:
 			// todo
 		}
 	}

@@ -161,7 +161,7 @@ func (encoder *Encoder) writeValue(writer io.Writer, attribute *attribute, trans
 	case "SL", "UL":
 		return encoder.writeLongs(writer, attribute.value.([]uint32), transferSyntax.byteOrder)
 	case "SQ":
-		return encoder.writeSequence(writer, attribute.value.(*Sequence), transferSyntax)
+		return encoder.writeSequence(writer, attribute.value.(*sequence), transferSyntax)
 	case "SS", "US":
 		return encoder.writeShorts(writer, attribute.value.([]uint16), transferSyntax.byteOrder)
 	case "SV", "UV":
@@ -279,7 +279,7 @@ func (encoder *Encoder) writeDoubles(writer io.Writer, doubles []float64, byteOr
 	return nil
 }
 
-func (encoder *Encoder) writeSequence(writer io.Writer, sequence *Sequence, transferSyntax *transferSyntax) error {
+func (encoder *Encoder) writeSequence(writer io.Writer, sequence *sequence, transferSyntax *transferSyntax) error {
 	return fmt.Errorf("encoder.writeSequence not implemented")
 }
 

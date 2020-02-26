@@ -61,34 +61,34 @@ func (attribute *attribute) asString(index int) (string, error) {
 	return strings[index], nil
 }
 
-// Sequence contains an ordered list of objects
-type Sequence struct {
+// sequence contains an ordered list of objects
+type sequence struct {
 	objects []*Object
 }
 
-func (sequence *Sequence) add(object *Object) {
+func (sequence *sequence) add(object *Object) {
 	sequence.objects = append(sequence.objects, object)
 }
 
-func newSequence() *Sequence {
-	return &Sequence{make([]*Object, 0, 10)}
+func newSequence() *sequence {
+	return &sequence{make([]*Object, 0, 10)}
 }
 
-// Fragment encapsulates pixel data
-type Fragment struct {
+// fragment encapsulates pixel data
+type fragment struct {
 	offset uint32
 	length uint32
 }
 
-// Encapsulated contains an ordered list of fragments
-type Encapsulated struct {
-	fragments []*Fragment
+// encapsulated contains an ordered list of fragments
+type encapsulated struct {
+	fragments []*fragment
 }
 
-func (encapsulated *Encapsulated) add(fragment *Fragment) {
+func (encapsulated *encapsulated) add(fragment *fragment) {
 	encapsulated.fragments = append(encapsulated.fragments, fragment)
 }
 
-func newEncapsulated() *Encapsulated {
-	return &Encapsulated{make([]*Fragment, 0, 10)}
+func newEncapsulated() *encapsulated {
+	return &encapsulated{make([]*fragment, 0, 10)}
 }

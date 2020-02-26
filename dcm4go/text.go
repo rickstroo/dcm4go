@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func attributeToText(attribute *Attribute, prefix string) string {
+func attributeToText(attribute *attribute, prefix string) string {
 	s := fmt.Sprintf("%s(%04X,%04X) %s ", prefix, toGroup(attribute.tag), toElement(attribute.tag), attribute.vr)
 	if attribute.value != nil {
 		switch attribute.vr {
@@ -14,7 +14,7 @@ func attributeToText(attribute *Attribute, prefix string) string {
 		case "FD", "OD", "FL", "OF", "SS", "US", "SL", "UL", "SV", "UV":
 			s += fmt.Sprintf("%v", attribute.value)
 		case "SQ":
-			s += sequenceToText(attribute.value.(*Sequence), prefix)
+			s += sequenceToText(attribute.value.(*sequence), prefix)
 		case "AT":
 			s += fmt.Sprintf("%v", attribute.value)
 		case "OB", "OL", "OV", "OW", "UN":
@@ -24,7 +24,7 @@ func attributeToText(attribute *Attribute, prefix string) string {
 				if len(buf) > 0 && len(buf) < 1024 {
 					s += fmt.Sprintf("[%s]", base64.StdEncoding.EncodeToString(buf))
 				}
-			case *Encapsulated:
+			case *encapsulated:
 				s += encapsulatedToText(v, prefix)
 			}
 		}
@@ -32,7 +32,7 @@ func attributeToText(attribute *Attribute, prefix string) string {
 	return s
 }
 
-func sequenceToText(sequence *Sequence, prefix string) string {
+func sequenceToText(sequence *sequence, prefix string) string {
 	s := ""
 	for i, object := range sequence.objects {
 		s += objectToText(object, fmt.Sprintf("%s%d>", prefix, i+1))
@@ -48,7 +48,7 @@ func objectToText(object *Object, prefix string) string {
 	return s
 }
 
-func encapsulatedToText(encapsulated *Encapsulated, prefix string) string {
+func encapsulatedToText(encapsulated *encapsulated, prefix string) string {
 	s := ""
 	for i, fragment := range encapsulated.fragments {
 		s += "\n" + fragmentToText(fragment, fmt.Sprintf("%s%d>", prefix, i+1))
@@ -56,6 +56,6 @@ func encapsulatedToText(encapsulated *Encapsulated, prefix string) string {
 	return s
 }
 
-func fragmentToText(fragment *Fragment, prefix string) string {
+func fragmentToText(fragment *fragment, prefix string) string {
 	return fmt.Sprintf("%s %d,%d", prefix, fragment.offset, fragment.length)
 }

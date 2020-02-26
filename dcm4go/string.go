@@ -15,7 +15,7 @@ func attributeToString(attribute *attribute, prefix string) string {
 		case "DS", "IS", "FD", "OD", "FL", "OF", "SS", "US", "SL", "UL", "SV", "UV":
 			s += fmt.Sprintf(",val:%v", attribute.value)
 		case "SQ":
-			s += sequenceToString(attribute.value.(*Sequence), prefix)
+			s += sequenceToString(attribute.value.(*sequence), prefix)
 		case "AT":
 			s += fmt.Sprintf(",val:%v", attribute.value)
 		case "OB", "OL", "OV", "OW", "UN":
@@ -25,7 +25,7 @@ func attributeToString(attribute *attribute, prefix string) string {
 				if len(buf) > 0 && len(buf) < 1024 {
 					s += fmt.Sprintf(",value:[%s]", base64.StdEncoding.EncodeToString(buf))
 				}
-			case *Encapsulated:
+			case *encapsulated:
 				s += encapsulatedToString(v, prefix)
 			}
 		}
@@ -33,7 +33,7 @@ func attributeToString(attribute *attribute, prefix string) string {
 	return s + "}"
 }
 
-func sequenceToString(sequence *Sequence, prefix string) string {
+func sequenceToString(sequence *sequence, prefix string) string {
 	s := "["
 	for i, object := range sequence.objects {
 		s += objectToString(object, fmt.Sprintf("%sitem#%d>", prefix, i+1)) + ","
@@ -51,7 +51,7 @@ func objectToString(object *Object, prefix string) string {
 	return s + "]"
 }
 
-func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
+func encapsulatedToString(encapsulated *encapsulated, prefix string) string {
 	s := ""
 	for i, fragment := range encapsulated.fragments {
 		s += fragmentToString(fragment, fmt.Sprintf("%sfrag#%d>", prefix, i+1))
@@ -59,6 +59,6 @@ func encapsulatedToString(encapsulated *Encapsulated, prefix string) string {
 	return s
 }
 
-func fragmentToString(fragment *Fragment, prefix string) string {
+func fragmentToString(fragment *fragment, prefix string) string {
 	return fmt.Sprintf("{%s,off:%d,len:%d}", prefix, fragment.offset, fragment.length)
 }

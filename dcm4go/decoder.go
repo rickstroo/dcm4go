@@ -326,7 +326,7 @@ func (decoder *Decoder) readTexts(reader *countingReader, length uint32) ([]stri
 const UndefinedLength = 0xFFFFFFFF
 
 // parses and reads a sequence
-func (decoder *Decoder) readSequence(reader *countingReader, length uint32, transferSyntax *transferSyntax) (*Sequence, error) {
+func (decoder *Decoder) readSequence(reader *countingReader, length uint32, transferSyntax *transferSyntax) (*sequence, error) {
 
 	// if undefined length, read the sequence  using the provided reader knowing that there will be a deer item
 	if length == UndefinedLength {
@@ -338,7 +338,7 @@ func (decoder *Decoder) readSequence(reader *countingReader, length uint32, tran
 }
 
 // reads the items of a sequence
-func (decoder *Decoder) readSequenceItems(reader *countingReader, transferSyntax *transferSyntax) (*Sequence, error) {
+func (decoder *Decoder) readSequenceItems(reader *countingReader, transferSyntax *transferSyntax) (*sequence, error) {
 
 	// create a sequence
 	sequence := newSequence()
@@ -421,7 +421,7 @@ func (decoder *Decoder) readNativePixelData(reader *countingReader, offset uint3
 
 		// create a fragment for the pixel data to
 		// encapsulate the offset and the length
-		return &Fragment{offset, length}, nil
+		return &fragment{offset, length}, nil
 	}
 
 	// otherwise, read the bytes
@@ -434,7 +434,7 @@ func (decoder *Decoder) readNativePixelData(reader *countingReader, offset uint3
 }
 
 // read encapsulated pixel data
-func (decoder *Decoder) readEncapsulatedPixelData(reader *countingReader, byteOrder binary.ByteOrder) (*Encapsulated, error) {
+func (decoder *Decoder) readEncapsulatedPixelData(reader *countingReader, byteOrder binary.ByteOrder) (*encapsulated, error) {
 
 	// create an encapsualted pixel data object
 	encapsulated := newEncapsulated()
@@ -458,7 +458,7 @@ func (decoder *Decoder) readEncapsulatedPixelData(reader *countingReader, byteOr
 }
 
 // read a fragment
-func (decoder *Decoder) readFragment(reader *countingReader, byteOrder binary.ByteOrder) (*Fragment, error) {
+func (decoder *Decoder) readFragment(reader *countingReader, byteOrder binary.ByteOrder) (*fragment, error) {
 
 	tag, err := decoder.readTag(reader, byteOrder)
 	if err != nil {
@@ -489,5 +489,5 @@ func (decoder *Decoder) readFragment(reader *countingReader, byteOrder binary.By
 	}
 
 	// return the fragment
-	return &Fragment{offset, length}, nil
+	return &fragment{offset, length}, nil
 }
