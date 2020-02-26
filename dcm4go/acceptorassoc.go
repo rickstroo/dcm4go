@@ -177,7 +177,7 @@ func negotiatePresContext(rqpc *pc, capabilities *Capabilities) (*pc, error) {
 // findAbstractSyntaxCapability searches for a capability for an abstract syntax
 func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities *Capabilities) (*Capability, bool) {
 	for _, capability := range capabilities.capabilities {
-		if rqAbstractSyntax == capability.AbstractSyntax {
+		if rqAbstractSyntax == capability.abstractSyntax {
 			return capability, true
 		}
 	}
@@ -187,7 +187,7 @@ func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities *Capabil
 // findTransferSyntaxCapability searches for a capability for a transfer syntax
 func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *Capability) (string, bool) {
 	for _, rqTransferSyntax := range rqTransferSyntaxes {
-		for _, transferSyntax := range capability.TransferSyntaxes {
+		for _, transferSyntax := range capability.transferSyntaxes {
 			if rqTransferSyntax == transferSyntax {
 				return rqTransferSyntax, true
 			}

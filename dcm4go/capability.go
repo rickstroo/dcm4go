@@ -8,39 +8,39 @@ package dcm4go
 //  managed) and a set of Transfer Syntaxes (which represents the supported
 // encodings of the object that is being managed.)
 type Capability struct {
-	AbstractSyntax   string
-	TransferSyntaxes []string
+	abstractSyntax   string
+	transferSyntaxes []string
 }
 
 // NewCapability creates and initializes a new capability
 func NewCapability(abstractSyntax string, transferSyntaxes []string) *Capability {
 	capability := &Capability{
-		AbstractSyntax:   abstractSyntax,
-		TransferSyntaxes: transferSyntaxes,
+		abstractSyntax:   abstractSyntax,
+		transferSyntaxes: transferSyntaxes,
 	}
 	return capability
 }
 
-// Equal returns true if two capabilities are equal.
-func (capability *Capability) Equal(otherCapability *Capability) bool {
-	if capability.AbstractSyntax != otherCapability.AbstractSyntax {
+// equal returns true if two capabilities are equal.
+func (capability *Capability) equal(otherCapability *Capability) bool {
+	if capability.abstractSyntax != otherCapability.abstractSyntax {
 		return false
 	}
-	if len(capability.TransferSyntaxes) != len(otherCapability.TransferSyntaxes) {
+	if len(capability.transferSyntaxes) != len(otherCapability.transferSyntaxes) {
 		return false
 	}
-	for _, transferSyntax := range capability.TransferSyntaxes {
-		if !otherCapability.ContainsTransferSyntax(transferSyntax) {
+	for _, transferSyntax := range capability.transferSyntaxes {
+		if !otherCapability.containsTransferSyntax(transferSyntax) {
 			return false
 		}
 	}
 	return true
 }
 
-// ContainsTransferSyntax returns true if the capability includes
+// containsTransferSyntax returns true if the capability includes
 // the specified transfer syntax.
-func (capability *Capability) ContainsTransferSyntax(otherTransferSyntax string) bool {
-	for _, transferSyntax := range capability.TransferSyntaxes {
+func (capability *Capability) containsTransferSyntax(otherTransferSyntax string) bool {
+	for _, transferSyntax := range capability.transferSyntaxes {
 		if transferSyntax != otherTransferSyntax {
 			return false
 		}
@@ -65,9 +65,9 @@ func NewCapabilities() *Capabilities {
 }
 
 // Contains returns true if the capabilities include the specified capability
-func (capabilities *Capabilities) Contains(otherCapability *Capability) bool {
+func (capabilities *Capabilities) contains(otherCapability *Capability) bool {
 	for _, capability := range capabilities.capabilities {
-		if capability.Equal(otherCapability) {
+		if capability.equal(otherCapability) {
 			return true
 		}
 	}
@@ -76,7 +76,7 @@ func (capabilities *Capabilities) Contains(otherCapability *Capability) bool {
 
 // Add adds a capability to the set of capabilities
 func (capabilities *Capabilities) Add(capability *Capability) {
-	if !capabilities.Contains(capability) {
+	if !capabilities.contains(capability) {
 		capabilities.capabilities = append(capabilities.capabilities, capability)
 	}
 }

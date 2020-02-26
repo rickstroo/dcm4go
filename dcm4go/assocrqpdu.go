@@ -19,8 +19,8 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Ca
 	for i, capability := range capabilities.capabilities {
 		pc := &pc{
 			id:               byte(i*2 + 1),
-			abstractSyntax:   capability.AbstractSyntax,
-			transferSyntaxes: capability.TransferSyntaxes,
+			abstractSyntax:   capability.abstractSyntax,
+			transferSyntaxes: capability.transferSyntaxes,
 		}
 		pcs = append(pcs, pc)
 	}
