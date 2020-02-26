@@ -54,7 +54,7 @@ func readPC(reader io.Reader, itemType byte) (*pc, error) {
 	// initialize the reason
 	var result byte
 
-	if itemType == rqPCItemType {
+	if itemType == acPCItemType {
 		// read the result
 		if result, err = readByte(reader); err != nil {
 			return nil, err
