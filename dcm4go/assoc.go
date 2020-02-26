@@ -100,7 +100,7 @@ func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*pc, error) {
 
 // findAcceptedTransferSyntaxByPCID finds the transfer syntax for the presentation
 // context that was accepted for a presentation context id
-func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax, error) {
+func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*transferSyntax, error) {
 	pc, err := assoc.findAcceptedPCByPCID(pcid)
 	if err != nil {
 		return nil, err

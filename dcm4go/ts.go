@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// TransferSyntax describes the how an object is encoded
-type TransferSyntax struct {
+// transferSyntax describes the how an object is encoded
+type transferSyntax struct {
 	uid        string
 	explicitVR bool
 	byteOrder  binary.ByteOrder
@@ -14,7 +14,7 @@ type TransferSyntax struct {
 }
 
 // findTransferSyntax figures out the explicit vr and byte ByteOrder
-func findTransferSyntax(transferSyntaxUID string) (*TransferSyntax, error) {
+func findTransferSyntax(transferSyntaxUID string) (*transferSyntax, error) {
 	transferSyntax, ok := tses[transferSyntaxUID]
 	if !ok {
 		return nil, fmt.Errorf("transfer syntax '%s': %w", transferSyntaxUID, ErrUnrecognizedTransferSyntax)

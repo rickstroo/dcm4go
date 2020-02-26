@@ -154,7 +154,7 @@ func readData(reader io.Reader, assoc *Assoc, pcID byte) (*Object, error) {
 	return object, nil
 }
 
-func readObject(reader io.Reader, transferSyntax *TransferSyntax) (*Object, error) {
+func readObject(reader io.Reader, transferSyntax *transferSyntax) (*Object, error) {
 
 	// create a counting reader
 	countingReader := newCountingReader(reader)
@@ -226,7 +226,7 @@ func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object
 }
 
 // // writeData writes the data portion of the message
-func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, transferSyntax *TransferSyntax) error {
+func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, transferSyntax *transferSyntax) error {
 
 	// create a writer to write the data to
 	pdvWriter := newPDVWriter(writer, pcID, false, maxBufLen)
