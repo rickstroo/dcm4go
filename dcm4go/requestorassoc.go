@@ -114,11 +114,10 @@ func (assoc *Assoc) RequestRelease() error {
 		return onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
-	releaseRPPDU, err := readReleaseRPPDU(assoc.pduReader)
-	if err != nil {
+	if err := readReleaseRPPDU(assoc.pduReader); err != nil {
 		return err
 	}
-	log.Printf("received a release response pdu, %v", releaseRPPDU)
+	log.Printf("received a release response pdu")
 
 	// all is well
 	return nil

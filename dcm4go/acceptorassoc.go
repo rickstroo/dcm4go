@@ -103,13 +103,13 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAs
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities *Capabilities) (*AssocACPDU, *AssocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *assocRQPDU, ae *AE, capabilities *Capabilities) (*assocACPDU, *assocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
 	if calledAETitle != ae.Title {
 		// create and return an associate reject pdu
-		assocRJPDU := &AssocRJPDU{
+		assocRJPDU := &assocRJPDU{
 			result: resultRejectedPermanent,
 			source: sourceServiceProviderACSERelatedFunction,
 			reason: reasonServiceUserCalledAETitleNotRecognized,
@@ -229,8 +229,7 @@ func (assoc *AcceptorAssoc) onRelease() error {
 		return err
 	}
 
-	releaseRPPDU := &ReleaseRPPDU{}
-	if err := releaseRPPDU.Write(assoc.pduWriter); err != nil {
+	if err := writeReleaseRPPDU(assoc.pduWriter); err != nil {
 		return err
 	}
 

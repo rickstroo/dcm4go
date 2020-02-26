@@ -18,14 +18,14 @@ const (
 	reasonInvalidPDUParamaeterValue = 0x06
 )
 
-// An AbortPDU represents a PDU used to abort associations
-type AbortPDU struct {
+// An abortPDU represents a PDU used to abort associations
+type abortPDU struct {
 	source byte // the initiator of the abort
 	reason byte // the reason for the abort
 }
 
 // ReadAbortPDU reads an AbortPDU
-func readAbortPDU(reader io.Reader) (*AbortPDU, error) {
+func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 
 	// read the abort pdu
 	buf, err := readBytes(reader, 4)
@@ -37,7 +37,7 @@ func readAbortPDU(reader io.Reader) (*AbortPDU, error) {
 	// 1st and 2nd bytes are reserved
 	// 3rd byte is the source
 	// 3th byte is the reason
-	abortPDU := &AbortPDU{
+	abortPDU := &abortPDU{
 		source: buf[2],
 		reason: buf[3],
 	}
@@ -46,7 +46,7 @@ func readAbortPDU(reader io.Reader) (*AbortPDU, error) {
 }
 
 // Write writes an AbortPDU to a writer
-func (abortPDU *AbortPDU) Write(writer io.Writer) error {
+func (abortPDU *abortPDU) Write(writer io.Writer) error {
 
 	// construct the abort pdu
 	buf := []byte{

@@ -4,15 +4,15 @@ import (
 	"io"
 )
 
-// An AssocACPDU represents an associate accept PDU
-type AssocACPDU struct {
-	*AssocACRQPDU
+// An assocACPDU represents an associate accept PDU
+type assocACPDU struct {
+	*assocACRQPDU
 }
 
 // create an associate accept PDU from an associate request PDU
-func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
-	return &AssocACPDU{
-		&AssocACRQPDU{
+func newAssocACPDU(assocRQPDU *assocRQPDU) *assocACPDU {
+	return &assocACPDU{
+		&assocACRQPDU{
 			0x01,                      // protocol version, as per the standard
 			assocRQPDU.calledAETitle,  // copy from the request, as per the standard
 			assocRQPDU.callingAETitle, // copy from the request, as per the standard
@@ -30,7 +30,7 @@ func newAssocACPDU(assocRQPDU *AssocRQPDU) *AssocACPDU {
 }
 
 // readAssocACPDU reads an associate accept
-func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
+func readAssocACPDU(reader io.Reader) (*assocACPDU, error) {
 
 	// read the associate request
 	assocACRQPDU, err := readAssocACRQPDU(reader, acPCItemType)
@@ -39,14 +39,14 @@ func readAssocACPDU(reader io.Reader) (*AssocACPDU, error) {
 	}
 
 	// construct and return an association request pdu
-	return &AssocACPDU{assocACRQPDU}, nil
+	return &assocACPDU{assocACRQPDU}, nil
 }
 
 // Write writes an associate accept PDU
-func (assocACPDU *AssocACPDU) Write(writer io.Writer) error {
-	return writeAssocACRQPDU(writer, assocACPDU.AssocACRQPDU, aAssociateACPDU, acPCItemType)
+func (assocACPDU *assocACPDU) Write(writer io.Writer) error {
+	return writeAssocACRQPDU(writer, assocACPDU.assocACRQPDU, aAssociateACPDU, acPCItemType)
 }
 
-func writeAssocACPDU(writer io.Writer, assocACPDU *AssocACPDU) error {
+func writeAssocACPDU(writer io.Writer, assocACPDU *assocACPDU) error {
 	return assocACPDU.Write(writer)
 }

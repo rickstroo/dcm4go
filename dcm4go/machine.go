@@ -24,7 +24,7 @@ type Machine struct {
 	serviceUserInitiatedAbort bool
 	aeTitle                   string
 	capabilities              *Capabilities
-	assocACPDU                *AssocACPDU
+	assocACPDU                *assocACPDU
 }
 
 func (machine *Machine) startTimer() {
@@ -565,7 +565,7 @@ func (machine *Machine) aa6(pdu *pdu) error {
 
 func (machine *Machine) aa7(source byte, reason byte) error {
 	// send A-ABORT PDU
-	pdu := &AbortPDU{source: source, reason: reason}
+	pdu := &abortPDU{source: source, reason: reason}
 	if err := pdu.Write(machine.conn); err != nil {
 		return err
 	}
@@ -577,7 +577,7 @@ func (machine *Machine) aa7(source byte, reason byte) error {
 
 func (machine *Machine) aa8(source byte, reason byte) error {
 	// send A-ABORT PDU (service provider source)
-	pdu := &AbortPDU{source: source, reason: reason}
+	pdu := &abortPDU{source: source, reason: reason}
 	if err := pdu.Write(machine.conn); err != nil {
 		return err
 	}

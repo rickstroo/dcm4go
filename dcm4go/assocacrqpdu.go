@@ -23,8 +23,8 @@ const (
 	implVersionNameItemType = 0x55
 )
 
-// AssocACRQPDU presents an Association Accept and an Association Request PDU
-type AssocACRQPDU struct {
+// assocACRQPDU presents an Association Accept and an Association Request PDU
+type assocACRQPDU struct {
 	protocol       uint16
 	calledAETitle  string
 	callingAETitle string
@@ -34,7 +34,7 @@ type AssocACRQPDU struct {
 }
 
 // String returns a string representation of a AssocACRQPDU
-func (pdu *AssocACRQPDU) String() string {
+func (pdu *assocACRQPDU) String() string {
 	return fmt.Sprintf(
 		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,pcs:%s,userInfo:%s}",
 		pdu.protocol,
@@ -46,7 +46,7 @@ func (pdu *AssocACRQPDU) String() string {
 }
 
 // readAssocRACQPDU reads an association accept or request from the reader
-func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) {
+func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*assocACRQPDU, error) {
 
 	// read the protocol
 	protocol, err := readShort(reader, binary.BigEndian)
@@ -147,7 +147,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) 
 	}
 
 	// construct and return an association request pdu
-	return &AssocACRQPDU{
+	return &assocACRQPDU{
 			protocol,
 			calledAETitle,
 			callingAETitle,
@@ -159,7 +159,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) 
 }
 
 // writeAssocACRQPDU writes an associate request or accept
-func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *AssocACRQPDU, pduType byte, pcItemType byte) error {
+func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *assocACRQPDU, pduType byte, pcItemType byte) error {
 
 	// write pdu type
 	if err := writeByte(writer, pduType); err != nil {
@@ -223,7 +223,7 @@ func padAETitle(aeTitle string) string {
 	return fmt.Sprintf("%-16s", aeTitle)
 }
 
-func writeVariableItems(writer io.Writer, assocACRQPDU *AssocACRQPDU, itemType byte) error {
+func writeVariableItems(writer io.Writer, assocACRQPDU *assocACRQPDU, itemType byte) error {
 
 	if err := writeAppContextName(writer, assocACRQPDU.appContextName); err != nil {
 		return err

@@ -29,14 +29,14 @@ const (
 	reasonServiceProviderPresentationRelatedFunctionLocalLimitExceeded  = 0x02
 )
 
-// AssocRJPDU is an associate reject PDU
-type AssocRJPDU struct {
+// assocRJPDU is an associate reject PDU
+type assocRJPDU struct {
 	result byte
 	source byte
 	reason byte
 }
 
-func (assocRJPDU *AssocRJPDU) String() string {
+func (assocRJPDU *assocRJPDU) String() string {
 	return fmt.Sprintf(
 		"{result:%d,source:%d,reason:%d}",
 		assocRJPDU.result,
@@ -45,7 +45,7 @@ func (assocRJPDU *AssocRJPDU) String() string {
 	)
 }
 
-func readAssocRJPDU(reader io.Reader) (*AssocRJPDU, error) {
+func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 
 	// read the rest of the pdu
 	buf, err := readBytes(reader, 4)
@@ -59,7 +59,7 @@ func readAssocRJPDU(reader io.Reader) (*AssocRJPDU, error) {
 	reason := buf[3]
 
 	// build the pdu
-	assocRJPDU := &AssocRJPDU{
+	assocRJPDU := &assocRJPDU{
 		result: result,
 		source: source,
 		reason: reason,
@@ -70,7 +70,7 @@ func readAssocRJPDU(reader io.Reader) (*AssocRJPDU, error) {
 }
 
 // Write writes an associate reject PDU
-func (assocRJPDU *AssocRJPDU) Write(writer io.Writer) error {
+func (assocRJPDU *assocRJPDU) Write(writer io.Writer) error {
 
 	// construct the abort pdu
 	buf := []byte{

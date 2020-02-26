@@ -5,24 +5,19 @@ import (
 	"io"
 )
 
-// ReleaseRPPDU represents a release response PDU
-type ReleaseRPPDU struct{}
-
-// readReleaseRPPDU reads an readReleaseRPPDU from a reader
-func readReleaseRPPDU(reader io.Reader) (*ReleaseRPPDU, error) {
+// readReleaseRPPDU reads an releaseRPPDU from a reader
+func readReleaseRPPDU(reader io.Reader) error {
 
 	// read and ignore the long
 	if _, err := readLong(reader, binary.BigEndian); err != nil {
-		return nil, err
+		return err
 	}
 
-	releaseRPPDU := &ReleaseRPPDU{}
-
-	return releaseRPPDU, nil
+	return nil
 }
 
-// Write writes a release response PDU
-func (releaseRPPDU *ReleaseRPPDU) Write(writer io.Writer) error {
+// writeReleaseRPPDU writes a release response PDU
+func writeReleaseRPPDU(writer io.Writer) error {
 
 	// construct the release response pdu
 	buf := []byte{

@@ -5,12 +5,12 @@ import (
 )
 
 // An AssocRQPDU represents an associate request PDU
-type AssocRQPDU struct {
-	*AssocACRQPDU
+type assocRQPDU struct {
+	*assocACRQPDU
 }
 
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *AssocRQPDU {
+func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *assocRQPDU {
 
 	// add presentation context ids
 	// ignore what was provided if anything
@@ -25,8 +25,8 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Ca
 		pcs = append(pcs, pc)
 	}
 
-	return &AssocRQPDU{
-		&AssocACRQPDU{
+	return &assocRQPDU{
+		&assocACRQPDU{
 			0x01,                      // protocol version, as per the standard
 			calledAETitle,             // title of the called, as per the standard
 			callingAETitle,            // title of the caller, as per the standard
@@ -44,7 +44,7 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Ca
 }
 
 // readAssocRQPDU reads an associate request
-func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
+func readAssocRQPDU(reader io.Reader) (*assocRQPDU, error) {
 
 	// read the association request
 	assocACRQPDU, err := readAssocACRQPDU(reader, rqPCItemType)
@@ -53,10 +53,10 @@ func readAssocRQPDU(reader io.Reader) (*AssocRQPDU, error) {
 	}
 
 	// construct and return an association request pdu
-	return &AssocRQPDU{assocACRQPDU}, nil
+	return &assocRQPDU{assocACRQPDU}, nil
 }
 
 // writeAssocRQPDU writes an associate request
-func writeAssocRQPDU(writer io.Writer, assocRQPDU *AssocRQPDU) error {
-	return writeAssocACRQPDU(writer, assocRQPDU.AssocACRQPDU, aAssociateRQPDU, rqPCItemType)
+func writeAssocRQPDU(writer io.Writer, assocRQPDU *assocRQPDU) error {
+	return writeAssocACRQPDU(writer, assocRQPDU.assocACRQPDU, aAssociateRQPDU, rqPCItemType)
 }

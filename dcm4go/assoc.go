@@ -19,8 +19,8 @@ type Assoc struct {
 	pduReader  *pduReader
 	pduWriter  *pduWriter
 	ae         *AE
-	assocRQPDU *AssocRQPDU
-	assocACPDU *AssocACPDU
+	assocRQPDU *assocRQPDU
+	assocACPDU *assocACPDU
 }
 
 // AssocOpts impact the behaviour of a Assoc.
