@@ -241,20 +241,20 @@ func convertStringsToInts(value interface{}) ([]int64, error) {
 	return ints, nil
 }
 
-// Alphabetic as per the standard
-type Alphabetic struct {
-	Alphabetic string
+// alphabetic as per the standard
+type alphabetic struct {
+	alphabetic string
 }
 
 // converts a slice of strings to alphabetics, as per the standard
-func convertStringsToAlphabetics(value interface{}) ([]*Alphabetic, error) {
+func convertStringsToAlphabetics(value interface{}) ([]*alphabetic, error) {
 	strings, ok := value.([]string)
 	if !ok {
 		return nil, fmt.Errorf("value not of type []string")
 	}
-	alphabetics := make([]*Alphabetic, len(strings))
+	alphabetics := make([]*alphabetic, len(strings))
 	for i, string := range strings {
-		alphabetics[i] = &Alphabetic{string}
+		alphabetics[i] = &alphabetic{string}
 	}
 	return alphabetics, nil
 }
