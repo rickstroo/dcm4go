@@ -30,7 +30,7 @@ type assocACRQPDU struct {
 	callingAETitle string
 	appContextName string
 	pcs            []*pc
-	userInfo       *UserInfo
+	userInfo       *userInfo
 }
 
 // String returns a string representation of a AssocACRQPDU
@@ -83,7 +83,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*assocACRQPDU, error) 
 	pcs := make([]*pc, 0, 5)
 
 	// initialize the user info
-	var userInfo *UserInfo
+	var userInfo *userInfo
 
 	for {
 

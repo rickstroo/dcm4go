@@ -8,8 +8,8 @@ import (
 	"io"
 )
 
-// UserInfo represents user information
-type UserInfo struct {
+// userInfo represents user information
+type userInfo struct {
 	maxLenReceived     uint32
 	implClassUID       string
 	implVersionName    string
@@ -18,7 +18,7 @@ type UserInfo struct {
 }
 
 // String returns a string representation of a UserInfo
-func (userInfo *UserInfo) String() string {
+func (userInfo *userInfo) String() string {
 	return fmt.Sprintf(
 		"{maxLenReceived:%v,implClassUID:%q,implVersionName:%q,maxNumOpsInvoked:%v,maxNumOpsPerformed:%v}",
 		userInfo.maxLenReceived,
@@ -28,10 +28,10 @@ func (userInfo *UserInfo) String() string {
 		userInfo.maxNumOpsPerformed)
 }
 
-func readUserInfo(reader io.Reader) (*UserInfo, error) {
+func readUserInfo(reader io.Reader) (*userInfo, error) {
 
 	// initialize a user info object
-	userInfo := &UserInfo{}
+	userInfo := &userInfo{}
 
 	// read the user info sub items until eof
 	for {
@@ -150,7 +150,7 @@ func readUserInfo(reader io.Reader) (*UserInfo, error) {
 	return userInfo, nil
 }
 
-func writeUserInfo(writer io.Writer, userInfo *UserInfo) error {
+func writeUserInfo(writer io.Writer, userInfo *userInfo) error {
 
 	// write the item type
 	if err := writeByte(writer, userInfoItemType); err != nil {
@@ -192,7 +192,7 @@ func writeUserInfo(writer io.Writer, userInfo *UserInfo) error {
 	return nil
 }
 
-func writeMaxLenReceived(writer io.Writer, userInfo *UserInfo) error {
+func writeMaxLenReceived(writer io.Writer, userInfo *userInfo) error {
 
 	// write the sub item type
 	if err := writeByte(writer, maxLengthItemType); err != nil {
@@ -218,7 +218,7 @@ func writeMaxLenReceived(writer io.Writer, userInfo *UserInfo) error {
 	return nil
 }
 
-func writeImplClassUID(writer io.Writer, userInfo *UserInfo) error {
+func writeImplClassUID(writer io.Writer, userInfo *userInfo) error {
 
 	// write the sub item type
 	if err := writeByte(writer, implClassUIDItemType); err != nil {
@@ -244,7 +244,7 @@ func writeImplClassUID(writer io.Writer, userInfo *UserInfo) error {
 	return nil
 }
 
-func writeMaxNumOps(writer io.Writer, userInfo *UserInfo) error {
+func writeMaxNumOps(writer io.Writer, userInfo *userInfo) error {
 
 	// write the sub item type
 	if err := writeByte(writer, maxNumOpsItemType); err != nil {
@@ -275,7 +275,7 @@ func writeMaxNumOps(writer io.Writer, userInfo *UserInfo) error {
 	return nil
 }
 
-func writeImplVersionName(writer io.Writer, userInfo *UserInfo) error {
+func writeImplVersionName(writer io.Writer, userInfo *userInfo) error {
 
 	// write the sub item type
 	if err := writeByte(writer, implVersionNameItemType); err != nil {

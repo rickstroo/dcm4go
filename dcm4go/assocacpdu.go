@@ -18,7 +18,7 @@ func newAssocACPDU(assocRQPDU *assocRQPDU) *assocACPDU {
 			assocRQPDU.callingAETitle, // copy from the request, as per the standard
 			ApplicationContextNameUID, // app context name, as per the standard
 			make([]*pc, 0, 5),         // empty pres context list
-			&UserInfo{
+			&userInfo{
 				16378,                     // max length received, need to figure out why dcm4che uses this number
 				ImplementationClassUID,    // implementation class uid, we have our own now
 				ImplementationVersionName, // implementation version name

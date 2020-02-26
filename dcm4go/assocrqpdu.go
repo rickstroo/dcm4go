@@ -32,7 +32,7 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Ca
 			callingAETitle,            // title of the caller, as per the standard
 			ApplicationContextNameUID, // app context name, as per the standard
 			pcs,                       // pres context list
-			&UserInfo{
+			&userInfo{
 				16378,                     // max length received, need to figure out why dcm4che uses this number
 				ImplementationClassUID,    // implementation class uid, we have our own now
 				ImplementationVersionName, // implementation version name
