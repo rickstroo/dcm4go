@@ -15,12 +15,12 @@ func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Ca
 	// add presentation context ids
 	// ignore what was provided if anything
 	// ids need to be odd and increasing in order
-	pcs := make([]*PC, 0, 5)
+	pcs := make([]*pc, 0, 5)
 	for i, capability := range capabilities.capabilities {
-		pc := &PC{
-			ID:               byte(i*2 + 1),
-			AbstractSyntax:   capability.AbstractSyntax,
-			TransferSyntaxes: capability.TransferSyntaxes,
+		pc := &pc{
+			id:               byte(i*2 + 1),
+			abstractSyntax:   capability.AbstractSyntax,
+			transferSyntaxes: capability.TransferSyntaxes,
 		}
 		pcs = append(pcs, pc)
 	}

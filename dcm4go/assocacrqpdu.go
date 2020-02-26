@@ -29,7 +29,7 @@ type AssocACRQPDU struct {
 	calledAETitle  string
 	callingAETitle string
 	appContextName string
-	pcs            []*PC
+	pcs            []*pc
 	userInfo       *UserInfo
 }
 
@@ -80,7 +80,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*AssocACRQPDU, error) 
 	var appContextName string
 
 	// initialize a list of presentation contexts
-	pcs := make([]*PC, 0, 5)
+	pcs := make([]*pc, 0, 5)
 
 	// initialize the user info
 	var userInfo *UserInfo

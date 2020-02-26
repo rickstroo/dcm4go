@@ -133,45 +133,45 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities *Capabilities) 
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PC, capabilities *Capabilities) (*PC, error) {
+func negotiatePresContext(rqpc *pc, capabilities *Capabilities) (*pc, error) {
 
 	// look for a capability for this abstract syntax
-	capability, found := findAbstractSyntaxCapability(rqPresContext.AbstractSyntax, capabilities)
+	capability, found := findAbstractSyntaxCapability(rqpc.abstractSyntax, capabilities)
 
 	// if we don't find one, return a failure for this requested presentation context
 	if !found {
-		presContext := &PC{
-			ID:     rqPresContext.ID,             // the id
-			Result: pcAbstractSyntaxNotSupported, // reason for failure
+		pc := &pc{
+			id:     rqpc.id,                      // the id
+			result: pcAbstractSyntaxNotSupported, // reason for failure
 		}
 
 		// return the failed presentation context
-		return presContext, nil
+		return pc, nil
 	}
 
 	// look for a matching transfer syntax
-	transferSyntax, found := findTransferSyntaxCapability(rqPresContext.TransferSyntaxes, capability)
+	transferSyntax, found := findTransferSyntaxCapability(rqpc.transferSyntaxes, capability)
 
 	// if we didn't find one, return failure
 	if !found {
-		presContext := &PC{
-			ID:     rqPresContext.ID,               // the id
-			Result: pcTransferSyntaxesNotSupported, // reason for failure
+		pc := &pc{
+			id:     rqpc.id,                        // the id
+			result: pcTransferSyntaxesNotSupported, // reason for failure
 		}
 
 		// return the failed presentation context
-		return presContext, nil
+		return pc, nil
 	}
 
 	// found one, create an accepted presentation context
-	presContext := &PC{
-		ID:               rqPresContext.ID,         // the id
-		TransferSyntaxes: []string{transferSyntax}, // the transfer syntax
-		Result:           pcAcceptance,             // acceptance
+	pc := &pc{
+		id:               rqpc.id,                  // the id
+		transferSyntaxes: []string{transferSyntax}, // the transfer syntax
+		result:           pcAcceptance,             // acceptance
 	}
 
 	// return the accepted presentation context
-	return presContext, nil
+	return pc, nil
 }
 
 // findAbstractSyntaxCapability searches for a capability for an abstract syntax

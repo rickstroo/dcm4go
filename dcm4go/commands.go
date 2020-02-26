@@ -56,7 +56,7 @@ func newRequest(
 	request.addShort(CommandDataSetTypeTag, "US", commandDataSetType)
 
 	message := &Message{
-		pcID:    pc.ID,
+		pcID:    pc.id,
 		command: request,
 	}
 

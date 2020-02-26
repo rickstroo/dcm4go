@@ -59,17 +59,17 @@ func (assoc *Assoc) CallingAETitle() string {
 
 // findAcceptedPCByCapability searches for a presentation context
 // that was accepted for an abstract syntax and transfer syntax.
-func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSyntax string) (*PC, error) {
+func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSyntax string) (*pc, error) {
 
 	// find the abstract syntax from the requested presentation contexts, there may be more than one
 	for _, rqpc := range assoc.assocRQPDU.pcs {
-		if rqpc.AbstractSyntax == abstractSyntax {
+		if rqpc.abstractSyntax == abstractSyntax {
 			// now, look for the accepted presentation context for the same pcID that was requested
 			for _, acpc := range assoc.assocACPDU.pcs {
 				// if it's for the same id, and for the same transfer syntax id, and it was accepted
-				if acpc.ID == rqpc.ID &&
-					(transferSyntax == "*" || acpc.TransferSyntaxes[0] == transferSyntax) &&
-					acpc.Result == pcAcceptance {
+				if acpc.id == rqpc.id &&
+					(transferSyntax == "*" || acpc.transferSyntaxes[0] == transferSyntax) &&
+					acpc.result == pcAcceptance {
 					return acpc, nil
 				}
 			}
@@ -86,10 +86,10 @@ func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSy
 
 // findAcceptedPCByPCID searches for a presentation context
 // that was accepted for a presentation context id.
-func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*PC, error) {
+func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*pc, error) {
 	for _, pc := range assoc.assocACPDU.pcs {
 		// find the accepted presentation context for the presentation context id
-		if pc.ID == pcid && pc.Result == pcAcceptance {
+		if pc.id == pcid && pc.result == pcAcceptance {
 			return pc, nil
 		}
 	}
@@ -105,7 +105,7 @@ func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*TransferSyntax
 	if err != nil {
 		return nil, err
 	}
-	transferSyntax, err := findTransferSyntax(pc.TransferSyntaxes[0])
+	transferSyntax, err := findTransferSyntax(pc.transferSyntaxes[0])
 	if err != nil {
 		return nil, err
 	}
