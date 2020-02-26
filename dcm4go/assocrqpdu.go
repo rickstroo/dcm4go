@@ -10,13 +10,19 @@ type AssocRQPDU struct {
 }
 
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, pcs []*PC) *AssocRQPDU {
+func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *AssocRQPDU {
 
 	// add presentation context ids
 	// ignore what was provided if anything
 	// ids need to be odd and increasing in order
-	for i, pc := range pcs {
-		pc.ID = byte(i*2 + 1)
+	pcs := make([]*PC, 0, 5)
+	for i, capability := range capabilities.capabilities {
+		pc := &PC{
+			ID:               byte(i*2 + 1),
+			AbstractSyntax:   capability.AbstractSyntax,
+			TransferSyntaxes: capability.TransferSyntaxes,
+		}
+		pcs = append(pcs, pc)
 	}
 
 	return &AssocRQPDU{

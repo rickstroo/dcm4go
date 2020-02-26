@@ -64,7 +64,7 @@ func stores(paths []string, remoteAddr string, local string) {
 	remoteAE := dcm4go.NewAE(remoteAddr)
 
 	// connect to the remote
-	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
+	conn, err := net.Dial("tcp", remoteAE.Host+":"+remoteAE.Port)
 	check(err)
 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 

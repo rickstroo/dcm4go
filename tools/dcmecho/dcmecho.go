@@ -52,18 +52,19 @@ func echo(remoteAddr string, local string) {
 	}
 
 	// set the transfer capabilities
-	capabilities := []*dcm4go.PresContext{
-		&dcm4go.PresContext{
+	capabilities := dcm4go.NewCapabilities()
+	capabilities.Add(
+		&dcm4go.Capability{
 			AbstractSyntax:   dcm4go.VerificationUID,
 			TransferSyntaxes: []string{dcm4go.ImplicitVRLittleEndianUID},
 		},
-	}
+	)
 
 	// create the remote AE
 	remoteAE := dcm4go.NewAE(remoteAddr)
 
 	// connect to the remote
-	conn, err := net.Dial("tcp", remoteAE.Host()+":"+remoteAE.Port())
+	conn, err := net.Dial("tcp", remoteAE.Host+":"+remoteAE.Port)
 	check(err)
 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
 

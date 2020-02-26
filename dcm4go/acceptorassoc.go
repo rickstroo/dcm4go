@@ -18,7 +18,7 @@ type AcceptorAssoc struct {
 }
 
 // acceptAssoc accepts an association
-func acceptAssoc(conn net.Conn, ae *AE, pcs []*PC) (*AcceptorAssoc, error) {
+func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAssoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -56,7 +56,7 @@ func acceptAssoc(conn net.Conn, ae *AE, pcs []*PC) (*AcceptorAssoc, error) {
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, pcs)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func acceptAssoc(conn net.Conn, ae *AE, pcs []*PC) (*AcceptorAssoc, error) {
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, pcs []*PC) (*AssocACPDU, *AssocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, capabilities *Capabilities) (*AssocACPDU, *AssocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -122,7 +122,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, pcs []*PC) (*AssocACPDU, *As
 
 	// negotiate each of the presentation contexts
 	for _, rqPresContext := range assocRQPDU.pcs {
-		pc, err := negotiatePresContext(rqPresContext, pcs)
+		pc, err := negotiatePresContext(rqPresContext, capabilities)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -133,7 +133,7 @@ func negotiateAssoc(assocRQPDU *AssocRQPDU, ae *AE, pcs []*PC) (*AssocACPDU, *As
 }
 
 // negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqPresContext *PC, capabilities []*PC) (*PC, error) {
+func negotiatePresContext(rqPresContext *PC, capabilities *Capabilities) (*PC, error) {
 
 	// look for a capability for this abstract syntax
 	capability, found := findAbstractSyntaxCapability(rqPresContext.AbstractSyntax, capabilities)
@@ -175,8 +175,8 @@ func negotiatePresContext(rqPresContext *PC, capabilities []*PC) (*PC, error) {
 }
 
 // findAbstractSyntaxCapability searches for a capability for an abstract syntax
-func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PC) (*PC, bool) {
-	for _, capability := range capabilities {
+func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities *Capabilities) (*Capability, bool) {
+	for _, capability := range capabilities.capabilities {
 		if rqAbstractSyntax == capability.AbstractSyntax {
 			return capability, true
 		}
@@ -185,7 +185,7 @@ func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities []*PC) (
 }
 
 // findTransferSyntaxCapability searches for a capability for a transfer syntax
-func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *PC) (string, bool) {
+func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *Capability) (string, bool) {
 	for _, rqTransferSyntax := range rqTransferSyntaxes {
 		for _, transferSyntax := range capability.TransferSyntaxes {
 			if rqTransferSyntax == transferSyntax {

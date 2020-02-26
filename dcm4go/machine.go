@@ -23,7 +23,7 @@ type Machine struct {
 	acceptor                  bool
 	serviceUserInitiatedAbort bool
 	aeTitle                   string
-	pcs                       []*PC
+	capabilities              *Capabilities
 	assocACPDU                *AssocACPDU
 }
 
@@ -338,7 +338,7 @@ func (machine *Machine) ae6(pdu *pdu) error {
 	ae := NewAE(machine.aeTitle)
 
 	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, machine.pcs)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, machine.capabilities)
 	if err != nil {
 		return err
 	}

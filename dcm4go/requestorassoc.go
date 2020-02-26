@@ -22,7 +22,7 @@ func requestAssoc(
 	conn net.Conn,
 	localAE *AE,
 	remoteAE *AE,
-	pcs []*PC,
+	capabilities *Capabilities,
 	opts *AssocOpts,
 ) (*RequestorAssoc, error) {
 
@@ -31,7 +31,7 @@ func requestAssoc(
 	pduWriter := newPDUWriter(conn)
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAE.Title, localAE.Title, pcs)
+	assocRQPDU := newAssocRQPDU(remoteAE.Title, localAE.Title, capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
