@@ -58,17 +58,16 @@ func (abortPDU *abortPDU) Write(writer io.Writer) error {
 
 	// construct the base pdu
 	pdu := &pdu{
-		pduType:   aAbortPDU,        // the type
-		pduLength: uint32(len(buf)), // the length
-	}
-
-	// write the base pdu
-	if err := pdu.Write(writer); err != nil {
-		return err
+		pduType: aAbortPDU, // the type
 	}
 
 	// write the abort pdu
-	if err := writeBytes(writer, buf[:]); err != nil {
+	if err := writeBytes(pdu, buf[:]); err != nil {
+		return err
+	}
+
+	// write the base pdu
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 

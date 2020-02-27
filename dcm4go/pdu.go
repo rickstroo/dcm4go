@@ -3,6 +3,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ type pdu struct {
 	pduType     byte
 	pduLength   uint32
 	limitReader io.Reader
+	buffer      bytes.Buffer
 }
 
 const (
@@ -28,6 +30,11 @@ const (
 // Read implements the Reader interface
 func (pdu *pdu) Read(buf []byte) (int, error) {
 	return pdu.limitReader.Read(buf)
+}
+
+// Write implements the Writer interface
+func (pdu *pdu) Write(buf []byte) (int, error) {
+	return pdu.buffer.Write(buf)
 }
 
 // String returns a string representation of a PDU
@@ -58,23 +65,29 @@ func readPDU(reader io.Reader) (*pdu, error) {
 	// set up the a reader for the bytes of the pdu
 	limitReader := io.LimitReader(reader, int64(pduLength))
 
-	// construct and return a PDU
-	return &pdu{pduType, pduLength, limitReader}, nil
+	// construct a PDU
+	pdu := &pdu{
+		pduType:     pduType,
+		pduLength:   pduLength,
+		limitReader: limitReader,
+	}
+
+	// return the pdu
+	return pdu, nil
 }
 
-func (pdu *pdu) Write(writer io.Writer) error {
+func writePDU(writer io.Writer, pdu *pdu) error {
 	if err := writeByte(writer, pdu.pduType); err != nil {
 		return err
 	}
 	if err := writeByte(writer, 0x00); err != nil {
 		return err
 	}
-	if err := writeLong(writer, pdu.pduLength, binary.BigEndian); err != nil {
+	if err := writeLong(writer, (uint32)(pdu.buffer.Len()), binary.BigEndian); err != nil {
+		return err
+	}
+	if err := writeBytes(writer, pdu.buffer.Bytes()); err != nil {
 		return err
 	}
 	return nil
-}
-
-func writePDU(writer io.Writer, pdu *pdu) error {
-	return pdu.Write(writer)
 }

@@ -20,15 +20,17 @@ func readReleaseRQPDU(reader io.Reader) error {
 func writeReleaseRQPDU(writer io.Writer) error {
 
 	// construct a pdu
-	pdu := &pdu{aReleaseRQPDU, 0x04, nil}
-
-	// write the pdu header
-	if err := writePDU(writer, pdu); err != nil {
-		return err
+	pdu := &pdu{
+		pduType: aReleaseRQPDU,
 	}
 
 	// write a long zero
-	if err := writeLong(writer, 0x00, binary.BigEndian); err != nil {
+	if err := writeLong(pdu, 0x00, binary.BigEndian); err != nil {
+		return err
+	}
+
+	// write the pdu header
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 

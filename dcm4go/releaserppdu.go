@@ -29,17 +29,16 @@ func writeReleaseRPPDU(writer io.Writer) error {
 
 	// construct the base pdu
 	pdu := &pdu{
-		pduType:   aReleaseRPPDU,    // the type
-		pduLength: uint32(len(buf)), // the length
+		pduType: aReleaseRPPDU,
 	}
 
-	// write the base pdu
-	if err := pdu.Write(writer); err != nil {
+	// write the buffer to the pdu
+	if err := writeBytes(pdu, buf[:]); err != nil {
 		return err
 	}
 
-	// write the release pdu
-	if err := writeBytes(writer, buf[:]); err != nil {
+	// write the pdu
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 

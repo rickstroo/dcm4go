@@ -73,27 +73,27 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 	pdv.pdvLength = uint32(pdvWriter.buf.Len() + 2) // need to add two bytes for the pcID and mch
 
 	// create a pdu
-	pdu := &pdu{}
-	pdu.pduType = pDataTFPDU
-	pdu.pduLength = uint32(pdv.pdvLength + 4) // need to add four bytes for the PDV length
+	pdu := &pdu{
+		pduType: pDataTFPDU,
+	}
 
 	// we always write a pdv and pdu
 	// while it is possible pack multiple pdvs into a single pdu
 	// that requires some addition logic that i don't think benefits
 	// us all that greatly
 
-	// write the pdu header
+	// write the pdv header to the pdu
+	if err := writePDV(pdu, pdv); err != nil {
+		return err
+	}
+
+	// write the bytes of the pdv to the pdu
+	if err := writeBytes(pdu, pdvWriter.buf.Bytes()); err != nil {
+		return err
+	}
+
+	// write the pdu
 	if err := writePDU(pdvWriter.writer, pdu); err != nil {
-		return err
-	}
-
-	// write the pdv header
-	if err := writePDV(pdvWriter.writer, pdv); err != nil {
-		return err
-	}
-
-	// write the bytes of the buffer
-	if err := writeBytes(pdvWriter.writer, pdvWriter.buf.Bytes()); err != nil {
 		return err
 	}
 

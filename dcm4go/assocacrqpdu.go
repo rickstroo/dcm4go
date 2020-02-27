@@ -161,14 +161,9 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*assocACRQPDU, error) 
 // writeAssocACRQPDU writes an associate request or accept
 func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *assocACRQPDU, pduType byte, pcItemType byte) error {
 
-	// write pdu type
-	if err := writeByte(writer, pduType); err != nil {
-		return err
-	}
-
-	// write a zero as per the standard
-	if err := writeByte(writer, 0x00); err != nil {
-		return err
+	// create the pdu
+	pdu := &pdu{
+		pduType: pduType,
 	}
 
 	// create a byte array output stream so we can calculate the length of the rest of the PDU
@@ -205,13 +200,13 @@ func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *assocACRQPDU, pduType byt
 		return err
 	}
 
-	// write the length to the original writer
-	if err := writeLong(writer, uint32(byteWriter.Len()), binary.BigEndian); err != nil {
+	// write the byte array to the original writer
+	if err := writeBytes(pdu, byteWriter.Bytes()); err != nil {
 		return err
 	}
 
-	// write the byte array to the original writer
-	if err := writeBytes(writer, byteWriter.Bytes()); err != nil {
+	// write the pdu
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 
