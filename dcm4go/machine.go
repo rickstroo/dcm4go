@@ -160,7 +160,7 @@ func st2(machine *Machine) error {
 	}
 
 	// if it is an A-ASSOCIATE-RQ PDU, handle it
-	if pdu.pduType == aAssociateRQPDU {
+	if pdu.typ == aAssociateRQPDU {
 		return machine.ae6(pdu)
 	}
 
@@ -195,12 +195,12 @@ func st5(machine *Machine) error {
 	}
 
 	// if A-ASSOCIATE-AC, accept
-	if pdu.pduType == aAssociateACPDU {
+	if pdu.typ == aAssociateACPDU {
 		return machine.ae3(pdu)
 	}
 
 	// if A-ASSOCIATE-RJ, reject
-	if pdu.pduType == aAssociateRJPDU {
+	if pdu.typ == aAssociateRJPDU {
 		return machine.ae4(pdu)
 	}
 
@@ -225,12 +225,12 @@ func st6(machine *Machine) error {
 	}
 
 	// if its a release request, we're good
-	if pdu.pduType == aReleaseRQPDU {
+	if pdu.typ == aReleaseRQPDU {
 		return machine.ar2(pdu)
 	}
 
 	// if its an abort request, we're good
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return machine.aa3(pdu)
 	}
 
@@ -238,7 +238,7 @@ func st6(machine *Machine) error {
 	// from the local user to abort
 
 	// if P-DATA-TF PDU, we're good
-	if pdu.pduType == pDataTFPDU {
+	if pdu.typ == pDataTFPDU {
 		return machine.dt2(pdu)
 	}
 
@@ -555,8 +555,6 @@ func (machine *Machine) aa5() error {
 }
 
 func (machine *Machine) aa6(pdu *pdu) error {
-	// ignore the PDU (just skip the rest of the bytes)
-	skipBytes(pdu, pdu.pduLength)
 	// go to state 13
 	machine.state = sta13
 	// all is well

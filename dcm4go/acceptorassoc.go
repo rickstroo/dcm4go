@@ -39,12 +39,12 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAs
 	log.Printf("pdu is %v\n", pdu)
 
 	// if abort, we simply exit
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return nil, onAbort(pduReader)
 	}
 
 	// if anything other than an associate request, we abort
-	if pdu.pduType != aAssociateRQPDU {
+	if pdu.typ != aAssociateRQPDU {
 		return nil, onUnexpectedPDU(pduReader, pdu)
 	}
 
@@ -206,17 +206,17 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 	}
 
 	// is this an association release request?  if so, write response and return EOF
-	if pdu.pduType == aReleaseRQPDU {
+	if pdu.typ == aReleaseRQPDU {
 		return nil, assoc.onRelease()
 	}
 
 	// is this an abort request?  if so, just return EOF
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return nil, onAbort(assoc.pduReader)
 	}
 
 	// is this not a data transfer request?
-	if pdu.pduType != pDataTFPDU {
+	if pdu.typ != pDataTFPDU {
 		return nil, onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
@@ -225,7 +225,7 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 }
 
 func (assoc *AcceptorAssoc) onRelease() error {
-	if err := readReleaseRQPDU(assoc.pduReader); err != nil {
+	if _, err := readReleaseRQPDU(assoc.pduReader); err != nil {
 		return err
 	}
 

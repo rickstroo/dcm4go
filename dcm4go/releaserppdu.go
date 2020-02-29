@@ -28,9 +28,7 @@ func writeReleaseRPPDU(writer io.Writer) error {
 	}
 
 	// construct the base pdu
-	pdu := &pdu{
-		pduType: aReleaseRPPDU,
-	}
+	pdu := &pdu{typ: aReleaseRPPDU}
 
 	// write the buffer to the pdu
 	if err := writeBytes(pdu, buf[:]); err != nil {

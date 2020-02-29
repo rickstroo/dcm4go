@@ -81,9 +81,7 @@ func (assocRJPDU *assocRJPDU) Write(writer io.Writer) error {
 	}
 
 	// construct the base pdu
-	pdu := &pdu{
-		pduType: aAssociateRJPDU, // the type
-	}
+	pdu := &pdu{typ: aAssociateRJPDU}
 
 	// write the release pdu
 	if err := writeBytes(pdu, buf[:]); err != nil {

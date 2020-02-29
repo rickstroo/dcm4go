@@ -56,17 +56,14 @@ func (abortPDU *abortPDU) Write(writer io.Writer) error {
 		abortPDU.reason, // the reason
 	}
 
-	// construct the base pdu
-	pdu := &pdu{
-		pduType: aAbortPDU, // the type
-	}
+	pdu := &pdu{typ: aAbortPDU}
 
 	// write the abort pdu
 	if err := writeBytes(pdu, buf[:]); err != nil {
 		return err
 	}
 
-	// write the base pdu
+	// write the pdu
 	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}

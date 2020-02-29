@@ -47,12 +47,12 @@ func requestAssoc(
 	log.Printf("read pdu, %v", pdu)
 
 	// is this an abort request?
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return nil, onAbort(pduReader)
 	}
 
 	// if this an associate reuject?  if so, return error
-	if pdu.pduType == aAssociateRJPDU {
+	if pdu.typ == aAssociateRJPDU {
 		assocRJPDU, err := readAssocRJPDU(pduReader)
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ func requestAssoc(
 	}
 
 	// is this not an associate accept?
-	if pdu.pduType != aAssociateACPDU {
+	if pdu.typ != aAssociateACPDU {
 		return nil, onUnexpectedPDU(pduReader, pdu)
 	}
 
@@ -105,12 +105,12 @@ func (assoc *Assoc) RequestRelease() error {
 	log.Printf("pdu is %v\n", pdu)
 
 	// is this an abort request?
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return onAbort(assoc.pduReader)
 	}
 
 	// is this not the pdu we are expecting?
-	if pdu.pduType != aReleaseRPPDU {
+	if pdu.typ != aReleaseRPPDU {
 		return onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
@@ -138,12 +138,12 @@ func (assoc *RequestorAssoc) ReadResponse() (*Message, error) {
 	}
 
 	// is this an abort request?  if so, just return EOF
-	if pdu.pduType == aAbortPDU {
+	if pdu.typ == aAbortPDU {
 		return nil, onAbort(assoc.pduReader)
 	}
 
 	// is this not a data transfer request?
-	if pdu.pduType != pDataTFPDU {
+	if pdu.typ != pDataTFPDU {
 		return nil, onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 

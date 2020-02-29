@@ -1,13 +1,18 @@
 package dcm4go
 
-import "io"
+import (
+	"io"
+)
 
 type pduWriter struct {
 	writer io.Writer // underlying writer
 }
 
 func newPDUWriter(writer io.Writer) *pduWriter {
-	return &pduWriter{writer: writer}
+	pduWriter := &pduWriter{
+		writer: writer,
+	}
+	return pduWriter
 }
 
 func (pduWriter *pduWriter) Write(buf []byte) (int, error) {

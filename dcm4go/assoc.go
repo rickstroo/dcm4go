@@ -131,5 +131,5 @@ func onAbort(reader io.Reader) error {
 
 func onUnexpectedPDU(reader io.Reader, pdu *pdu) error {
 	log.Printf("received unexpected pdu type, %v", pdu)
-	return fmt.Errorf("unexpected pdu type, %d, %w", pdu.pduType, ErrUnexpectedPDU)
+	return fmt.Errorf("unexpected pdu type, %d, %w", pdu.typ, ErrUnexpectedPDU)
 }

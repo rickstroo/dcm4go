@@ -73,9 +73,7 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 	pdv.pdvLength = uint32(pdvWriter.buf.Len() + 2) // need to add two bytes for the pcID and mch
 
 	// create a pdu
-	pdu := &pdu{
-		pduType: pDataTFPDU,
-	}
+	pdu := &pdu{typ: pDataTFPDU}
 
 	// we always write a pdv and pdu
 	// while it is possible pack multiple pdvs into a single pdu

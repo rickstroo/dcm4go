@@ -113,8 +113,8 @@ func (pdvReader *pdvReader) nextPDV() error {
 		//	fmt.Printf("after readPDU, pdu is %v\n", pdu)
 
 		// check that it is data PDU
-		if pdu.pduType != pDataTFPDU {
-			return fmt.Errorf("expecting a pdu of type %d, read a pdu of type %d", pDataTFPDU, pdu.pduType)
+		if pdu.typ != pDataTFPDU {
+			return fmt.Errorf("expecting a pdu of type %d, read a pdu of type %d", pDataTFPDU, pdu.typ)
 		}
 
 		// remember the pdu that we've read

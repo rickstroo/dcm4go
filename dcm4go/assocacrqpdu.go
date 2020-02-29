@@ -162,9 +162,7 @@ func readAssocACRQPDU(reader io.Reader, pcItemType byte) (*assocACRQPDU, error) 
 func writeAssocACRQPDU(writer io.Writer, assocACRQPDU *assocACRQPDU, pduType byte, pcItemType byte) error {
 
 	// create the pdu
-	pdu := &pdu{
-		pduType: pduType,
-	}
+	pdu := &pdu{typ: pduType}
 
 	// create a byte array output stream so we can calculate the length of the rest of the PDU
 	byteWriter := new(bytes.Buffer)
