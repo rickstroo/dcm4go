@@ -34,7 +34,7 @@ func (pdu *pdu) Read(buf []byte) (int, error) {
 func (pdu *pdu) Write(buf []byte) (int, error) {
 	// if the write buffer has not been initialized, create one with 16K capacity
 	if pdu.buf == nil {
-		pdu.buf = bytes.NewBuffer(make([]byte, 16*1024))
+		pdu.buf = bytes.NewBuffer(make([]byte, 0, 16*1024))
 	}
 	return pdu.buf.Write(buf)
 }
