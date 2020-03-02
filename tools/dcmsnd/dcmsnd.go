@@ -108,13 +108,14 @@ func store(assoc *dcm4go.RequestorAssoc, path string) error {
 		log.Printf("error while opening file, %v", err)
 		return err
 	}
+	log.Printf("opened file, %q", path)
 
 	// ensure the file gets closed
 	defer func() {
 		if err := file.Close(); err != nil {
-			log.Printf("error while closing file, %v", err)
+			log.Printf("error while closing file, %q, %v", path, err)
 		}
-		log.Printf("closed file")
+		log.Printf("closed file, %q", path)
 	}()
 
 	// send the file
@@ -122,6 +123,7 @@ func store(assoc *dcm4go.RequestorAssoc, path string) error {
 		log.Printf("error while sending file, %v", err)
 		return err
 	}
+	log.Printf("sent file, %q", path)
 
 	return nil
 }
