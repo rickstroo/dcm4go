@@ -72,26 +72,34 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 	}
 	pdv.pdvLength = uint32(pdvWriter.buf.Len() + 2) // need to add two bytes for the pcID and mch
 
-	// create a pdu
-	pdu := &pdu{typ: pDataTFPDU}
-
 	// we always write a pdv and pdu
 	// while it is possible pack multiple pdvs into a single pdu
 	// that requires some addition logic that i don't think benefits
 	// us all that greatly
 
-	// write the pdv header to the pdu
-	if err := writePDV(pdu, pdv); err != nil {
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write the pdv header to the byte writer
+	if err := writePDV(byteWriter, pdv); err != nil {
 		return err
 	}
 
-	// write the bytes of the pdv to the pdu
-	if err := writeBytes(pdu, pdvWriter.buf.Bytes()); err != nil {
+	// write the bytes of the pdv to the byte writer
+	// we really want to make this more efficient
+	// we don't want to copy the bytes and copy them again
+	// oh well, we'll do it this way for now
+	if err := writeBytes(byteWriter, pdvWriter.buf.Bytes()); err != nil {
 		return err
 	}
 
-	// write the pdu
-	if err := writePDU(pdvWriter.writer, pdu); err != nil {
+	// create a data transfer pdu
+	dataTFPDU := &dataTFPDU{
+		buf: byteWriter.Bytes(),
+	}
+
+	// write the data transfer pdu
+	if err := dataTFPDU.writeTo(pdvWriter.writer); err != nil {
 		return err
 	}
 

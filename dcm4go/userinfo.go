@@ -28,6 +28,18 @@ func (userInfo *userInfo) String() string {
 		userInfo.maxNumOpsPerformed)
 }
 
+func defaultUserInfo() *userInfo {
+	userInfo := &userInfo{
+		DefaultMaxPDULen,          // max length received, need to figure out why dcm4che uses this number
+		ImplementationClassUID,    // implementation class uid, we have our own now
+		ImplementationVersionName, // implementation version name
+		DefaultMaxNumOps,          // max num ops invoked
+		DefaultMaxOpsPerformed,    // max num ops performed
+	}
+
+	return userInfo
+}
+
 func readUserInfo(reader io.Reader) (*userInfo, error) {
 
 	// initialize a user info object

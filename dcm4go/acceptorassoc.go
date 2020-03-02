@@ -71,7 +71,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAs
 	if assocRJPDU != nil {
 
 		// write the associate reject pdu
-		if err := assocRJPDU.Write(pduWriter); err != nil {
+		if err := assocRJPDU.writeTo(pduWriter); err != nil {
 			return nil, err
 		}
 		// let the caller know that the associate request was rejected
@@ -79,7 +79,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAs
 	}
 
 	// otherwise, write the associate accept pdu
-	if err := assocACPDU.Write(pduWriter); err != nil {
+	if err := assocACPDU.writeTo(pduWriter); err != nil {
 		return nil, err
 	}
 
@@ -229,7 +229,8 @@ func (assoc *AcceptorAssoc) onRelease() error {
 		return err
 	}
 
-	if err := writeReleaseRPPDU(assoc.pduWriter); err != nil {
+	releaseRPPDU := &releaseRPPDU{}
+	if err := releaseRPPDU.writeTo(assoc.pduWriter); err != nil {
 		return err
 	}
 

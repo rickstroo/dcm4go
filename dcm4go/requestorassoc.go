@@ -35,7 +35,7 @@ func requestAssoc(
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
-	if err := writeAssocRQPDU(pduWriter, assocRQPDU); err != nil {
+	if err := assocRQPDU.writeTo(pduWriter); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +92,8 @@ func requestAssoc(
 func (assoc *Assoc) RequestRelease() error {
 
 	// write a request release pdu
-	if err := writeReleaseRQPDU(assoc.pduWriter); err != nil {
+	releaseRQPDU := &releaseRQPDU{}
+	if err := releaseRQPDU.writeTo(assoc.pduWriter); err != nil {
 		return err
 	}
 	log.Printf("wrote a release request\n")
@@ -114,7 +115,7 @@ func (assoc *Assoc) RequestRelease() error {
 		return onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
-	if err := readReleaseRPPDU(assoc.pduReader); err != nil {
+	if _, err := readReleaseRPPDU(assoc.pduReader); err != nil {
 		return err
 	}
 	log.Printf("received a release response pdu")

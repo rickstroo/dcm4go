@@ -2,11 +2,15 @@
 
 package dcm4go
 
-import "io"
+import (
+	"bytes"
+	"io"
+)
 
 type pduReader struct {
-	reader io.Reader // underlying reader
-	pdu    *pdu      // current pdu
+	reader     io.Reader     // underlying reader
+	pdu        *pdu          // current pdu
+	byteReader *bytes.Buffer // reader for current pdu
 }
 
 // newPDUReader constructs a new pduReader
@@ -16,13 +20,19 @@ func newPDUReader(reader io.Reader) *pduReader {
 
 // nextPDU reads the next pdu from the underlying reader
 func (pduReader *pduReader) nextPDU() (*pdu, error) {
+
 	// read the pdu
 	pdu, err := readPDU(pduReader.reader)
 	if err != nil {
 		return nil, err
 	}
+
 	// remember the pdu
 	pduReader.pdu = pdu
+
+	// create a reader
+	pduReader.byteReader = bytes.NewBuffer(pdu.buf)
+
 	// return the pdu so that we can inspect the type
 	// perhaps we should just return the type
 	return pdu, nil
@@ -30,5 +40,5 @@ func (pduReader *pduReader) nextPDU() (*pdu, error) {
 
 // Read implements the Reader interface
 func (pduReader *pduReader) Read(buf []byte) (int, error) {
-	return pduReader.pdu.Read(buf)
+	return pduReader.byteReader.Read(buf)
 }
