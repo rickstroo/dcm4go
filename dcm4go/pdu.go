@@ -724,13 +724,26 @@ func (releaseRPPDU *releaseRPPDU) writeTo(writer io.Writer) error {
 }
 
 type dataTFPDU struct {
-	buf []byte
+	pdvs []*pdv
 }
 
-func newDataTFPDU(pdu *pdu) (*dataTFPDU, error) {
+func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
+
+	pdvs := make([]*pdv, 0)
+
+	for {
+		pdv, err := readPDV(reader)
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			break
+		}
+		pdvs = append(pdvs, pdv)
+	}
 
 	dataTFPDU := &dataTFPDU{
-		buf: pdu.buf,
+		pdvs: pdvs,
 	}
 
 	return dataTFPDU, nil
@@ -738,10 +751,20 @@ func newDataTFPDU(pdu *pdu) (*dataTFPDU, error) {
 
 func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
 
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write the pdvs
+	for _, pdv := range dataTFPDU.pdvs {
+		if err := pdv.writeTo(byteWriter); err != nil {
+			return err
+		}
+	}
+
 	// create a pdu
 	pdu := &pdu{
 		typ: pDataTFPDU,
-		buf: dataTFPDU.buf,
+		buf: byteWriter.Bytes(),
 	}
 
 	// write the pdu
@@ -808,7 +831,7 @@ func nextPDU(reader io.Reader) (interface{}, error) {
 		log.Printf("received release response pdu, %v", releaseRPPDU)
 		return releaseRPPDU, nil
 	case pDataTFPDU:
-		dataTFPDU, err := newDataTFPDU(pdu)
+		dataTFPDU, err := readDataTFPDU(byteReader)
 		if err != nil {
 			return nil, err
 		}
