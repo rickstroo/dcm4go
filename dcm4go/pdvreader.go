@@ -3,6 +3,7 @@
 package dcm4go
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -11,9 +12,10 @@ import (
 // the stream of bytes from one or more PDVs that can be contained in
 // one or more PDUs.
 type pdvReader struct {
-	pduReader *pduReader // the underlying pdu reader
-	pdv       *pdv       // the PDV that we are reading from
-	isCommand bool       // are we reading a command or a data set?
+	pduReader  *pduReader    // the underlying pdu reader
+	pdv        *pdv          // the PDV that we are reading from
+	byteReader *bytes.Buffer // a reader for the bytes of the PDV
+	isCommand  bool          // are we reading a command or a data set?
 }
 
 // newPDataReader constructs and initializes a PDataReader
@@ -27,20 +29,26 @@ func newPDVReader(pduReader *pduReader, isCommand bool) (*pdvReader, error) {
 		return nil, err
 	}
 
+	// create a reader
+	reader := bytes.NewBuffer(pdv.buf)
+
 	// check that the command or data match the last pdv
 	if err := checkCommand(isCommand, pdv); err != nil {
 		return nil, err
 	}
 
-	// construct a reader and return
-	return &pdvReader{pduReader, pdv, isCommand}, nil
+	// construct a reader
+	pdvReader := &pdvReader{pduReader, pdv, reader, isCommand}
+
+	// return the pdv reader and success
+	return pdvReader, nil
 }
 
 // Read implements the Reader interface
 func (pdvReader *pdvReader) Read(buf []byte) (int, error) {
 
 	// attempt to read some bytes
-	num, err := pdvReader.pdv.Read(buf)
+	num, err := pdvReader.byteReader.Read(buf)
 
 	//	fmt.Printf("after read, num is %d and err is %v\n", num, err)
 

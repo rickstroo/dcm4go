@@ -8,27 +8,21 @@ import (
 
 // pdv represents a DICOM protocol data value (i.e. PDV)
 type pdv struct {
-	pdvLength   uint32
-	pcID        byte
-	mch         byte
-	limitReader io.Reader
+	pcID byte
+	mch  byte
+	buf  []byte
 }
 
-// Read implements the Reader interface
-func (pdv *pdv) Read(buf []byte) (int, error) {
-	return pdv.limitReader.Read(buf)
-}
-
-// String returns a string representation of a PDU
+// String returns a string representation of a PDV
 func (pdv *pdv) String() string {
-	return fmt.Sprintf("{pdvLength:%v,pcID:%v,mch:0x%1X}", pdv.pdvLength, pdv.pcID, pdv.mch)
+	return fmt.Sprintf("{pcID:%v,mch:0x%1X,buf:%v}", pdv.pcID, pdv.mch, pdv.buf)
 }
 
 // readPDV reads a PDV from a reader
 func readPDV(reader io.Reader) (*pdv, error) {
 
 	// read the pdv length
-	pdvLength, err := readLong(reader, binary.BigEndian)
+	len, err := readLong(reader, binary.BigEndian)
 	if err != nil {
 		return nil, err
 	}
@@ -45,6 +39,16 @@ func readPDV(reader io.Reader) (*pdv, error) {
 		return nil, err
 	}
 
+	// read the bytes
+	// notice that we actually read two bytes less,
+	// as we've already read the pc id and the
+	// message control header, which were included
+	// in the length calculation
+	buf, err := readBytes(reader, len-2)
+	if err != nil {
+		return nil, err
+	}
+
 	// set up the pdv reader
 	// use a limited reader for the length of the PDV
 	// actually, we set it to the length less two to make up for the pcid and mch
@@ -54,10 +58,17 @@ func readPDV(reader io.Reader) (*pdv, error) {
 	// the length logic here.  also, makes it easy to just pass the PDV around
 	// in other parts of the code instead of passing the PDV and PDV reader
 	// separately.
-	limitReader := io.LimitReader(reader, int64(pdvLength-2))
+	//limitReader := io.LimitReader(reader, int64(pdvLength-2))
 
-	// construct and return a PDV
-	return &pdv{pdvLength, pcID, mch, limitReader}, nil
+	// construct a PDV
+	pdv := &pdv{
+		pcID: pcID,
+		mch:  mch,
+		buf:  buf,
+	}
+
+	// return the pdv and success
+	return pdv, nil
 }
 
 func (pdv *pdv) isCommand() bool {
@@ -68,15 +79,31 @@ func (pdv *pdv) isLast() bool {
 	return pdv.mch&0x02 == 0x02
 }
 
-func writePDV(writer io.Writer, pdv *pdv) error {
-	if err := writeLong(writer, pdv.pdvLength, binary.BigEndian); err != nil {
+func (pdv *pdv) writeTo(writer io.Writer) error {
+
+	// write the length of the pdv
+	// note that it is two plus the length of the buffer
+	// as we need to include the pc id and message control header
+	// in the calculation
+	if err := writeLong(writer, uint32(len(pdv.buf)+2), binary.BigEndian); err != nil {
 		return err
 	}
+
+	// write the pc id
 	if err := writeByte(writer, pdv.pcID); err != nil {
 		return err
 	}
+
+	// write the message control header
 	if err := writeByte(writer, pdv.mch); err != nil {
 		return err
 	}
+
+	// write the bytes
+	if err := writeBytes(writer, pdv.buf); err != nil {
+		return err
+	}
+
+	// return success
 	return nil
 }

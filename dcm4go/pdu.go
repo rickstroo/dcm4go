@@ -727,6 +727,17 @@ type dataTFPDU struct {
 	pdvs []*pdv
 }
 
+func newDataTFPDU() *dataTFPDU {
+	dataTFPDU := &dataTFPDU{
+		pdvs: make([]*pdv, 0),
+	}
+	return dataTFPDU
+}
+
+func (dataTFPDU *dataTFPDU) addPDV(pdv *pdv) {
+	dataTFPDU.pdvs = append(dataTFPDU.pdvs, pdv)
+}
+
 func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
 
 	pdvs := make([]*pdv, 0)
