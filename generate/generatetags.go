@@ -67,6 +67,11 @@ const (
 	{{ printf "%vTag = 0x%08X\n" .Keyword .TagID }}
 {{- end }}
 )
+var vrs = map[uint32]string {
+	{{- range .SingleValueTags }}
+		{{ printf "%vTag: \"%v\"," .Keyword .VR }}
+	{{- end }}
+}
 // Tags in the DICOM data dictionary have wildcards (e.g. tags like (gggg,eexx), (ggxx,eeee))
 // The tag library stores the value of the tag with the x's set to '0' in hex.
 // For example the Curve Data tag is defined as (50xx,3000). The variable
@@ -77,11 +82,6 @@ const (
 var wildcardvrmasks = []uint32{
 	{{- range .BitMasks }}
 		{{ printf "0x%08X," . }}
-	{{- end }}
-}
-var vrs = map[uint32]string {
-	{{- range .SingleValueTags }}
-		{{ printf "%vTag: \"%v\"," .Keyword .VR }}
 	{{- end }}
 }
 var wildcardvrs = map[uint32]string {
