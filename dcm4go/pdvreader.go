@@ -14,7 +14,7 @@ import (
 type pdvReader struct {
 	pduReader  *pduReader    // the underlying pdu reader
 	pdv        *pdv          // the PDV that we are reading from
-	byteReader *bytes.Buffer // a reader for the bytes of the PDV
+	byteReader *bytes.Reader // a reader for the bytes of the PDV
 	isCommand  bool          // are we reading a command or a data set?
 }
 
@@ -30,7 +30,7 @@ func newPDVReader(pduReader *pduReader, isCommand bool) (*pdvReader, error) {
 	}
 
 	// create a reader
-	reader := bytes.NewBuffer(pdv.buf)
+	reader := bytes.NewReader(pdv.buf)
 
 	// check that the command or data match the last pdv
 	if err := checkCommand(isCommand, pdv); err != nil {

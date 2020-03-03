@@ -10,7 +10,7 @@ import (
 type pduReader struct {
 	reader     io.Reader     // underlying reader
 	pdu        *pdu          // current pdu
-	byteReader *bytes.Buffer // reader for current pdu
+	byteReader *bytes.Reader // reader for current pdu
 }
 
 // newPDUReader constructs a new pduReader
@@ -31,7 +31,7 @@ func (pduReader *pduReader) nextPDU() (*pdu, error) {
 	pduReader.pdu = pdu
 
 	// create a reader
-	pduReader.byteReader = bytes.NewBuffer(pdu.buf)
+	pduReader.byteReader = bytes.NewReader(pdu.buf)
 
 	// return the pdu so that we can inspect the type
 	// perhaps we should just return the type
