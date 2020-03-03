@@ -16,7 +16,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 )
 
@@ -55,12 +54,17 @@ func readPDU(reader io.Reader) (*pdu, error) {
 		return nil, err
 	}
 
-	// read the length, PDU lengths are always big endian
+	// read the length, pdu lengths are always big endian
 	len, err := readLong(reader, binary.BigEndian)
 	if err != nil {
 		return nil, err
 	}
 
+	// read the contents of the pdu
+	// we may want to revisit this in the future
+	// it could be more efficient not to read the bytes
+	// at this point, and use a limited reader to read
+	// the bytes when required
 	buf, err := readBytes(reader, len)
 	if err != nil {
 		return nil, err
@@ -83,7 +87,7 @@ func (pdu *pdu) writeTo(writer io.Writer) error {
 		return err
 	}
 
-	// skip a byte, as per the standard
+	// write a zero byte, as per the standard
 	if err := writeByte(writer, 0x00); err != nil {
 		return err
 	}
@@ -157,12 +161,12 @@ func (abortPDU *abortPDU) writeTo(writer io.Writer) error {
 	// create a byte writer
 	byteWriter := new(bytes.Buffer)
 
-	// write a reserved byte
+	// write a zero byte, as per the standard
 	if err := writeByte(byteWriter, 0x00); err != nil {
 		return nil
 	}
 
-	// write a reserved byte
+	// write a zero byte, as per the standard
 	if err := writeByte(byteWriter, 0x00); err != nil {
 		return nil
 	}
@@ -216,7 +220,7 @@ type assocPDU struct {
 	userInfo       *userInfo
 }
 
-// String returns a string representation of a AssocACRQPDU
+// String returns a string representation of a assocPDU
 func (assocPDU *assocPDU) String() string {
 	return fmt.Sprintf(
 		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,pcs:%s,userInfo:%s}",
@@ -295,8 +299,8 @@ func readAssocPDU(reader io.Reader, pcItemType byte) (*assocPDU, error) {
 	// create an association accept or request pdu
 	assocPDU := &assocPDU{
 		protocol:       protocol,
-		calledAETitle:  strings.TrimSpace(calledAETitle),
-		callingAETitle: strings.TrimSpace(callingAETitle),
+		calledAETitle:  calledAETitle,
+		callingAETitle: callingAETitle,
 		pcs:            make([]*pc, 0, 5),
 	}
 
@@ -413,16 +417,21 @@ func (assocPDU *assocPDU) writeTo(writer io.Writer, pduType byte, pcItemType byt
 	return nil
 }
 
-func (assocPDU *assocPDU) writeVariableItems(writer io.Writer, itemType byte) error {
+// writeVariableItems writes the application context name, the presentation
+// contexts and user info
+func (assocPDU *assocPDU) writeVariableItems(writer io.Writer, pcItemType byte) error {
 
-	if err := writeAppContextName1(writer, assocPDU.appContextName); err != nil {
+	// write the application context name
+	if err := writeAppContextName(writer, assocPDU.appContextName); err != nil {
 		return err
 	}
 
-	if err := writePCs(writer, assocPDU.pcs, itemType); err != nil {
+	// write the presentation contexts
+	if err := writePCs(writer, assocPDU.pcs, pcItemType); err != nil {
 		return err
 	}
 
+	// write the user info
 	if err := writeUserInfo(writer, assocPDU.userInfo); err != nil {
 		return err
 	}
@@ -430,7 +439,8 @@ func (assocPDU *assocPDU) writeVariableItems(writer io.Writer, itemType byte) er
 	return nil
 }
 
-func writeAppContextName1(writer io.Writer, appContextName string) error {
+// write the application context name
+func writeAppContextName(writer io.Writer, appContextName string) error {
 
 	// write item type
 	if err := writeByte(writer, appContextItemType); err != nil {
@@ -455,12 +465,12 @@ func writeAppContextName1(writer io.Writer, appContextName string) error {
 	return nil
 }
 
-// An assocRQPDU represents an associate request PDU
+// assocRQPDU represents an associate request PDU
 type assocRQPDU struct {
 	*assocPDU
 }
 
-// newAssociateRQPDU creates a new association request PDU
+// newAssocRQPDU creates a new association request PDU
 func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *assocRQPDU {
 	return &assocRQPDU{newAssocPDU(calledAETitle, callingAETitle, capabilities)}
 }
@@ -474,8 +484,11 @@ func readAssocRQPDU(reader io.Reader) (*assocRQPDU, error) {
 		return nil, err
 	}
 
-	// construct and return an association request pdu
-	return &assocRQPDU{assocPDU}, nil
+	// construct association request pdu
+	assocRQPDU := &assocRQPDU{assocPDU}
+
+	// return the pdu and success
+	return assocRQPDU, nil
 }
 
 // writeAssocRQPDU writes an associate request
@@ -483,7 +496,7 @@ func (assocRQPDU *assocRQPDU) writeTo(writer io.Writer) error {
 	return assocRQPDU.assocPDU.writeTo(writer, aAssociateRQPDU, rqPCItemType)
 }
 
-// An assocACPDU represents an associate accept PDU
+// assocACPDU represents an associate accept PDU
 type assocACPDU struct {
 	*assocPDU
 }
@@ -502,8 +515,11 @@ func readAssocACPDU(reader io.Reader) (*assocACPDU, error) {
 		return nil, err
 	}
 
-	// construct and return an association request pdu
-	return &assocACPDU{assocPDU}, nil
+	// construct association accept pdu
+	assocACPDU := &assocACPDU{assocPDU}
+
+	// return the pdu and success
+	return assocACPDU, nil
 }
 
 // writeTo writes an associate accept PDU
@@ -542,6 +558,7 @@ type assocRJPDU struct {
 	reason byte
 }
 
+// String returns a string representation of an association reject PDU
 func (assocRJPDU *assocRJPDU) String() string {
 	return fmt.Sprintf(
 		"{result:%d,source:%d,reason:%d}",
@@ -551,6 +568,7 @@ func (assocRJPDU *assocRJPDU) String() string {
 	)
 }
 
+// readAssocRJDPU reads an association reject PDU
 func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 
 	// skip a byte, as per the standard
@@ -587,7 +605,7 @@ func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 	return assocRJPDU, nil
 }
 
-// Write writes an associate reject PDU
+// writeTo writes an associate reject PDU
 func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
 
 	// create a byte writer
@@ -636,7 +654,7 @@ func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
 // releasePDU represents a request or release PDU
 type releasePDU struct{}
 
-// readReleasePDU reads an ReleaseRQPDU from a reader
+// readReleasePDU reads an release request pdu
 func readReleasePDU(reader io.Reader) (*releasePDU, error) {
 
 	// skip the long, as per the standard
@@ -677,12 +695,12 @@ func (releasePDU *releasePDU) writeTo(writer io.Writer, pduType byte) error {
 	return nil
 }
 
-// releaseRQPDU represents an associate request PDU
+// releaseRQPDU represents an release request PDU
 type releaseRQPDU struct {
 	*releasePDU
 }
 
-// readReleaseRQPDU reads an associate request
+// readReleaseRQPDU reads a release request PDU
 func readReleaseRQPDU(reader io.Reader) (*releaseRQPDU, error) {
 
 	// read the releae request or response
@@ -691,8 +709,11 @@ func readReleaseRQPDU(reader io.Reader) (*releaseRQPDU, error) {
 		return nil, err
 	}
 
-	// construct and return an association request pdu
-	return &releaseRQPDU{releasePDU}, nil
+	// construct a release request pdu
+	releaseRQPDU := &releaseRQPDU{releasePDU}
+
+	// return the pdu and success
+	return releaseRQPDU, nil
 }
 
 // writeTo writes an release request PDU
@@ -714,8 +735,11 @@ func readReleaseRPPDU(reader io.Reader) (*releaseRPPDU, error) {
 		return nil, err
 	}
 
-	// construct and return an association response pdu
-	return &releaseRPPDU{releasePDU}, nil
+	// construct a release request pdu
+	releaseRPPDU := &releaseRPPDU{releasePDU}
+
+	// return the pdu and success
+	return releaseRPPDU, nil
 }
 
 // writeTo writes an release request PDU
@@ -723,25 +747,35 @@ func (releaseRPPDU *releaseRPPDU) writeTo(writer io.Writer) error {
 	return releaseRPPDU.releasePDU.writeTo(writer, aReleaseRPPDU)
 }
 
+// dataTFPDU represents a data transfer PDU
 type dataTFPDU struct {
 	pdvs []*pdv
 }
 
+// newDataTFPDU creates a new data transfer PDU, initializing the set of PDVs
 func newDataTFPDU() *dataTFPDU {
+
+	// construct the pdu
 	dataTFPDU := &dataTFPDU{
 		pdvs: make([]*pdv, 0),
 	}
+
+	// return the pdu
 	return dataTFPDU
 }
 
+// addPDV adds a PDV to the data transfer PDU
 func (dataTFPDU *dataTFPDU) addPDV(pdv *pdv) {
 	dataTFPDU.pdvs = append(dataTFPDU.pdvs, pdv)
 }
 
+// readDataTDPFU reads a data transfer PDU
 func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
 
-	pdvs := make([]*pdv, 0)
+	// initialize a data transfer pdu
+	dataTFPDU := newDataTFPDU()
 
+	// read all the PDVs and add them to the PDU
 	for {
 		pdv, err := readPDV(reader)
 		if err != nil {
@@ -750,16 +784,14 @@ func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
 			}
 			break
 		}
-		pdvs = append(pdvs, pdv)
+		dataTFPDU.addPDV(pdv)
 	}
 
-	dataTFPDU := &dataTFPDU{
-		pdvs: pdvs,
-	}
-
+	// return the pdu and success
 	return dataTFPDU, nil
 }
 
+// writeTo writes the data transfer PDU
 func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
 
 	// create a byte writer
@@ -785,70 +817,4 @@ func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
 
 	// return success
 	return nil
-
-}
-
-// nextPDU reads the next PDU
-func nextPDU(reader io.Reader) (interface{}, error) {
-
-	pdu, err := readPDU(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	byteReader := bytes.NewBuffer(pdu.buf)
-
-	switch pdu.typ {
-	case aAbortPDU:
-		abortPDU, err := readAbortPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received abort pdu, %v", abortPDU)
-		return abortPDU, nil
-	case aAssociateRQPDU:
-		assocRQPDU, err := readAssocRQPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate request pdu, %v", assocRQPDU)
-		return assocRQPDU, nil
-	case aAssociateACPDU:
-		assocACPDU, err := readAssocACPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate accept pdu, %v", assocACPDU)
-		return assocACPDU, nil
-	case aAssociateRJPDU:
-		assocRJPDU, err := readAssocRJPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate reject pdu, %v", assocRJPDU)
-		return assocRJPDU, nil
-	case aReleaseRQPDU:
-		releaseRQPDU, err := readReleaseRQPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received release request pdu, %v", releaseRQPDU)
-		return releaseRQPDU, nil
-	case aReleaseRPPDU:
-		releaseRPPDU, err := readReleaseRPPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received release response pdu, %v", releaseRPPDU)
-		return releaseRPPDU, nil
-	case pDataTFPDU:
-		dataTFPDU, err := readDataTFPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received data transfer pdu, %v", dataTFPDU)
-		return dataTFPDU, nil
-	}
-
-	return nil, fmt.Errorf("pdu type not recognized, %v", pdu.typ)
 }
