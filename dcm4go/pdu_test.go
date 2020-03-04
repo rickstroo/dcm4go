@@ -4,9 +4,7 @@ package dcm4go
 
 import (
 	"bytes"
-	"fmt"
 	"io"
-	"log"
 	"testing"
 )
 
@@ -80,67 +78,67 @@ func TestStringPDU(t *testing.T) {
 	}
 }
 
-// nextPDU reads the next PDU
-func nextPDU(reader io.Reader) (interface{}, error) {
-
-	pdu, err := readPDU(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	byteReader := bytes.NewBuffer(pdu.buf)
-
-	switch pdu.typ {
-	case aAbortPDU:
-		abortPDU, err := readAbortPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received abort pdu, %v", abortPDU)
-		return abortPDU, nil
-	case aAssociateRQPDU:
-		assocRQPDU, err := readAssocRQPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate request pdu, %v", assocRQPDU)
-		return assocRQPDU, nil
-	case aAssociateACPDU:
-		assocACPDU, err := readAssocACPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate accept pdu, %v", assocACPDU)
-		return assocACPDU, nil
-	case aAssociateRJPDU:
-		assocRJPDU, err := readAssocRJPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received associate reject pdu, %v", assocRJPDU)
-		return assocRJPDU, nil
-	case aReleaseRQPDU:
-		releaseRQPDU, err := readReleaseRQPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received release request pdu, %v", releaseRQPDU)
-		return releaseRQPDU, nil
-	case aReleaseRPPDU:
-		releaseRPPDU, err := readReleaseRPPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received release response pdu, %v", releaseRPPDU)
-		return releaseRPPDU, nil
-	case pDataTFPDU:
-		dataTFPDU, err := readDataTFPDU(byteReader)
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("received data transfer pdu, %v", dataTFPDU)
-		return dataTFPDU, nil
-	}
-
-	return nil, fmt.Errorf("pdu type not recognized, %v", pdu.typ)
-}
+// // nextPDU reads the next PDU
+// func nextPDU(reader io.Reader) (interface{}, error) {
+//
+// 	pdu, err := readPDU(reader)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	byteReader := bytes.NewBuffer(pdu.buf)
+//
+// 	switch pdu.typ {
+// 	case aAbortPDU:
+// 		abortPDU, err := readAbortPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received abort pdu, %v", abortPDU)
+// 		return abortPDU, nil
+// 	case aAssociateRQPDU:
+// 		assocRQPDU, err := readAssocRQPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received associate request pdu, %v", assocRQPDU)
+// 		return assocRQPDU, nil
+// 	case aAssociateACPDU:
+// 		assocACPDU, err := readAssocACPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received associate accept pdu, %v", assocACPDU)
+// 		return assocACPDU, nil
+// 	case aAssociateRJPDU:
+// 		assocRJPDU, err := readAssocRJPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received associate reject pdu, %v", assocRJPDU)
+// 		return assocRJPDU, nil
+// 	case aReleaseRQPDU:
+// 		releaseRQPDU, err := readReleaseRQPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received release request pdu, %v", releaseRQPDU)
+// 		return releaseRQPDU, nil
+// 	case aReleaseRPPDU:
+// 		releaseRPPDU, err := readReleaseRPPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received release response pdu, %v", releaseRPPDU)
+// 		return releaseRPPDU, nil
+// 	case pDataTFPDU:
+// 		dataTFPDU, err := readDataTFPDU(byteReader)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		log.Printf("received data transfer pdu, %v", dataTFPDU)
+// 		return dataTFPDU, nil
+// 	}
+//
+// 	return nil, fmt.Errorf("pdu type not recognized, %v", pdu.typ)
+// }

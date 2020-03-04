@@ -769,27 +769,27 @@ func (dataTFPDU *dataTFPDU) addPDV(pdv *pdv) {
 	dataTFPDU.pdvs = append(dataTFPDU.pdvs, pdv)
 }
 
-// readDataTDPFU reads a data transfer PDU
-func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
-
-	// initialize a data transfer pdu
-	dataTFPDU := newDataTFPDU()
-
-	// read all the PDVs and add them to the PDU
-	for {
-		pdv, err := readPDV(reader)
-		if err != nil {
-			if err != io.EOF {
-				return nil, err
-			}
-			break
-		}
-		dataTFPDU.addPDV(pdv)
-	}
-
-	// return the pdu and success
-	return dataTFPDU, nil
-}
+// // readDataTDPFU reads a data transfer PDU
+// func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
+//
+// 	// initialize a data transfer pdu
+// 	dataTFPDU := newDataTFPDU()
+//
+// 	// read all the PDVs and add them to the PDU
+// 	for {
+// 		pdv, err := readPDV(reader)
+// 		if err != nil {
+// 			if err != io.EOF {
+// 				return nil, err
+// 			}
+// 			break
+// 		}
+// 		dataTFPDU.addPDV(pdv)
+// 	}
+//
+// 	// return the pdu and success
+// 	return dataTFPDU, nil
+// }
 
 // writeTo writes the data transfer PDU
 func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
