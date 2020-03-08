@@ -58,11 +58,11 @@ func parseAddr(addr string) (string, string, string) {
 }
 
 // RequestAssoc requests an association
-func (ae *AE) RequestAssoc(conn net.Conn, remoteAE *AE, capabilities *Capabilities, opts *AssocOpts) (*RequestorAssoc, error) {
+func (ae *AE) RequestAssoc(conn net.Conn, remoteAE *AE, capabilities *Capabilities, opts *AssocOpts) (*Assoc, error) {
 	return requestAssoc(conn, ae, remoteAE, capabilities, opts)
 }
 
 // AcceptAssoc waits for an association request
-func (ae *AE) AcceptAssoc(conn net.Conn, capabilities *Capabilities, opts *AssocOpts) (*AcceptorAssoc, error) {
+func (ae *AE) AcceptAssoc(conn net.Conn, capabilities *Capabilities, opts *AssocOpts) (*Assoc, error) {
 	return acceptAssoc(conn, ae, capabilities)
 }

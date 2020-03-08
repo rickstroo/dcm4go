@@ -15,12 +15,12 @@ import (
 
 // Assoc represents a DICOM association
 type Assoc struct {
-	conn       net.Conn
-	pduReader  *pduReader
-	pduWriter  *pduWriter
-	ae         *AE
-	assocRQPDU *assocRQPDU
-	assocACPDU *assocACPDU
+	conn       net.Conn    // the connection used to exchange information
+	pduReader  *pduReader  // a reader of pdus
+	pduWriter  *pduWriter  // a writer of pdus
+	ae         *AE         // the ae requesting or accepting the association
+	assocRQPDU *assocRQPDU // the associate request
+	assocACPDU *assocACPDU // the associate response (if accepted)
 }
 
 // AssocOpts impact the behaviour of a Assoc.
@@ -134,13 +134,8 @@ func onUnexpectedPDU(reader io.Reader, pdu *pdu) error {
 	return fmt.Errorf("unexpected pdu type, %d, %w", pdu.typ, ErrUnexpectedPDU)
 }
 
-// AcceptorAssoc is a type of Assoc, used by acceptors of associations.
-type AcceptorAssoc struct {
-	Assoc
-}
-
 // acceptAssoc accepts an association
-func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAssoc, error) {
+func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -206,15 +201,13 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*AcceptorAs
 	}
 
 	// construct an association
-	assoc := &AcceptorAssoc{
-		Assoc{
-			conn:       conn,
-			pduReader:  pduReader,
-			pduWriter:  pduWriter,
-			ae:         ae,
-			assocRQPDU: assocRQPDU,
-			assocACPDU: assocACPDU,
-		},
+	assoc := &Assoc{
+		conn:       conn,
+		pduReader:  pduReader,
+		pduWriter:  pduWriter,
+		ae:         ae,
+		assocRQPDU: assocRQPDU,
+		assocACPDU: assocACPDU,
 	}
 	log.Printf("assoc is %v\n", assoc)
 
@@ -319,7 +312,7 @@ func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *Capab
 }
 
 // ReadRequest read a request
-func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
+func (assoc *Assoc) ReadRequest() (*Message, error) {
 
 	// read the next PDU
 	pdu, err := assoc.pduReader.nextPDU()
@@ -346,7 +339,7 @@ func (assoc *AcceptorAssoc) ReadRequest() (*Message, error) {
 	return assoc.readMessage(false)
 }
 
-func (assoc *AcceptorAssoc) onRelease() error {
+func (assoc *Assoc) onRelease() error {
 	if _, err := readReleaseRQPDU(assoc.pduReader); err != nil {
 		return err
 	}
@@ -360,13 +353,8 @@ func (assoc *AcceptorAssoc) onRelease() error {
 }
 
 // WriteResponse writes a response
-func (assoc *AcceptorAssoc) WriteResponse(message *Message) error {
+func (assoc *Assoc) WriteResponse(message *Message) error {
 	return assoc.writeMessage(message)
-}
-
-// RequestorAssoc is a type of Assoc, used by requestors of associations.
-type RequestorAssoc struct {
-	Assoc
 }
 
 // requestAssoc is used to request an association.
@@ -376,7 +364,7 @@ func requestAssoc(
 	remoteAE *AE,
 	capabilities *Capabilities,
 	opts *AssocOpts,
-) (*RequestorAssoc, error) {
+) (*Assoc, error) {
 
 	// create a pdu reader and pdu writer
 	pduReader := newPDUReader(conn)
@@ -425,14 +413,12 @@ func requestAssoc(
 	log.Printf("received a associate acceptance pdu, %v", assocACPDU)
 
 	// create an association from the response
-	assoc := &RequestorAssoc{
-		Assoc{
-			conn:       conn,
-			pduReader:  pduReader,
-			pduWriter:  pduWriter,
-			assocRQPDU: assocRQPDU,
-			assocACPDU: assocACPDU,
-		},
+	assoc := &Assoc{
+		conn:       conn,
+		pduReader:  pduReader,
+		pduWriter:  pduWriter,
+		assocRQPDU: assocRQPDU,
+		assocACPDU: assocACPDU,
 	}
 	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
 
@@ -477,12 +463,12 @@ func (assoc *Assoc) RequestRelease() error {
 }
 
 // WriteRequest writes a request
-func (assoc *RequestorAssoc) WriteRequest(message *Message) error {
+func (assoc *Assoc) WriteRequest(message *Message) error {
 	return assoc.writeMessage(message)
 }
 
 // ReadResponse reads a response
-func (assoc *RequestorAssoc) ReadResponse() (*Message, error) {
+func (assoc *Assoc) ReadResponse() (*Message, error) {
 
 	// read the next PDU
 	pdu, err := assoc.pduReader.nextPDU()
@@ -504,7 +490,7 @@ func (assoc *RequestorAssoc) ReadResponse() (*Message, error) {
 }
 
 // Echo sends a DICOM C-Echo request
-func (assoc *RequestorAssoc) Echo() error {
+func (assoc *Assoc) Echo() error {
 
 	// create a verification request
 	request, err := NewCEchoRequest(assoc)
@@ -537,7 +523,7 @@ func (assoc *RequestorAssoc) Echo() error {
 }
 
 // Store sends a DICOM C-Store request
-func (assoc *RequestorAssoc) Store(reader io.Reader) error {
+func (assoc *Assoc) Store(reader io.Reader) error {
 
 	// read the group two attributes
 	groupTwo, err := ReadGroupTwo(reader, 0)

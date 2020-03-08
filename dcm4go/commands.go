@@ -36,7 +36,7 @@ const (
 
 // newRequest constructs a request message
 func newRequest(
-	assoc *RequestorAssoc,
+	assoc *Assoc,
 	affectedSOPClassUID string,
 	transferSyntaxUID string,
 	commandField uint16,
@@ -108,7 +108,7 @@ func newResponse(
 }
 
 // NewCEchoRequest constructs a C-Echo request message
-func NewCEchoRequest(assoc *RequestorAssoc) (*Message, error) {
+func NewCEchoRequest(assoc *Assoc) (*Message, error) {
 	return newRequest(assoc, VerificationUID, "*", CEchoRQ, NoDataSetCode)
 }
 
@@ -118,7 +118,7 @@ func NewCEchoResponse(request *Message) (*Message, error) {
 }
 
 // NewCStoreRequest constructs a C-Store request message
-func NewCStoreRequest(assoc *RequestorAssoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string, reader io.Reader) (*Message, error) {
+func NewCStoreRequest(assoc *Assoc, sopClassUID string, sopInstanceUID string, transferSyntaxUID string, reader io.Reader) (*Message, error) {
 
 	// construct a default request
 	request, err := newRequest(assoc, sopClassUID, transferSyntaxUID, CStoreRQ, DataSetCode)
