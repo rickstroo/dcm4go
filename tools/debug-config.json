@@ -24,6 +24,11 @@
       "name": "dcmsnd",
       "mode": "debug",
       "args": ["-remote=DCMRCV@localhost:4104", "-path=/Users/Rick/data/dicom/GENECG.dcm"]
+    },
+    {
+      "name": "actor",
+      "mode": "debug",
+      "args": []
     }
   ]
 }
