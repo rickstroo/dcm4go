@@ -80,10 +80,11 @@ func readPDU(reader io.Reader) (*pdu, error) {
 	return pdu, nil
 }
 
-func (pdu *pdu) writeTo(writer io.Writer) error {
+// writePDU writes a PDU to a writer
+func writePDU(writer io.Writer, typ byte, len uint32, buf []byte) error {
 
 	// write the type
-	if err := writeByte(writer, pdu.typ); err != nil {
+	if err := writeByte(writer, typ); err != nil {
 		return err
 	}
 
@@ -93,17 +94,21 @@ func (pdu *pdu) writeTo(writer io.Writer) error {
 	}
 
 	// write the length
-	if err := writeLong(writer, uint32(len(pdu.buf)), binary.BigEndian); err != nil {
+	if err := writeLong(writer, len, binary.BigEndian); err != nil {
 		return err
 	}
 
 	// write the bytes
-	if err := writeBytes(writer, pdu.buf); err != nil {
+	if err := writeBytes(writer, buf); err != nil {
 		return err
 	}
 
 	// return success
 	return nil
+}
+
+func (pdu *pdu) writeTo(writer io.Writer) error {
+	return writePDU(writer, pdu.typ, uint32(len(pdu.buf)), pdu.buf)
 }
 
 const (
@@ -652,18 +657,23 @@ func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
 }
 
 // releasePDU represents a request or release PDU
-type releasePDU struct{}
+type releasePDU struct {
+	reserved uint32
+}
 
 // readReleasePDU reads an release request pdu
 func readReleasePDU(reader io.Reader) (*releasePDU, error) {
 
 	// skip the long, as per the standard
-	if _, err := readLong(reader, binary.BigEndian); err != nil {
+	reserved, err := readLong(reader, binary.BigEndian)
+	if err != nil {
 		return nil, err
 	}
 
 	// construct the release request pdu
-	releasePDU := &releasePDU{}
+	releasePDU := &releasePDU{
+		reserved: reserved,
+	}
 
 	// return the release pdu
 	return releasePDU, nil
@@ -676,7 +686,7 @@ func (releasePDU *releasePDU) writeTo(writer io.Writer, pduType byte) error {
 	byteWriter := new(bytes.Buffer)
 
 	// write a long
-	if err := writeLong(byteWriter, 0x00, binary.BigEndian); err != nil {
+	if err := writeLong(byteWriter, releasePDU.reserved, binary.BigEndian); err != nil {
 		return nil
 	}
 
