@@ -7,6 +7,12 @@ import (
 	"io"
 )
 
+// A pduReader is used to read the contents of a raw pdu,
+// much like a bytes.Reader or bytes.Buffer is used to read
+// the contents of a raw bytes buffer.  In addition, the
+// pduReader has the ability to read the next pdu, as data
+// can be distributed across multiple pdus.  In this way,
+// a pdu reader acts like a multiple reader.
 type pduReader struct {
 	reader     io.Reader     // underlying reader
 	pdu        *pdu          // current pdu

@@ -749,7 +749,8 @@ func (releaseRPPDU *releaseRPPDU) writeTo(writer io.Writer) error {
 
 // dataTFPDU represents a data transfer PDU
 type dataTFPDU struct {
-	pdvs []*pdv
+	pdvs     []*pdv
+	pdvIndex int
 }
 
 // newDataTFPDU creates a new data transfer PDU, initializing the set of PDVs
@@ -757,7 +758,8 @@ func newDataTFPDU() *dataTFPDU {
 
 	// construct the pdu
 	dataTFPDU := &dataTFPDU{
-		pdvs: make([]*pdv, 0),
+		pdvs:     make([]*pdv, 0),
+		pdvIndex: 0,
 	}
 
 	// return the pdu
@@ -769,27 +771,37 @@ func (dataTFPDU *dataTFPDU) addPDV(pdv *pdv) {
 	dataTFPDU.pdvs = append(dataTFPDU.pdvs, pdv)
 }
 
-// // readDataTDPFU reads a data transfer PDU
-// func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
-//
-// 	// initialize a data transfer pdu
-// 	dataTFPDU := newDataTFPDU()
-//
-// 	// read all the PDVs and add them to the PDU
-// 	for {
-// 		pdv, err := readPDV(reader)
-// 		if err != nil {
-// 			if err != io.EOF {
-// 				return nil, err
-// 			}
-// 			break
-// 		}
-// 		dataTFPDU.addPDV(pdv)
-// 	}
-//
-// 	// return the pdu and success
-// 	return dataTFPDU, nil
-// }
+// nextPDV gets the next PDV
+func (dataTFPDU *dataTFPDU) nextPDV() *pdv {
+	if dataTFPDU.pdvIndex >= len(dataTFPDU.pdvs) {
+		return nil
+	}
+	pdv := dataTFPDU.pdvs[dataTFPDU.pdvIndex]
+	dataTFPDU.pdvIndex++
+	return pdv
+}
+
+// readDataTDPFU reads a data transfer PDU
+func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
+
+	// initialize a data transfer pdu
+	dataTFPDU := newDataTFPDU()
+
+	// read all the PDVs and add them to the PDU
+	for {
+		pdv, err := readPDV(reader)
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			break
+		}
+		dataTFPDU.addPDV(pdv)
+	}
+
+	// return the pdu and success
+	return dataTFPDU, nil
+}
 
 // writeTo writes the data transfer PDU
 func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
