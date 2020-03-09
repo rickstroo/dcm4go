@@ -79,7 +79,7 @@ func (pdv *pdv) isLast() bool {
 	return pdv.mch&0x02 == 0x02
 }
 
-func (pdv *pdv) writeTo(writer io.Writer) error {
+func writePDV(writer io.Writer, pdv *pdv) error {
 
 	// write the length of the pdv
 	// note that it is two plus the length of the buffer

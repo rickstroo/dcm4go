@@ -81,10 +81,10 @@ func readPDU(reader io.Reader) (*pdu, error) {
 }
 
 // writePDU writes a PDU to a writer
-func writePDU(writer io.Writer, typ byte, len uint32, buf []byte) error {
+func writePDU(writer io.Writer, pdu *pdu) error {
 
 	// write the type
-	if err := writeByte(writer, typ); err != nil {
+	if err := writeByte(writer, pdu.typ); err != nil {
 		return err
 	}
 
@@ -94,21 +94,17 @@ func writePDU(writer io.Writer, typ byte, len uint32, buf []byte) error {
 	}
 
 	// write the length
-	if err := writeLong(writer, len, binary.BigEndian); err != nil {
+	if err := writeLong(writer, uint32(len(pdu.buf)), binary.BigEndian); err != nil {
 		return err
 	}
 
 	// write the bytes
-	if err := writeBytes(writer, buf); err != nil {
+	if err := writeBytes(writer, pdu.buf); err != nil {
 		return err
 	}
 
 	// return success
 	return nil
-}
-
-func (pdu *pdu) writeTo(writer io.Writer) error {
-	return writePDU(writer, pdu.typ, uint32(len(pdu.buf)), pdu.buf)
 }
 
 const (
@@ -161,7 +157,7 @@ func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 }
 
 // writeTo writes an AbortPDU to a writer
-func (abortPDU *abortPDU) writeTo(writer io.Writer) error {
+func writeAbortPDU(writer io.Writer, abortPDU *abortPDU) error {
 
 	// create a byte writer
 	byteWriter := new(bytes.Buffer)
@@ -193,7 +189,7 @@ func (abortPDU *abortPDU) writeTo(writer io.Writer) error {
 	}
 
 	// write the pdu
-	if err := pdu.writeTo(writer); err != nil {
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 
@@ -371,7 +367,7 @@ func readAssocPDU(reader io.Reader, pcItemType byte) (*assocPDU, error) {
 }
 
 // writeTo writes an associate PDU
-func (assocPDU *assocPDU) writeTo(writer io.Writer, pduType byte, pcItemType byte) error {
+func writeAssocPDU(writer io.Writer, assocPDU *assocPDU, pduType byte, pcItemType byte) error {
 
 	// create a byte array output stream so we can calculate the length of the rest of the PDU
 	byteWriter := new(bytes.Buffer)
@@ -414,7 +410,7 @@ func (assocPDU *assocPDU) writeTo(writer io.Writer, pduType byte, pcItemType byt
 	}
 
 	// write the pdu
-	if err := pdu.writeTo(writer); err != nil {
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 
@@ -470,66 +466,34 @@ func writeAppContextName(writer io.Writer, appContextName string) error {
 	return nil
 }
 
-// assocRQPDU represents an associate request PDU
-type assocRQPDU struct {
-	*assocPDU
-}
-
 // newAssocRQPDU creates a new association request PDU
-func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *assocRQPDU {
-	return &assocRQPDU{newAssocPDU(calledAETitle, callingAETitle, capabilities)}
+func newAssocRQPDU(calledAETitle string, callingAETitle string, capabilities *Capabilities) *assocPDU {
+	return newAssocPDU(calledAETitle, callingAETitle, capabilities)
 }
 
 // readAssocRQPDU reads an associate request
-func readAssocRQPDU(reader io.Reader) (*assocRQPDU, error) {
-
-	// read the association request
-	assocPDU, err := readAssocPDU(reader, rqPCItemType)
-	if err != nil {
-		return nil, err
-	}
-
-	// construct association request pdu
-	assocRQPDU := &assocRQPDU{assocPDU}
-
-	// return the pdu and success
-	return assocRQPDU, nil
+func readAssocRQPDU(reader io.Reader) (*assocPDU, error) {
+	return readAssocPDU(reader, rqPCItemType)
 }
 
 // writeAssocRQPDU writes an associate request
-func (assocRQPDU *assocRQPDU) writeTo(writer io.Writer) error {
-	return assocRQPDU.assocPDU.writeTo(writer, aAssociateRQPDU, rqPCItemType)
-}
-
-// assocACPDU represents an associate accept PDU
-type assocACPDU struct {
-	*assocPDU
+func writeAssocRQPDU(writer io.Writer, assocRQPDU *assocPDU) error {
+	return writeAssocPDU(writer, assocRQPDU, aAssociateRQPDU, rqPCItemType)
 }
 
 // create an associate accept PDU from an associate request PDU
-func newAssocACPDU(assocRQPDU *assocRQPDU) *assocACPDU {
-	return &assocACPDU{newAssocPDU(assocRQPDU.calledAETitle, assocRQPDU.callingAETitle, nil)}
+func newAssocACPDU(assocRQPDU *assocPDU) *assocPDU {
+	return newAssocPDU(assocRQPDU.calledAETitle, assocRQPDU.callingAETitle, nil)
 }
 
 // readAssocACPDU reads an associate accept
-func readAssocACPDU(reader io.Reader) (*assocACPDU, error) {
-
-	// read the associate request
-	assocPDU, err := readAssocPDU(reader, acPCItemType)
-	if err != nil {
-		return nil, err
-	}
-
-	// construct association accept pdu
-	assocACPDU := &assocACPDU{assocPDU}
-
-	// return the pdu and success
-	return assocACPDU, nil
+func readAssocACPDU(reader io.Reader) (*assocPDU, error) {
+	return readAssocPDU(reader, acPCItemType)
 }
 
 // writeTo writes an associate accept PDU
-func (assocACPDU *assocACPDU) writeTo(writer io.Writer) error {
-	return assocACPDU.assocPDU.writeTo(writer, aAssociateACPDU, acPCItemType)
+func writeAssocACPDU(writer io.Writer, assocACPDU *assocPDU) error {
+	return writeAssocPDU(writer, assocACPDU, aAssociateACPDU, acPCItemType)
 }
 
 const (
@@ -611,7 +575,7 @@ func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 }
 
 // writeTo writes an associate reject PDU
-func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
+func writeAssocRJPDU(writer io.Writer, assocRJPDU *assocRJPDU) error {
 
 	// create a byte writer
 	byteWriter := new(bytes.Buffer)
@@ -648,7 +612,7 @@ func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
 	}
 
 	// write the pdu
-	if err := pdu.writeTo(writer); err != nil {
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 
@@ -656,37 +620,27 @@ func (assocRJPDU *assocRJPDU) writeTo(writer io.Writer) error {
 	return nil
 }
 
-// releasePDU represents a request or release PDU
-type releasePDU struct {
-	reserved uint32
-}
-
 // readReleasePDU reads an release request pdu
-func readReleasePDU(reader io.Reader) (*releasePDU, error) {
+func readReleasePDU(reader io.Reader) error {
 
 	// skip the long, as per the standard
-	reserved, err := readLong(reader, binary.BigEndian)
+	_, err := readLong(reader, binary.BigEndian)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// construct the release request pdu
-	releasePDU := &releasePDU{
-		reserved: reserved,
-	}
-
-	// return the release pdu
-	return releasePDU, nil
+	// return success
+	return nil
 }
 
 // writeTo writes a release request PDU to a writer
-func (releasePDU *releasePDU) writeTo(writer io.Writer, pduType byte) error {
+func writeReleasePDU(writer io.Writer, pduType byte) error {
 
 	// create a byte writer
 	byteWriter := new(bytes.Buffer)
 
 	// write a long
-	if err := writeLong(byteWriter, releasePDU.reserved, binary.BigEndian); err != nil {
+	if err := writeLong(byteWriter, 0x00, binary.BigEndian); err != nil {
 		return nil
 	}
 
@@ -697,146 +651,30 @@ func (releasePDU *releasePDU) writeTo(writer io.Writer, pduType byte) error {
 	}
 
 	// write the pdu
-	if err := pdu.writeTo(writer); err != nil {
+	if err := writePDU(writer, pdu); err != nil {
 		return err
 	}
 
 	// return success
 	return nil
-}
-
-// releaseRQPDU represents an release request PDU
-type releaseRQPDU struct {
-	*releasePDU
 }
 
 // readReleaseRQPDU reads a release request PDU
-func readReleaseRQPDU(reader io.Reader) (*releaseRQPDU, error) {
-
-	// read the releae request or response
-	releasePDU, err := readReleasePDU(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	// construct a release request pdu
-	releaseRQPDU := &releaseRQPDU{releasePDU}
-
-	// return the pdu and success
-	return releaseRQPDU, nil
+func readReleaseRQPDU(reader io.Reader) error {
+	return readReleasePDU(reader)
 }
 
-// writeTo writes an release request PDU
-func (releaseRQPDU *releaseRQPDU) writeTo(writer io.Writer) error {
-	return releaseRQPDU.releasePDU.writeTo(writer, aReleaseRQPDU)
-}
-
-// releaseRPPDU represents an associate request PDU
-type releaseRPPDU struct {
-	*releasePDU
+// writeReleaseRQPDU writes an release request PDU
+func writeReleaseRQPDU(writer io.Writer) error {
+	return writeReleasePDU(writer, aReleaseRQPDU)
 }
 
 // readReleaseRPPDU reads an associate request
-func readReleaseRPPDU(reader io.Reader) (*releaseRPPDU, error) {
-
-	// read the releae request or response
-	releasePDU, err := readReleasePDU(reader)
-	if err != nil {
-		return nil, err
-	}
-
-	// construct a release request pdu
-	releaseRPPDU := &releaseRPPDU{releasePDU}
-
-	// return the pdu and success
-	return releaseRPPDU, nil
+func readReleaseRPPDU(reader io.Reader) error {
+	return readReleasePDU(reader)
 }
 
-// writeTo writes an release request PDU
-func (releaseRPPDU *releaseRPPDU) writeTo(writer io.Writer) error {
-	return releaseRPPDU.releasePDU.writeTo(writer, aReleaseRPPDU)
-}
-
-// dataTFPDU represents a data transfer PDU
-type dataTFPDU struct {
-	pdvs     []*pdv
-	pdvIndex int
-}
-
-// newDataTFPDU creates a new data transfer PDU, initializing the set of PDVs
-func newDataTFPDU() *dataTFPDU {
-
-	// construct the pdu
-	dataTFPDU := &dataTFPDU{
-		pdvs:     make([]*pdv, 0),
-		pdvIndex: 0,
-	}
-
-	// return the pdu
-	return dataTFPDU
-}
-
-// addPDV adds a PDV to the data transfer PDU
-func (dataTFPDU *dataTFPDU) addPDV(pdv *pdv) {
-	dataTFPDU.pdvs = append(dataTFPDU.pdvs, pdv)
-}
-
-// nextPDV gets the next PDV
-func (dataTFPDU *dataTFPDU) nextPDV() *pdv {
-	if dataTFPDU.pdvIndex >= len(dataTFPDU.pdvs) {
-		return nil
-	}
-	pdv := dataTFPDU.pdvs[dataTFPDU.pdvIndex]
-	dataTFPDU.pdvIndex++
-	return pdv
-}
-
-// readDataTDPFU reads a data transfer PDU
-func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
-
-	// initialize a data transfer pdu
-	dataTFPDU := newDataTFPDU()
-
-	// read all the PDVs and add them to the PDU
-	for {
-		pdv, err := readPDV(reader)
-		if err != nil {
-			if err != io.EOF {
-				return nil, err
-			}
-			break
-		}
-		dataTFPDU.addPDV(pdv)
-	}
-
-	// return the pdu and success
-	return dataTFPDU, nil
-}
-
-// writeTo writes the data transfer PDU
-func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
-
-	// create a byte writer
-	byteWriter := new(bytes.Buffer)
-
-	// write the pdvs
-	for _, pdv := range dataTFPDU.pdvs {
-		if err := pdv.writeTo(byteWriter); err != nil {
-			return err
-		}
-	}
-
-	// create a pdu
-	pdu := &pdu{
-		typ: pDataTFPDU,
-		buf: byteWriter.Bytes(),
-	}
-
-	// write the pdu
-	if err := pdu.writeTo(writer); err != nil {
-		return err
-	}
-
-	// return success
-	return nil
+// writeReleaseRPPDU writes an release request PDU
+func writeReleaseRPPDU(writer io.Writer) error {
+	return writeReleasePDU(writer, aReleaseRPPDU)
 }

@@ -15,12 +15,12 @@ import (
 
 // Assoc represents a DICOM association
 type Assoc struct {
-	conn       net.Conn    // the connection used to exchange information
-	pduReader  *pduReader  // a reader of pdus
-	pduWriter  *pduWriter  // a writer of pdus
-	ae         *AE         // the ae requesting or accepting the association
-	assocRQPDU *assocRQPDU // the associate request
-	assocACPDU *assocACPDU // the associate response (if accepted)
+	conn       net.Conn   // the connection used to exchange information
+	pduReader  *pduReader // a reader of pdus
+	pduWriter  *pduWriter // a writer of pdus
+	ae         *AE        // the ae requesting or accepting the association
+	assocRQPDU *assocPDU  // the associate request
+	assocACPDU *assocPDU  // the associate response (if accepted)
 }
 
 // AssocOpts impact the behaviour of a Assoc.
@@ -188,7 +188,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 	if assocRJPDU != nil {
 
 		// write the associate reject pdu
-		if err := assocRJPDU.writeTo(pduWriter); err != nil {
+		if err := writeAssocRJPDU(pduWriter, assocRJPDU); err != nil {
 			return nil, err
 		}
 		// let the caller know that the associate request was rejected
@@ -196,7 +196,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 	}
 
 	// otherwise, write the associate accept pdu
-	if err := assocACPDU.writeTo(pduWriter); err != nil {
+	if err := writeAssocACPDU(pduWriter, assocACPDU); err != nil {
 		return nil, err
 	}
 
@@ -218,7 +218,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *assocRQPDU, ae *AE, capabilities *Capabilities) (*assocACPDU, *assocRJPDU, error) {
+func negotiateAssoc(assocRQPDU *assocPDU, ae *AE, capabilities *Capabilities) (*assocPDU, *assocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
@@ -340,12 +340,11 @@ func (assoc *Assoc) ReadRequest() (*Message, error) {
 }
 
 func (assoc *Assoc) onRelease() error {
-	if _, err := readReleaseRQPDU(assoc.pduReader); err != nil {
+	if err := readReleaseRQPDU(assoc.pduReader); err != nil {
 		return err
 	}
 
-	releaseRPPDU := &releaseRPPDU{}
-	if err := releaseRPPDU.writeTo(assoc.pduWriter); err != nil {
+	if err := writeReleaseRPPDU(assoc.pduWriter); err != nil {
 		return err
 	}
 
@@ -375,7 +374,7 @@ func requestAssoc(
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
-	if err := assocRQPDU.writeTo(pduWriter); err != nil {
+	if err := writeAssocRQPDU(pduWriter, assocRQPDU); err != nil {
 		return nil, err
 	}
 
@@ -430,8 +429,7 @@ func requestAssoc(
 func (assoc *Assoc) RequestRelease() error {
 
 	// write a request release pdu
-	releaseRQPDU := &releaseRQPDU{}
-	if err := releaseRQPDU.writeTo(assoc.pduWriter); err != nil {
+	if err := writeReleaseRQPDU(assoc.pduWriter); err != nil {
 		return err
 	}
 	log.Printf("wrote a release request\n")
@@ -453,7 +451,7 @@ func (assoc *Assoc) RequestRelease() error {
 		return onUnexpectedPDU(assoc.pduReader, pdu)
 	}
 
-	if _, err := readReleaseRPPDU(assoc.pduReader); err != nil {
+	if err := readReleaseRPPDU(assoc.pduReader); err != nil {
 		return err
 	}
 	log.Printf("received a release response pdu")

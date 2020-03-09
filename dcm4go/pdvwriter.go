@@ -72,48 +72,41 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 	}
 	pdv.buf = pdvWriter.buf.Bytes()
 
-	// create a data transfer PDU with a single PDV
-	// if we wanted to implement packing of multiple PDVs into a single PDU,
-	// we would probably write the PDV to the PDU writer and let it take
-	// care of the packing, flushing when the PDU length is long enough
-	dataTFPDU := newDataTFPDU()
-	dataTFPDU.addPDV(pdv)
+	// we always write a pdv and pdu
+	// while it is possible pack multiple pdvs into a single pdu
+	// that requires some addition logic that i don't think benefits
+	// us all that greatly
 
-	// write the pdu
-	if err := dataTFPDU.writeTo(pdvWriter.writer); err != nil {
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write the pdv header to the byte writer
+	if err := writePDV(byteWriter, pdv); err != nil {
 		return err
 	}
 
-	// // we always write a pdv and pdu
-	// // while it is possible pack multiple pdvs into a single pdu
-	// // that requires some addition logic that i don't think benefits
-	// // us all that greatly
-	//
-	// // create a byte writer
-	// byteWriter := new(bytes.Buffer)
-	//
-	// // write the pdv header to the byte writer
-	// if err := writePDV(byteWriter, pdv); err != nil {
-	// 	return err
-	// }
-	//
-	// // write the bytes of the pdv to the byte writer
-	// // we really want to make this more efficient
-	// // we don't want to copy the bytes and copy them again
-	// // oh well, we'll do it this way for now
-	// if err := writeBytes(byteWriter, pdvWriter.buf.Bytes()); err != nil {
-	// 	return err
-	// }
-	//
-	// // create a data transfer pdu
-	// dataTFPDU := &dataTFPDU{
-	// 	buf: byteWriter.Bytes(),
-	// }
-	//
-	// // write the data transfer pdu
-	// if err := dataTFPDU.writeTo(pdvWriter.writer); err != nil {
-	// 	return err
-	// }
+	// write the bytes of the pdv to the byte writer
+	// we really want to make this more efficient
+	// we don't want to copy the bytes and copy them again
+	// oh well, we'll do it this way for now
+	// we should change this so that the pdv and pdu
+	// don't have internall buffers, but just a length
+	// then we can write the pdu and pdv headers followed
+	// by the bytes
+
+	if err := writeBytes(byteWriter, pdvWriter.buf.Bytes()); err != nil {
+		return err
+	}
+
+	// create a PDU
+	pdu := &pdu{}
+	pdu.typ = pDataTFPDU
+	pdu.buf = byteWriter.Bytes()
+
+	// write the PDU
+	if err := writePDU(pdvWriter.writer, pdu); err != nil {
+		return err
+	}
 
 	// reset the buffer
 	pdvWriter.buf.Reset()
