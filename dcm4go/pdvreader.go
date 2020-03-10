@@ -30,7 +30,7 @@ func newPDVReader(pduReader *pduReader, isCommand bool) (*pdvReader, error) {
 	}
 
 	// create a reader
-	reader := bytes.NewReader(pdv.buf)
+	byteReader := bytes.NewReader(pdv.buf)
 
 	// check that the command or data match the last pdv
 	if err := checkCommand(isCommand, pdv); err != nil {
@@ -38,7 +38,12 @@ func newPDVReader(pduReader *pduReader, isCommand bool) (*pdvReader, error) {
 	}
 
 	// construct a reader
-	pdvReader := &pdvReader{pduReader, pdv, reader, isCommand}
+	pdvReader := &pdvReader{
+		pduReader:   pduReader,
+		pdv:         pdv,
+		byteReader: byteReader,
+		isCommand:   isCommand,
+	}
 
 	// return the pdv reader and success
 	return pdvReader, nil
