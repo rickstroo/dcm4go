@@ -678,3 +678,63 @@ func readReleaseRPPDU(reader io.Reader) error {
 func writeReleaseRPPDU(writer io.Writer) error {
 	return writeReleasePDU(writer, aReleaseRPPDU)
 }
+
+type dataTFPDU struct {
+	pdvs     []*pdv
+	pdvIndex int
+}
+
+func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
+	pdvs := make([]*pdv, 0, 1)
+	for {
+		pdv, err := readPDV(reader)
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			break
+		}
+		pdvs = append(pdvs, pdv)
+	}
+	dataTFPDU := &dataTFPDU{
+		pdvs:     pdvs,
+		pdvIndex: 0,
+	}
+	return dataTFPDU, nil
+}
+
+func writeDataTFPDU(writer io.Writer, dataTFPDU *dataTFPDU) error {
+
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write the pdvs
+	for _, pdv := range dataTFPDU.pdvs {
+		if err := writePDV(byteWriter, pdv); err != nil {
+			return err
+		}
+	}
+
+	// create a pdu
+	pdu := &pdu{
+		typ: pDataTFPDU,
+		buf: byteWriter.Bytes(),
+	}
+
+	// write the pdu
+	if err := writePDU(writer, pdu); err != nil {
+		return err
+	}
+
+	// return success
+	return nil
+}
+
+func (dataTFPDU *dataTFPDU) nextPDV() *pdv {
+	if dataTFPDU.pdvIndex >= len(dataTFPDU.pdvs) {
+		return nil
+	}
+	pdv := dataTFPDU.pdvs[dataTFPDU.pdvIndex]
+	dataTFPDU.pdvIndex++
+	return pdv
+}
