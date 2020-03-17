@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/rickstroo/dcm4go/dcm4go"
 )
@@ -38,21 +39,38 @@ func main() {
 }
 
 // echo implements using the underlying AE and APIs
-// this is the low level implementation with lots of the guts of dicom
-// hanging out.  it looks like jeremy's implementation.  i'm a little
-// torn, because i like the simplicity of allowing users to access pdus
-// directly, however, there's lots of boiler plate stuff here regarding
-// requesting and releasing associations that is probably best handled
-// in the library.  i think i may end up going back to the old implementation
-// that i've commented out below.  that being said, i may still improve
-// some of the internals.
+func echo(remoteAddr string, localAddr string) {
 
-func echo(remoteAddr string, local string) {
+	// create a local AE
+	localAE := dcm4go.NewAE(localAddr)
+
+	// define some options for the association
+	assocOpts := &dcm4go.AssocOpts{
+		WriteTimeOut: 10 * time.Second,
+		ReadTimeOut:  10 * time.Second,
+		MaxBufLen:    16 * 1024,
+	}
+
+	// set the transfer capabilities
+	capabilities := dcm4go.NewCapabilities()
+	capabilities.Add(
+		dcm4go.NewCapability(
+			dcm4go.VerificationUID,
+			[]string{dcm4go.ImplicitVRLittleEndianUID},
+		),
+	)
+
+	// create the remote AE
+	remoteAE := dcm4go.NewAE(remoteAddr)
 
 	// connect to the remote
-	conn, err := net.Dial("tcp", "localhost:4104")
+	conn, err := net.Dial("tcp", remoteAE.Host+":"+remoteAE.Port)
 	check(err)
-	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
+	log.Printf(
+		"opened connection from %v to %v",
+		conn.LocalAddr(),
+		conn.RemoteAddr(),
+	)
 
 	// ensure the connection gets closed
 	defer func() {
@@ -60,104 +78,21 @@ func echo(remoteAddr string, local string) {
 		log.Printf("closed connection")
 	}()
 
-	// create an associate request
-	assocRQ := &dcm4go.AAssociateRQ{}
-
-	// write it
-	check(assocRQ.Write(conn))
-
-	// read the response
-	pdu, err := dcm4go.ParsePDU(conn)
+	// create an association
+	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
 	check(err)
+	log.Printf(
+		"created association from %s to %s",
+		assoc.CallingAETitle(),
+		assoc.CalledAETitle(),
+	)
 
-	// assume not accepted
-	accepted := false
+	// ensure the association gets released
+	defer func() {
+		check(assoc.RequestRelease())
+		log.Printf("released association")
+	}()
 
-	switch v := pdu.(type) {
-	case *dcm4go.AAbort:
-		log.Printf("associate aborted, %v", v)
-	case *dcm4go.AAssociateAC:
-		log.Printf("association accepted, %v", v)
-		accepted = true
-	case *dcm4go.AAssociateRJ:
-		log.Printf("associate rejected, %v", v)
-	default:
-		log.Printf("hmm, did not expect that, %v", v)
-	}
-
-	if accepted {
-		// create an release request
-		releaseRQ := &dcm4go.AReleaseRQ{}
-
-		// write it
-		check(releaseRQ.Write(conn))
-
-		// read the response
-		pdu, err := dcm4go.ParsePDU(conn)
-		check(err)
-
-		switch v := pdu.(type) {
-		case *dcm4go.AAbort:
-			log.Printf("associate aborted, %v", v)
-		case *dcm4go.AReleaseRP:
-			log.Printf("association released, %v", v)
-		default:
-			log.Printf("hmm, did not expect that, %v", v)
-		}
-	}
+	// send the echo
+	check(assoc.Echo())
 }
-
-// // echo implements using the underlying AE and APIs
-// func echo(remoteAddr string, local string) {
-//
-// 	// create a local AE
-// 	localAE := dcm4go.NewAE(local)
-//
-// 	// define some options for the association
-// 	assocOpts := &dcm4go.AssocOpts{
-// 		WriteTimeOut: 10 * time.Second,
-// 		ReadTimeOut:  10 * time.Second,
-// 		MaxBufLen:    16 * 1024,
-// 	}
-//
-// 	// set the transfer capabilities
-// 	capabilities := dcm4go.NewCapabilities()
-// 	capabilities.Add(
-// 		dcm4go.NewCapability(
-// 			dcm4go.VerificationUID,
-// 			[]string{dcm4go.ImplicitVRLittleEndianUID},
-// 		),
-// 	)
-//
-// 	// create the remote AE
-// 	remoteAE := dcm4go.NewAE(remoteAddr)
-//
-// 	// connect to the remote
-// 	conn, err := net.Dial("tcp", remoteAE.Host+":"+remoteAE.Port)
-// 	check(err)
-// 	log.Printf("opened connection from %v to %v", conn.LocalAddr(), conn.RemoteAddr())
-//
-// 	// ensure the connection gets closed
-// 	defer func() {
-// 		check(conn.Close())
-// 		log.Printf("closed connection")
-// 	}()
-//
-// 	// create an association
-// 	assoc, err := localAE.RequestAssoc(conn, remoteAE, capabilities, assocOpts)
-// 	check(err)
-// 	log.Printf(
-// 		"created association from %s to %s",
-// 		assoc.CallingAETitle(),
-// 		assoc.CalledAETitle(),
-// 	)
-//
-// 	// ensure the association gets released
-// 	defer func() {
-// 		check(assoc.RequestRelease())
-// 		log.Printf("released association")
-// 	}()
-//
-// 	// send the echo
-// 	check(assoc.Echo())
-// }
