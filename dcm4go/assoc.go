@@ -459,6 +459,7 @@ func (assoc *Assoc) Echo() error {
 func (assoc *Assoc) Store(reader io.Reader) error {
 
 	// read the group two attributes
+	// note that this also moves the reader past the group two elements
 	groupTwo, err := ReadGroupTwo(reader, 0)
 	if err != nil {
 		return err
@@ -482,7 +483,11 @@ func (assoc *Assoc) Store(reader io.Reader) error {
 		return err
 	}
 
-	// create a c-store request
+	// create a c-store request.
+	// note that we pass the reader as part of the request.
+	// this will cause the library to read data from the reader, instead of from
+	// provided data.  recall that the reader is now past the group two elements,
+	// so they will not be sent as part of the C-Store request
 	request, err := NewCStoreRequest(assoc, sopClassUID, sopInstanceUID, transferSyntaxUID, reader)
 	if err != nil {
 		return err
@@ -579,11 +584,13 @@ func (assoc *Assoc) readMessage(shouldReadData bool) (*Message, error) {
 }
 
 func onAbort(reader io.Reader) error {
+
 	abortPDU, err := readAbortPDU(reader)
 	if err != nil {
 		return err
 	}
 	log.Printf("received an abort pdu, %v", abortPDU)
+
 	return fmt.Errorf("associate request aborted, %w", ErrAssociationAborted)
 }
 
