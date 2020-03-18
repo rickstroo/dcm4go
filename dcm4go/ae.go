@@ -57,12 +57,12 @@ func parseAddr(addr string) (string, string, string) {
 	return s[0], t[0], t[1]
 }
 
-// RequestAssoc requests an association
+// RequestAssoc requests an association from the local AE to the remote AE.
 func (ae *AE) RequestAssoc(conn net.Conn, remoteAE *AE, capabilities *Capabilities, opts *AssocOpts) (*Assoc, error) {
-	return requestAssoc(conn, ae, remoteAE, capabilities, opts)
+	return RequestAssoc(conn, ae.Title, remoteAE.Title, capabilities, opts)
 }
 
 // AcceptAssoc waits for an association request
 func (ae *AE) AcceptAssoc(conn net.Conn, capabilities *Capabilities, opts *AssocOpts) (*Assoc, error) {
-	return acceptAssoc(conn, ae, capabilities)
+	return AcceptAssoc(conn, ae.Title, capabilities)
 }

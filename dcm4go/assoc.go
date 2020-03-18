@@ -18,7 +18,7 @@ type Assoc struct {
 	conn       net.Conn   // the connection used to exchange information
 	pduReader  *pduReader // a reader of pdus
 	pduWriter  *pduWriter // a writer of pdus
-	ae         *AE        // the ae requesting or accepting the association
+	aeTitle    string     // the ae requesting or accepting the association
 	assocRQPDU *assocPDU  // the associate request
 	assocACPDU *assocPDU  // the associate response (if accepted)
 }
@@ -33,10 +33,10 @@ type AssocOpts struct {
 // String returns a string representation of an association
 func (assoc *Assoc) String() string {
 	return fmt.Sprintf(
-		"conn:{local:%v,remote:%v},ae:%v,assocRQPDU:%v,assocACPDU:%v",
+		"conn:{local:%v,remote:%v},aeTitle:%v,assocRQPDU:%v,assocACPDU:%v",
 		assoc.conn.LocalAddr(),
 		assoc.conn.RemoteAddr(),
-		assoc.ae,
+		assoc.aeTitle,
 		assoc.assocRQPDU,
 		assoc.assocACPDU,
 	)
@@ -57,85 +57,14 @@ func (assoc *Assoc) CallingAETitle() string {
 	return strings.TrimSpace(assoc.assocRQPDU.callingAETitle)
 }
 
-// findAcceptedPCByCapability searches for a presentation context
-// that was accepted for an abstract syntax and transfer syntax.
-func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSyntax string) (*pc, error) {
+// The following methods are used by acceptors of an association.
 
-	// find the abstract syntax from the requested presentation contexts, there may be more than one
-	for _, rqpc := range assoc.assocRQPDU.pcs {
-		if rqpc.abstractSyntax == abstractSyntax {
-			// now, look for the accepted presentation context for the same pcID that was requested
-			for _, acpc := range assoc.assocACPDU.pcs {
-				// if it's for the same id, and for the same transfer syntax id, and it was accepted
-				if acpc.id == rqpc.id &&
-					(transferSyntax == "*" || acpc.transferSyntaxes[0] == transferSyntax) &&
-					acpc.result == pcAcceptance {
-					return acpc, nil
-				}
-			}
-		}
-	}
-
-	// we didn't find anything
-	return nil, fmt.Errorf(
-		"unable to find accepted presentation context for abstract syntax %q and transfer syntax %q",
-		abstractSyntax,
-		transferSyntax,
-	)
-}
-
-// findAcceptedPCByPCID searches for a presentation context
-// that was accepted for a presentation context id.
-func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*pc, error) {
-	for _, pc := range assoc.assocACPDU.pcs {
-		// find the accepted presentation context for the presentation context id
-		if pc.id == pcid && pc.result == pcAcceptance {
-			return pc, nil
-		}
-	}
-
-	// we didn't find anything
-	return nil, fmt.Errorf("unable to find accepted presentation context for presentation context id %d", pcid)
-}
-
-// findAcceptedTransferSyntaxByPCID finds the transfer syntax for the presentation
-// context that was accepted for a presentation context id
-func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*transferSyntax, error) {
-	pc, err := assoc.findAcceptedPCByPCID(pcid)
-	if err != nil {
-		return nil, err
-	}
-	transferSyntax, err := findTransferSyntax(pc.transferSyntaxes[0])
-	if err != nil {
-		return nil, err
-	}
-	return transferSyntax, nil
-}
-
-func (assoc *Assoc) writeMessage(message *Message) error {
-	return writeMessage(assoc, message)
-}
-
-func (assoc *Assoc) readMessage(shouldReadData bool) (*Message, error) {
-	return readMessage(assoc, shouldReadData)
-}
-
-func onAbort(reader io.Reader) error {
-	abortPDU, err := readAbortPDU(reader)
-	if err != nil {
-		return err
-	}
-	log.Printf("received an abort pdu, %v", abortPDU)
-	return fmt.Errorf("associate request aborted, %w", ErrAssociationAborted)
-}
-
-func onUnexpectedPDU(reader io.Reader, pdu *pdu) error {
-	log.Printf("received unexpected pdu type, %v", pdu)
-	return fmt.Errorf("unexpected pdu type, %d, %w", pdu.typ, ErrUnexpectedPDU)
-}
-
-// acceptAssoc accepts an association
-func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, error) {
+// AcceptAssoc accepts an association
+func AcceptAssoc(
+	conn net.Conn,
+	aeTitle string,
+	capabilities *Capabilities,
+) (*Assoc, error) {
 
 	// I've decided not to implement a state machine.
 	// I've looked at a number of implementations and it looks
@@ -173,7 +102,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 	log.Printf("assocRQPDU is %v\n", assocRQPDU)
 
 	// attempt to negotiate an association
-	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, ae, capabilities)
+	assocACPDU, assocRJPDU, err := negotiateAssoc(assocRQPDU, aeTitle, capabilities)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +134,7 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 		conn:       conn,
 		pduReader:  pduReader,
 		pduWriter:  pduWriter,
-		ae:         ae,
+		aeTitle:    aeTitle,
 		assocRQPDU: assocRQPDU,
 		assocACPDU: assocACPDU,
 	}
@@ -218,12 +147,15 @@ func acceptAssoc(conn net.Conn, ae *AE, capabilities *Capabilities) (*Assoc, err
 // negotiateAssoc determines what requested presentation contexts
 // are accepted based on the presentation contexts that are supported
 // by the ae
-func negotiateAssoc(assocRQPDU *assocPDU, ae *AE, capabilities *Capabilities) (*assocPDU, *assocRJPDU, error) {
+func negotiateAssoc(
+	assocRQPDU *assocPDU,
+	aeTitle string,
+	capabilities *Capabilities,
+) (*assocPDU, *assocRJPDU, error) {
 
 	// reject if the called ae title does not match the given ae title
 	calledAETitle := strings.TrimSpace(assocRQPDU.calledAETitle)
-	if calledAETitle != ae.Title {
-		// create and return an associate reject pdu
+	if calledAETitle != aeTitle {
 		assocRJPDU := &assocRJPDU{
 			result: resultRejectedPermanent,
 			source: sourceServiceProviderACSERelatedFunction,
@@ -236,79 +168,81 @@ func negotiateAssoc(assocRQPDU *assocPDU, ae *AE, capabilities *Capabilities) (*
 	assocACPDU := newAssocACPDU(assocRQPDU)
 
 	// negotiate each of the presentation contexts
-	for _, rqPresContext := range assocRQPDU.pcs {
-		pc, err := negotiatePresContext(rqPresContext, capabilities)
+	for _, rqpc := range assocRQPDU.pcs {
+		acpc, err := negotiatePC(rqpc, capabilities)
 		if err != nil {
 			return nil, nil, err
 		}
-		assocACPDU.pcs = append(assocACPDU.pcs, pc)
+		assocACPDU.pcs = append(assocACPDU.pcs, acpc)
 	}
 
 	return assocACPDU, nil, nil
 }
 
-// negotiationPresContext negotiates a single presentation context
-func negotiatePresContext(rqpc *pc, capabilities *Capabilities) (*pc, error) {
+// negotiatePC negotiates a single presentation context
+func negotiatePC(rqpc *pc, capabilities *Capabilities) (*pc, error) {
 
-	// look for a capability for this abstract syntax
-	capability, found := findAbstractSyntaxCapability(rqpc.abstractSyntax, capabilities)
+	// we have not found the abstract syntax at the start
+	foundAbstractSyntax := false
 
-	// if we don't find one, return a failure for this requested presentation context
-	if !found {
+	// search for a matching abstract syntax and transfer syntax across all capabilities
+	for _, capability := range capabilities.capabilities {
+
+		// do we have a matching abstract syntax?
+		if rqpc.abstractSyntax == capability.abstractSyntax {
+
+			// remember that we found an abstract syntax for error reporting purposes
+			foundAbstractSyntax = true
+
+			// if we find a match, now we have to look for a a match of any
+			// of the requested presentation context transfer syntaxes with the
+			// capabilities transfer syntaxes
+			for _, transferSyntax := range rqpc.transferSyntaxes {
+				if containsString(transferSyntax, capability.transferSyntaxes) {
+
+					// found one, create an accepted presentation context
+					pc := &pc{
+						id:               rqpc.id,                  // the id
+						transferSyntaxes: []string{transferSyntax}, // the transfer syntax
+						result:           pcAcceptance,             // acceptance
+					}
+
+					// return the accepted presentation context and success
+					return pc, nil
+				}
+			}
+		}
+
+		// if we don't find a matching transfer syntax for this capability,
+		// we want to continue searching other capabilities, so we carry on
+
+	}
+
+	// if we didn't find any matching abstract syntaxes, report that
+	if !foundAbstractSyntax {
 		pc := &pc{
 			id:     rqpc.id,                      // the id
 			result: pcAbstractSyntaxNotSupported, // reason for failure
 		}
-
-		// return the failed presentation context
 		return pc, nil
 	}
 
-	// look for a matching transfer syntax
-	transferSyntax, found := findTransferSyntaxCapability(rqpc.transferSyntaxes, capability)
-
-	// if we didn't find one, return failure
-	if !found {
-		pc := &pc{
-			id:     rqpc.id,                        // the id
-			result: pcTransferSyntaxesNotSupported, // reason for failure
-		}
-
-		// return the failed presentation context
-		return pc, nil
-	}
-
-	// found one, create an accepted presentation context
+	// otherwise, report that we didn't find any matching transfer syntaxes
 	pc := &pc{
-		id:               rqpc.id,                  // the id
-		transferSyntaxes: []string{transferSyntax}, // the transfer syntax
-		result:           pcAcceptance,             // acceptance
+		id:     rqpc.id,                        // the id
+		result: pcTransferSyntaxesNotSupported, // reason for failure
 	}
-
-	// return the accepted presentation context
 	return pc, nil
 }
 
-// findAbstractSyntaxCapability searches for a capability for an abstract syntax
-func findAbstractSyntaxCapability(rqAbstractSyntax string, capabilities *Capabilities) (*Capability, bool) {
-	for _, capability := range capabilities.capabilities {
-		if rqAbstractSyntax == capability.abstractSyntax {
-			return capability, true
+// containsString searches a slice of strings for a given string
+func containsString(text string, texts []string) bool {
+	for _, t := range texts {
+		if text == t {
+			return true
 		}
 	}
-	return nil, false
-}
-
-// findTransferSyntaxCapability searches for a capability for a transfer syntax
-func findTransferSyntaxCapability(rqTransferSyntaxes []string, capability *Capability) (string, bool) {
-	for _, rqTransferSyntax := range rqTransferSyntaxes {
-		for _, transferSyntax := range capability.transferSyntaxes {
-			if rqTransferSyntax == transferSyntax {
-				return rqTransferSyntax, true
-			}
-		}
-	}
-	return "", false
+	return false
 }
 
 // ReadRequest read a request
@@ -356,11 +290,13 @@ func (assoc *Assoc) WriteResponse(message *Message) error {
 	return assoc.writeMessage(message)
 }
 
-// requestAssoc is used to request an association.
-func requestAssoc(
+// The following methods are used by requestors of an association.
+
+// RequestAssoc is used to request an association.
+func RequestAssoc(
 	conn net.Conn,
-	localAE *AE,
-	remoteAE *AE,
+	callingAETitle string,
+	calledAETitle string,
 	capabilities *Capabilities,
 	opts *AssocOpts,
 ) (*Assoc, error) {
@@ -370,7 +306,7 @@ func requestAssoc(
 	pduWriter := newPDUWriter(conn)
 
 	// put together an association request pdu
-	assocRQPDU := newAssocRQPDU(remoteAE.Title, localAE.Title, capabilities)
+	assocRQPDU := newAssocRQPDU(callingAETitle, calledAETitle, capabilities)
 	log.Printf("assocRQPDU is %v", assocRQPDU)
 
 	// write the pdu
@@ -396,7 +332,7 @@ func requestAssoc(
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("received a associate rejection pdu, %v", assocRJPDU)
+		log.Printf("received an associate rejection pdu, %v", assocRJPDU)
 		return nil, fmt.Errorf("associate request rejeced, %w", ErrAssociateRequestRejected)
 	}
 
@@ -409,7 +345,7 @@ func requestAssoc(
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("received a associate acceptance pdu, %v", assocACPDU)
+	log.Printf("received an associate acceptance pdu, %v", assocACPDU)
 
 	// create an association from the response
 	assoc := &Assoc{
@@ -419,14 +355,13 @@ func requestAssoc(
 		assocRQPDU: assocRQPDU,
 		assocACPDU: assocACPDU,
 	}
-	log.Printf("created association from %v to %v", assoc.CallingAETitle(), assoc.CalledAETitle())
 
 	// return the association
 	return assoc, nil
 }
 
-// RequestRelease requests release from an association
-func (assoc *Assoc) RequestRelease() error {
+// Release requests release from an association
+func (assoc *Assoc) Release() error {
 
 	// write a request release pdu
 	if err := writeReleaseRQPDU(assoc.pduWriter); err != nil {
@@ -576,4 +511,83 @@ func (assoc *Assoc) Store(reader io.Reader) error {
 
 	// otherwise, all is well
 	return nil
+}
+
+// The following methods are used by acceptors and requestors of associations.
+
+// findAcceptedPCByCapability searches for a presentation context
+// that was accepted for an abstract syntax and transfer syntax.
+func (assoc *Assoc) findAcceptedPCByCapability(abstractSyntax string, transferSyntax string) (*pc, error) {
+
+	// find the abstract syntax from the requested presentation contexts, there may be more than one
+	for _, rqpc := range assoc.assocRQPDU.pcs {
+		if rqpc.abstractSyntax == abstractSyntax {
+			// now, look for the accepted presentation context for the same pcID that was requested
+			for _, acpc := range assoc.assocACPDU.pcs {
+				// if it's for the same id, and for the same transfer syntax id, and it was accepted
+				if acpc.id == rqpc.id &&
+					(transferSyntax == "*" || acpc.transferSyntaxes[0] == transferSyntax) &&
+					acpc.result == pcAcceptance {
+					return acpc, nil
+				}
+			}
+		}
+	}
+
+	// we didn't find anything
+	return nil, fmt.Errorf(
+		"unable to find accepted presentation context for abstract syntax %q and transfer syntax %q",
+		abstractSyntax,
+		transferSyntax,
+	)
+}
+
+// findAcceptedPCByPCID searches for a presentation context
+// that was accepted for a presentation context id.
+func (assoc *Assoc) findAcceptedPCByPCID(pcid byte) (*pc, error) {
+	for _, pc := range assoc.assocACPDU.pcs {
+		// find the accepted presentation context for the presentation context id
+		if pc.id == pcid && pc.result == pcAcceptance {
+			return pc, nil
+		}
+	}
+
+	// we didn't find anything
+	return nil, fmt.Errorf("unable to find accepted presentation context for presentation context id %d", pcid)
+}
+
+// findAcceptedTransferSyntaxByPCID finds the transfer syntax for the presentation
+// context that was accepted for a presentation context id
+func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*transferSyntax, error) {
+	pc, err := assoc.findAcceptedPCByPCID(pcid)
+	if err != nil {
+		return nil, err
+	}
+	transferSyntax, err := findTransferSyntax(pc.transferSyntaxes[0])
+	if err != nil {
+		return nil, err
+	}
+	return transferSyntax, nil
+}
+
+func (assoc *Assoc) writeMessage(message *Message) error {
+	return writeMessage(assoc, message)
+}
+
+func (assoc *Assoc) readMessage(shouldReadData bool) (*Message, error) {
+	return readMessage(assoc, shouldReadData)
+}
+
+func onAbort(reader io.Reader) error {
+	abortPDU, err := readAbortPDU(reader)
+	if err != nil {
+		return err
+	}
+	log.Printf("received an abort pdu, %v", abortPDU)
+	return fmt.Errorf("associate request aborted, %w", ErrAssociationAborted)
+}
+
+func onUnexpectedPDU(reader io.Reader, pdu *pdu) error {
+	log.Printf("received unexpected pdu type, %v", pdu)
+	return fmt.Errorf("unexpected pdu type, %d, %w", pdu.typ, ErrUnexpectedPDU)
 }

@@ -1,3 +1,7 @@
+// Copyright 2020 Rick Stroobosscher.  All rights reserved.
+
+// This source file contains the implementation of a DICOM C-Echo SCU.
+
 package main
 
 import (
@@ -75,7 +79,11 @@ func echo(remoteAddr string, localAddr string) {
 	// ensure the connection gets closed
 	defer func() {
 		check(conn.Close())
-		log.Printf("closed connection")
+		log.Printf(
+			"closed connection from %v to %v",
+			conn.LocalAddr(),
+			conn.RemoteAddr(),
+		)
 	}()
 
 	// create an association
@@ -89,8 +97,12 @@ func echo(remoteAddr string, localAddr string) {
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.RequestRelease())
-		log.Printf("released association")
+		check(assoc.Release())
+		log.Printf(
+			"released association from %s to %s",
+			assoc.CallingAETitle(),
+			assoc.CalledAETitle(),
+		)
 	}()
 
 	// send the echo

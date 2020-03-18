@@ -162,7 +162,7 @@ func CreateFileMetaInfo(assoc *Assoc, pcID byte, command *Object) (*Object, erro
 	fmi.addUID(TransferSyntaxUIDTag, transferSyntax.uid)
 	fmi.addUID(ImplementationClassUIDTag, ImplementationClassUID)
 	fmi.addText(ImplementationVersionNameTag, "SH", "dcm4go")
-	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.ae.Title)
+	fmi.addText(SourceApplicationEntityTitleTag, "AE", assoc.aeTitle)
 	fmi.addText(SendingApplicationEntityTitleTag, "AE", assoc.CallingAETitle())
 	fmi.addText(ReceivingApplicationEntityTitleTag, "AE", assoc.CalledAETitle())
 
