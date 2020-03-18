@@ -16,9 +16,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 )
 
+// define the value pdu types
 const (
 	aAssociateRQPDU = 0x01
 	aAssociateACPDU = 0x02
@@ -60,11 +60,23 @@ func readPDU(reader io.Reader) (*pdu, error) {
 		return nil, err
 	}
 
-	// read the contents of the pdu
+	// read the contents of the pdu.
 	// we may want to revisit this in the future
 	// it could be more efficient not to read the bytes
 	// at this point, and use a limited reader to read
-	// the bytes when required
+	// the bytes when required.
+	// on the other hand, if we read the contents of the pdu now, we could
+	// use worker threads to read the pdus from the network and then pass
+	// them up to higher levels of logic for processing.  this might be
+	// a fun project to try at some point.
+	// this decision is perhaps one of the most contentious and significant
+	// in my design in think.
+	// having all the bytes read at this point may also make for more efficent
+	// conversion of bytes into integers, floats and strings.
+	// that being said, the place that we only need to think about efficiency
+	// is the handling of the data pdvs that are contained in pdus.  for the
+	// most part, those data pdvs are going to be copied from the network
+	// to disk, and then back again.
 	buf, err := readBytes(reader, len)
 	if err != nil {
 		return nil, err
@@ -107,11 +119,18 @@ func writePDU(writer io.Writer, pdu *pdu) error {
 	return nil
 }
 
+// writeTo writes a pdu
+func (pdu *pdu) writeTo(writer io.Writer) error {
+	return writePDU(writer, pdu)
+}
+
+// define the sources of an abort
 const (
 	sourceServiceUserInitiatedAbort     = 0x00
 	sourceServiceProviderInitiatedAbort = 0x02
 )
 
+// define the reasons for an abort
 const (
 	reasonNotSpecified              = 0x00
 	reasonUnrecognizedPDU           = 0x01
@@ -121,13 +140,13 @@ const (
 	reasonInvalidPDUParamaeterValue = 0x06
 )
 
-// An abortPDU represents a PDU used to abort associations
+// an abortPDU represents a PDU used to abort associations
 type abortPDU struct {
 	source byte // the initiator of the abort
 	reason byte // the reason for the abort
 }
 
-// readAbortPDU reads an AbortPDU after the base PDU has been read
+// readAbortPDU reads an abortPDU after the base PDU has been read
 func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 
 	// skip two bytes, as per the standard
@@ -156,7 +175,7 @@ func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 	return abortPDU, nil
 }
 
-// writeTo writes an AbortPDU to a writer
+// writeAbortPDU writes an AbortPDU to a writer
 func writeAbortPDU(writer io.Writer, abortPDU *abortPDU) error {
 
 	// create a byte writer
@@ -197,14 +216,23 @@ func writeAbortPDU(writer io.Writer, abortPDU *abortPDU) error {
 	return nil
 }
 
-//item types and sub item types
+// writeTo writes an abort pdu
+func (abortPDU *abortPDU) writeTo(writer io.Writer) error {
+	return writeAbortPDU(writer, abortPDU)
+}
+
+// define item types
 const (
-	appContextItemType      = 0x10
-	rqPCItemType            = 0x20
-	acPCItemType            = 0x21
-	abstractSyntaxItemType  = 0x30
-	transferSyntaxItemType  = 0x40
-	userInfoItemType        = 0x50
+	appContextItemType     = 0x10
+	rqPCItemType           = 0x20
+	acPCItemType           = 0x21
+	abstractSyntaxItemType = 0x30
+	transferSyntaxItemType = 0x40
+	userInfoItemType       = 0x50
+)
+
+// define sub item types
+const (
 	maxLengthItemType       = 0x51
 	implClassUIDItemType    = 0x52
 	maxNumOpsItemType       = 0x53
@@ -224,10 +252,10 @@ type assocPDU struct {
 // String returns a string representation of a assocPDU
 func (assocPDU *assocPDU) String() string {
 	return fmt.Sprintf(
-		"{protocol:%v,calledAET:%q,callingAET:%q,appContextName:%q,pcs:%s,userInfo:%s}",
+		"{protocol:%v,calledAETitle:%q,callingAETitle:%q,appContextName:%q,pcs:%s,userInfo:%s}",
 		assocPDU.protocol,
-		strings.TrimSpace(assocPDU.calledAETitle),
-		strings.TrimSpace(assocPDU.callingAETitle),
+		assocPDU.calledAETitle,
+		assocPDU.callingAETitle,
 		assocPDU.appContextName,
 		assocPDU.pcs,
 		assocPDU.userInfo,
@@ -366,7 +394,7 @@ func readAssocPDU(reader io.Reader, pcItemType byte) (*assocPDU, error) {
 	return assocPDU, nil
 }
 
-// writeTo writes an associate PDU
+// writeAssocPDU writes an associate PDU
 func writeAssocPDU(writer io.Writer, assocPDU *assocPDU, pduType byte, pcItemType byte) error {
 
 	// create a byte array output stream so we can calculate the length of the rest of the PDU
@@ -418,8 +446,7 @@ func writeAssocPDU(writer io.Writer, assocPDU *assocPDU, pduType byte, pcItemTyp
 	return nil
 }
 
-// writeVariableItems writes the application context name, the presentation
-// contexts and user info
+// writeVariableItems writes the application context name, the presentation contexts and user info
 func (assocPDU *assocPDU) writeVariableItems(writer io.Writer, pcItemType byte) error {
 
 	// write the application context name
@@ -440,7 +467,7 @@ func (assocPDU *assocPDU) writeVariableItems(writer io.Writer, pcItemType byte) 
 	return nil
 }
 
-// write the application context name
+// writeAppContextName writes the application context name
 func writeAppContextName(writer io.Writer, appContextName string) error {
 
 	// write item type
@@ -481,7 +508,7 @@ func writeAssocRQPDU(writer io.Writer, assocRQPDU *assocPDU) error {
 	return writeAssocPDU(writer, assocRQPDU, aAssociateRQPDU, rqPCItemType)
 }
 
-// create an associate accept PDU from an associate request PDU
+// newAssocACPDU creates an associate accept PDU from an associate request PDU
 func newAssocACPDU(assocRQPDU *assocPDU) *assocPDU {
 	return newAssocPDU(assocRQPDU.calledAETitle, assocRQPDU.callingAETitle, nil)
 }
@@ -491,22 +518,25 @@ func readAssocACPDU(reader io.Reader) (*assocPDU, error) {
 	return readAssocPDU(reader, acPCItemType)
 }
 
-// writeTo writes an associate accept PDU
+// writeAssocACPDU writes an associate accept PDU
 func writeAssocACPDU(writer io.Writer, assocACPDU *assocPDU) error {
 	return writeAssocPDU(writer, assocACPDU, aAssociateACPDU, acPCItemType)
 }
 
+// define the results of association rejection
 const (
 	resultRejectedPermanent = 0x01
 	resultRejectedTransient = 0x02
 )
 
+// define the sources of the results of association rejection
 const (
 	sourceServiceUser                                = 0x01
 	sourceServiceProviderACSERelatedFunction         = 0x02
 	sourceServiceProviderPresentationRelatedFunction = 0x04
 )
 
+// define ther reasons for the results of association rejection
 const (
 	reasonServiceUserNoReasonGiven                      = 0x01
 	reasonServiceUserApplicationContextNameNotSupported = 0x02
@@ -574,7 +604,7 @@ func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 	return assocRJPDU, nil
 }
 
-// writeTo writes an associate reject PDU
+// writeAssocRJPDU writes an associate reject PDU
 func writeAssocRJPDU(writer io.Writer, assocRJPDU *assocRJPDU) error {
 
 	// create a byte writer
@@ -633,7 +663,7 @@ func readReleasePDU(reader io.Reader) error {
 	return nil
 }
 
-// writeTo writes a release request PDU to a writer
+// writeReleasePDU writes a release request PDU to a writer
 func writeReleasePDU(writer io.Writer, pduType byte) error {
 
 	// create a byte writer
@@ -684,9 +714,17 @@ type dataTFPDU struct {
 	pdvIndex int
 }
 
+// readDataTFPDU parses a data transfer pdu
 func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
+
+	// initialize a list of pdvs
 	pdvs := make([]*pdv, 0, 1)
+
 	for {
+
+		// read a pdv until there are no more
+		// would like to make this more efficient, as the bulk
+		// of the pdv is really just a slice into the pdu.
 		pdv, err := readPDV(reader)
 		if err != nil {
 			if err != io.EOF {
@@ -694,15 +732,22 @@ func readDataTFPDU(reader io.Reader) (*dataTFPDU, error) {
 			}
 			break
 		}
+
+		// append the pdv to the list of pdvs
 		pdvs = append(pdvs, pdv)
 	}
+
+	// construct a data transfer pdu and initialize the index
 	dataTFPDU := &dataTFPDU{
 		pdvs:     pdvs,
 		pdvIndex: 0,
 	}
+
+	// return the data transfer pdu and success
 	return dataTFPDU, nil
 }
 
+// writeDataTFPDU writers a data transfer pdu
 func writeDataTFPDU(writer io.Writer, dataTFPDU *dataTFPDU) error {
 
 	// create a byte writer
@@ -730,11 +775,23 @@ func writeDataTFPDU(writer io.Writer, dataTFPDU *dataTFPDU) error {
 	return nil
 }
 
+// writeTo writes a data transfer PDU
+func (dataTFPDU *dataTFPDU) writeTo(writer io.Writer) error {
+	return writeDataTFPDU(writer, dataTFPDU)
+}
+
+// nextPDV returns the next PDV from a data transfer PDU
 func (dataTFPDU *dataTFPDU) nextPDV() *pdv {
+
+	// if we are at the end, return nil
 	if dataTFPDU.pdvIndex >= len(dataTFPDU.pdvs) {
 		return nil
 	}
+
+	// get the next pdv and increment the index
 	pdv := dataTFPDU.pdvs[dataTFPDU.pdvIndex]
 	dataTFPDU.pdvIndex++
+
+	// return the pdv
 	return pdv
 }
