@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // define the value pdu types
@@ -328,8 +329,8 @@ func readAssocPDU(reader io.Reader, pcItemType byte) (*assocPDU, error) {
 	// create an association accept or request pdu
 	assocPDU := &assocPDU{
 		protocol:       protocol,
-		calledAETitle:  calledAETitle,
-		callingAETitle: callingAETitle,
+		calledAETitle:  strings.TrimSpace(calledAETitle),
+		callingAETitle: strings.TrimSpace(callingAETitle),
 		pcs:            make([]*pc, 0, 5),
 	}
 
@@ -709,6 +710,8 @@ func writeReleaseRPPDU(writer io.Writer) error {
 	return writeReleasePDU(writer, aReleaseRPPDU)
 }
 
+// a dataTFPDU repesents a data transfer pdu
+// not using this yet, but may do so in the future
 type dataTFPDU struct {
 	pdvs     []*pdv
 	pdvIndex int

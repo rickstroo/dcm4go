@@ -71,7 +71,11 @@ func stores(paths []string, remoteAddr string, local string) {
 	// ensure the connection gets closed
 	defer func() {
 		check(conn.Close())
-		log.Printf("closed connection")
+		log.Printf(
+			"closed connection from %v to %v",
+			conn.LocalAddr(),
+			conn.RemoteAddr(),
+		)
 	}()
 
 	// create an association
@@ -85,8 +89,12 @@ func stores(paths []string, remoteAddr string, local string) {
 
 	// ensure the association gets released
 	defer func() {
-		check(assoc.RequestRelease())
-		log.Printf("released association")
+		check(assoc.Release())
+		log.Printf(
+			"released association from %s to %s",
+			assoc.CallingAETitle(),
+			assoc.CalledAETitle(),
+		)
 	}()
 
 	// send the files
@@ -99,8 +107,8 @@ func stores(paths []string, remoteAddr string, local string) {
 
 // store sends a single file.
 // we do this in a function so that we can use the defer
-// statement to ensure that the file is closed.
-func store(assoc *dcm4go.RequestorAssoc, path string) error {
+// statement to ensure that the file is closed before we exit this function.
+func store(assoc *dcm4go.Assoc, path string) error {
 
 	// open the file
 	file, err := os.Open(path)
@@ -125,5 +133,6 @@ func store(assoc *dcm4go.RequestorAssoc, path string) error {
 	}
 	log.Printf("sent file, %q", path)
 
+	// return success
 	return nil
 }

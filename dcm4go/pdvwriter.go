@@ -85,19 +85,6 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 		return err
 	}
 
-	// write the bytes of the pdv to the byte writer
-	// we really want to make this more efficient
-	// we don't want to copy the bytes and copy them again
-	// oh well, we'll do it this way for now
-	// we should change this so that the pdv and pdu
-	// don't have internall buffers, but just a length
-	// then we can write the pdu and pdv headers followed
-	// by the bytes
-
-	if err := writeBytes(byteWriter, pdvWriter.buf.Bytes()); err != nil {
-		return err
-	}
-
 	// create a PDU
 	pdu := &pdu{}
 	pdu.typ = pDataTFPDU

@@ -49,12 +49,12 @@ func (assoc *Assoc) Conn() net.Conn {
 
 // CalledAETitle returns called ae title from the association request
 func (assoc *Assoc) CalledAETitle() string {
-	return strings.TrimSpace(assoc.assocRQPDU.calledAETitle)
+	return assoc.assocRQPDU.calledAETitle
 }
 
 // CallingAETitle returns calling ae title from the association request
 func (assoc *Assoc) CallingAETitle() string {
-	return strings.TrimSpace(assoc.assocRQPDU.callingAETitle)
+	return assoc.assocRQPDU.callingAETitle
 }
 
 // The following methods are used by acceptors of an association.
