@@ -2,6 +2,131 @@
 
 package dcm4go
 
+import (
+	"io"
+	"log"
+	"net"
+	"time"
+)
+
+// HandleConnection is a quick and dirty entrance into the library
+func HandleConnection(conn net.Conn, aeTitle string) error {
+	machine, err := startMachine(conn)
+	if err != nil {
+		return err
+	}
+	machine.run()
+	machine.stop()
+	return nil
+}
+
+type machine struct {
+	pduInputChan  chan *pdu
+	pduOutputChan chan *pdu
+	artim         *time.Timer
+	//	timerChan     chan *time.Timer
+	// funcChan      chan func()
+}
+
+func startMachine(conn net.Conn) (*machine, error) {
+	pduInputChan := make(chan *pdu, 1)
+	pduOutputChan := make(chan *pdu, 1)
+	pduReader := &pduReader1{reader: conn, pduInputChan: pduInputChan}
+	pduWriter := &pduWriter1{writer: conn, pduOutputChan: pduOutputChan}
+	go pduReader.run()
+	go pduWriter.run()
+	machine := &machine{
+		pduInputChan:  pduInputChan,
+		pduOutputChan: pduOutputChan,
+	}
+	return machine, nil
+}
+
+func (machine *machine) stop() {
+	// stop the timer
+	machine.artim.Stop()
+	// close the pdu output channel to stop the pdu writer
+	close(machine.pduOutputChan)
+	//	close(machine.pduInputChan)
+}
+
+func (machine *machine) run() {
+	machine.artim = time.NewTimer(10 * time.Second)
+	for {
+		select {
+		case pdu, ok := <-machine.pduInputChan:
+			if !ok {
+				log.Printf("pdu input channel closed, machine will stop")
+				return
+			}
+			log.Printf("machine received pdu, %v", pdu)
+
+			// just for fun, we're going to abort after receiving a single pdu
+			abortPDU := &abortPDU{
+				source: sourceServiceProviderInitiatedAbort,
+				reason: reasonNotSpecified,
+			}
+			pdu, err := createAbortPDU(abortPDU)
+			if err != nil {
+				log.Printf("error while creating abort pdu, err is %v", err)
+				return
+			}
+			machine.pduOutputChan <- pdu
+		case <-machine.artim.C:
+			log.Printf("timer went off, resetting")
+			machine.artim.Reset(10 * time.Second)
+		}
+	}
+}
+
+type pduReader1 struct {
+	reader       io.Reader
+	pduInputChan chan *pdu
+}
+
+func (pduReader *pduReader1) run() {
+	for {
+		log.Printf("pdu reader waiting to read a pdu")
+		pdu, err := readPDU(pduReader.reader)
+		if err != nil {
+			if err != io.EOF {
+				log.Printf("error while reading pdu, error is %v", err)
+				break
+			}
+			log.Printf("reached EOF while reading pdus")
+			break
+		}
+		log.Printf("read pdu, %v", pdu)
+		pduReader.pduInputChan <- pdu
+	}
+	// close the channel to let the machine know there are no more pdus
+	close(pduReader.pduInputChan)
+}
+
+type pduWriter1 struct {
+	writer        io.Writer
+	pduOutputChan chan *pdu
+}
+
+func (pduWriter *pduWriter1) run() {
+	for {
+		log.Printf("pdu writer waiting to get a pdu to write")
+		select {
+		case pdu, ok := <-pduWriter.pduOutputChan:
+			if !ok {
+				log.Printf("pdu output channel closed, pdu writer will stop")
+				return
+			}
+			log.Printf("pdu writer received pdu, %v", pdu)
+			if err := writePDU(pduWriter.writer, pdu); err != nil {
+				log.Printf("error while writing pdu, pdu is %v, error is %v", pdu, err)
+			} else {
+				log.Printf("wrote pdu, %v", pdu)
+			}
+		}
+	}
+}
+
 // // Machine implements the DICOM Upper Layer Protocol TCP/IP State Machine
 // // It is a little complicated because the standard mixes the state machines
 // // for the acceptor and requestor of associations.  I'm going to try building
@@ -18,7 +143,7 @@ package dcm4go
 // 	serviceUserInitiatedAbort bool
 // 	aeTitle                   string
 // 	capabilities              *Capabilities
-// 	assocACPDU                *assocACPDU
+// 	assocACPDU                *assocPDU
 // }
 //
 // func (machine *Machine) startTimer() {

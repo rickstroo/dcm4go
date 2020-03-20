@@ -179,33 +179,10 @@ func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 // writeAbortPDU writes an AbortPDU to a writer
 func writeAbortPDU(writer io.Writer, abortPDU *abortPDU) error {
 
-	// create a byte writer
-	byteWriter := new(bytes.Buffer)
-
-	// write a zero byte, as per the standard
-	if err := writeByte(byteWriter, 0x00); err != nil {
-		return nil
-	}
-
-	// write a zero byte, as per the standard
-	if err := writeByte(byteWriter, 0x00); err != nil {
-		return nil
-	}
-
-	// write the source
-	if err := writeByte(byteWriter, abortPDU.source); err != nil {
-		return nil
-	}
-
-	// write the reason
-	if err := writeByte(byteWriter, abortPDU.reason); err != nil {
-		return nil
-	}
-
 	// create a pdu
-	pdu := &pdu{
-		typ: aAbortPDU,
-		buf: byteWriter.Bytes(),
+	pdu, err := createAbortPDU(abortPDU)
+	if err != nil {
+		return err
 	}
 
 	// write the pdu
@@ -215,6 +192,42 @@ func writeAbortPDU(writer io.Writer, abortPDU *abortPDU) error {
 
 	// return success
 	return nil
+}
+
+// createAbortPDU creates an abort pdu
+func createAbortPDU(abortPDU *abortPDU) (*pdu, error) {
+
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write a zero byte, as per the standard
+	if err := writeByte(byteWriter, 0x00); err != nil {
+		return nil, err
+	}
+
+	// write a zero byte, as per the standard
+	if err := writeByte(byteWriter, 0x00); err != nil {
+		return nil, err
+	}
+
+	// write the source
+	if err := writeByte(byteWriter, abortPDU.source); err != nil {
+		return nil, err
+	}
+
+	// write the reason
+	if err := writeByte(byteWriter, abortPDU.reason); err != nil {
+		return nil, err
+	}
+
+	// create a pdu
+	pdu := &pdu{
+		typ: aAbortPDU,
+		buf: byteWriter.Bytes(),
+	}
+
+	// return the podu and success
+	return pdu, nil
 }
 
 // writeTo writes an abort pdu
