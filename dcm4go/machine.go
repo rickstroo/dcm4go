@@ -11,7 +11,8 @@ import (
 
 // HandleConnection is a quick and dirty entrance into the library
 func HandleConnection(conn net.Conn, aeTitle string) error {
-	machine, err := startMachine(conn)
+	sp := &serviceProvider{}
+	machine, err := startMachineForServiceProvider(conn, sp)
 	if err != nil {
 		return err
 	}
@@ -20,17 +21,33 @@ func HandleConnection(conn net.Conn, aeTitle string) error {
 	return nil
 }
 
+type serviceProvider struct {
+}
+
+func (sp *serviceProvider) onAssociateRQ(pdu *pdu) (*pdu, error) {
+	return nil, nil
+}
+
+type serviceUser struct {
+}
+
+// the machine
 type machine struct {
+	state         *state
 	pduInputChan  chan *pdu
 	pduOutputChan chan *pdu
-	artim         *time.Timer
-	//	timerChan     chan *time.Timer
+	artim         *time.Timer // time has a channel built in
 	// funcChan      chan func()
+	eventChan chan *event
+
+	sp *serviceProvider
+	su *serviceUser
 }
 
 func startMachine(conn net.Conn) (*machine, error) {
 	pduInputChan := make(chan *pdu, 1)
 	pduOutputChan := make(chan *pdu, 1)
+	eventChan := make(chan *event, 1)
 	pduReader := &pduReader1{reader: conn, pduInputChan: pduInputChan}
 	pduWriter := &pduWriter1{writer: conn, pduOutputChan: pduOutputChan}
 	go pduReader.run()
@@ -38,7 +55,18 @@ func startMachine(conn net.Conn) (*machine, error) {
 	machine := &machine{
 		pduInputChan:  pduInputChan,
 		pduOutputChan: pduOutputChan,
+		eventChan:     eventChan,
 	}
+	return machine, nil
+}
+
+func startMachineForServiceProvider(conn net.Conn, sp *serviceProvider) (*machine, error) {
+	machine, err := startMachine(conn)
+	if err != nil {
+		return nil, err
+	}
+	machine.sp = sp
+	machine.state = sta2
 	return machine, nil
 }
 
@@ -48,36 +76,56 @@ func (machine *machine) stop() {
 	// close the pdu output channel to stop the pdu writer
 	close(machine.pduOutputChan)
 	//	close(machine.pduInputChan)
+	close(machine.eventChan)
 }
 
-func (machine *machine) run() {
+func (machine *machine) getEvent() *event {
 	machine.artim = time.NewTimer(10 * time.Second)
 	for {
+		log.Printf("waiting for event")
 		select {
+
 		case pdu, ok := <-machine.pduInputChan:
 			if !ok {
 				log.Printf("pdu input channel closed, machine will stop")
-				return
+				return nil
 			}
 			log.Printf("machine received pdu, %v", pdu)
 
-			// just for fun, we're going to abort after receiving a single pdu
-			abortPDU := &abortPDU{
-				source: sourceServiceProviderInitiatedAbort,
-				reason: reasonNotSpecified,
+			// // just for fun, we're going to abort after receiving a single pdu
+			// abortPDU := &abortPDU{
+			// 	source: sourceServiceProviderInitiatedAbort,
+			// 	reason: reasonNotSpecified,
+			// }
+			// pdu, err := createAbortPDU(abortPDU)
+			// if err != nil {
+			// 	log.Printf("error while creating abort pdu, err is %v", err)
+			// 	return
+			// }
+			// machine.pduOutputChan <- pdu
+
+			switch pdu.typ {
+			case aAssociateRQPDU:
+				ev6.pdu = pdu
+				//machine.eventChan <- ev6
+				return ev6
 			}
-			pdu, err := createAbortPDU(abortPDU)
-			if err != nil {
-				log.Printf("error while creating abort pdu, err is %v", err)
-				return
-			}
-			machine.pduOutputChan <- pdu
+
 		case <-machine.artim.C:
 			log.Printf("timer went off, resetting")
 			machine.artim.Reset(10 * time.Second)
+
+			//	machine.eventChan <- ev18
+			return ev18
 		}
 	}
 }
+
+// these pdu readers and pdu writers are kinda nice.
+// they really simplify the management of pdus if you can
+// run them as a separate thread.
+// perhaps this state machine is going to result in something useful.
+// the trick is really to learn how to use channels.
 
 type pduReader1 struct {
 	reader       io.Reader
@@ -165,103 +213,129 @@ func (pduWriter *pduWriter1) run() {
 // 	return nil
 // }
 //
-// // State of the state machine
-// type State struct {
-// 	name        string
-// 	description string
-// 	action      func(*Machine) error
-// }
-//
-// // sta1 is the idle or start state for
-// var sta1 = &State{
-// 	name:        "sta1",
-// 	description: "Idle",
-// 	action:      st1,
-// }
-//
-// // sta2 is the idle or start state for
-// var sta2 = &State{
-// 	name:        "sta2",
-// 	description: "Transport connection open (Awaiting A-ASSOCIATE-RQ PDU)",
-// 	action:      st2,
-// }
-//
-// // sta3 is the idle or start state for
-// var sta3 = &State{
-// 	name:        "sta3",
-// 	description: "Awaiting local A-ASSOCIATE response primitive (from local user)",
-// 	action:      st3,
-// }
-//
-// // sta4 is the idle or start state for
-// var sta4 = &State{
-// 	name:        "sta4",
-// 	description: "Awaiting transport connection opening to complete (from local transport service)",
-// 	action:      st4,
-// }
-//
-// // sta5 is the idle or start state for
-// var sta5 = &State{
-// 	name:        "sta5",
-// 	description: "Awaiting A-ASSOCIATE-AC or A-ASSOCIATE-RJ PDU",
-// 	action:      st5,
-// }
-//
-// // sta6 is the idle or start state for
-// var sta6 = &State{
-// 	name:        "sta6",
-// 	description: "Association established and ready for data transfer",
-// 	action:      st6,
-// }
-//
-// // sta7 is the idle or start state for
-// var sta7 = &State{
-// 	name:        "sta7",
-// 	description: "Awaiting A-RELEASE-RP PDU",
-// 	action:      st7,
-// }
-//
-// // sta8 is the idle or start state for
-// var sta8 = &State{
-// 	name:        "sta8",
-// 	description: "Awaiting local A-RELEASE response primitive (from local user)",
-// 	action:      st8,
-// }
-//
-// // sta9 is the idle or start state for
-// var sta9 = &State{
-// 	name:        "sta9",
-// 	description: "Release collision requestor side; awaiting A-RELEASE response (from local user)",
-// 	action:      st9,
-// }
-//
-// // sta10 is the idle or start state for
-// var sta10 = &State{
-// 	name:        "sta10",
-// 	description: "Release collision acceptor side; awaiting A-RELEASE-RP PDU",
-// 	action:      st10,
-// }
-//
-// // sta11 is the idle or start state for
-// var sta11 = &State{
-// 	name:        "sta11",
-// 	description: "Release collision requestor side; awaiting A-RELEASE-RP PDU",
-// 	action:      st11,
-// }
-//
-// // sta12 is the idle or start state for
-// var sta12 = &State{
-// 	name:        "sta12",
-// 	description: "Release collision acceptor side, awaitint A-RELEASE reasponse primitive (from local user)",
-// 	action:      st12,
-// }
-//
-// // sta13 is the idle or start state for
-// var sta13 = &State{
-// 	name:        "sta13",
-// 	description: "Awaiting Transport Connection Close Indication (Association no longer exists)",
-// 	action:      st13,
-// }
+
+type event struct {
+	name string
+	defn string
+	pdu  *pdu
+}
+
+var ev1 = &event{name: "ev1", defn: "A-ASSOCIATE Request (local user)"}
+var ev2 = &event{name: "ev2", defn: "Transport Connection Confirm (local transport service)"}
+var ev3 = &event{name: "ev3", defn: "A-ASSOCIATE-AC PDU (received on transport connection)"}
+var ev4 = &event{name: "ev4", defn: "A-ASSOCIATE-RJ PDU (received on transport connection)"}
+var ev5 = &event{name: "ev5", defn: "Transport Connection Indication (local transport service)"}
+var ev6 = &event{name: "ev6", defn: "A-ASSOCIATE-RQ PDU (received on transport connection)"}
+var ev7 = &event{name: "ev7", defn: "A-ASSOCIATE response primitive (accept)"}
+var ev8 = &event{name: "ev8", defn: "A-ASSOCIATE response primitive (reject)"}
+var ev9 = &event{name: "ev9", defn: "P-DATA request primitive"}
+var ev10 = &event{name: "ev10", defn: "P-DATA-TF PDU"}
+var ev11 = &event{name: "ev11", defn: "A-RELEASE Request Primitive"}
+var ev12 = &event{name: "ev12", defn: "A-RELEASE-RQ PDU (received on open transport connection)"}
+var ev13 = &event{name: "ev13", defn: "A-RELEASE-RP PDU (received on transport connection)"}
+var ev14 = &event{name: "ev14", defn: "A-RELEASE Response primitive"}
+var ev15 = &event{name: "ev15", defn: "A-ABORT Request primitive"}
+var ev16 = &event{name: "ev16", defn: "A-ABORT PDU (received on open transport connection)"}
+var ev17 = &event{name: "ev17", defn: "Transport connection closed indication (local transport service)"}
+var ev18 = &event{name: "ev18", defn: "ARTIM timer expired (Associate reject/release timer)"}
+var ev19 = &event{name: "ev19", defn: "Unrecognized or invalid PDU received"}
+
+type state struct {
+	name string
+	defn string
+}
+
+var sta1 = &state{name: "sta1", defn: "Idle"}
+var sta2 = &state{name: "sta2", defn: "Transport connection open (Awaiting A-ASSOCIATE-RQ PDU)"}
+var sta3 = &state{name: "sta3", defn: "Awaiting local A-ASSOCIATE response primitive (from local user)"}
+var sta4 = &state{name: "sta4", defn: "Awaiting transport connection opening to complete (from local transport service)"}
+var sta5 = &state{name: "sta5", defn: "Awaiting A-ASSOCIATE-AC or A-ASSOCIATE-RJ PDU"}
+var sta6 = &state{name: "sta6", defn: "Association established and ready for data transfer"}
+var sta7 = &state{name: "sta7", defn: "Awaiting A-RELEASE-RP PDU"}
+var sta8 = &state{name: "sta8", defn: "Awaiting local A-RELEASE response primitive (from local user)"}
+var sta9 = &state{name: "sta9", defn: "Release collision requestor side; awaiting A-RELEASE response (from local user)"}
+var sta10 = &state{name: "sta10", defn: "Release collision acceptor side; awaiting A-RELEASE-RP PDU"}
+var sta11 = &state{name: "sta11", defn: "Release collision requestor side; awaiting A-RELEASE-RP PDU"}
+var sta12 = &state{name: "sta12", defn: "Release collision acceptor side, awaitint A-RELEASE reasponse primitive (from local user)"}
+var sta13 = &state{name: "sta13", defn: "Awaiting Transport Connection Close Indication (Association no longer exists)"}
+
+type action func(*machine, *event) *state
+
+var actions = map[*state]map[*event]action{
+	sta1:  {ev1: ae1},
+	sta2:  {ev6: ae6},
+	sta3:  {},
+	sta4:  {},
+	sta5:  {},
+	sta6:  {},
+	sta7:  {},
+	sta8:  {},
+	sta9:  {},
+	sta10: {},
+	sta11: {},
+	sta12: {},
+	sta13: {},
+}
+
+func (machine *machine) step() *state {
+	event := machine.getEvent()
+	if event == nil {
+		return nil
+	}
+	action := actions[machine.state][event]
+	state := action(machine, event)
+	return state
+}
+
+func (machine *machine) run() {
+	for {
+		state := machine.step()
+		if state == nil {
+			break
+		}
+		machine.state = state
+		if machine.state == sta1 {
+			break
+		}
+	}
+}
+
+func ae1(machine *machine, event *event) *state {
+	return nil
+}
+
+func (machine *machine) startTimer() {
+	machine.artim.Reset(10 * time.Second)
+}
+
+func (machine *machine) stopTimer() {
+	machine.artim.Stop()
+
+}
+func (machine *machine) abort() *state {
+	return sta13
+}
+
+func ae6(machine *machine, event *event) *state {
+	log.Printf("this is where i call the service provider to negotiate the association")
+	machine.stopTimer()
+	pdu, err := machine.sp.onAssociateRQ(event.pdu)
+	if err != nil {
+		return machine.abort()
+	}
+	if pdu.typ == aAssociateACPDU {
+		machine.pduOutputChan <- pdu
+		machine.startTimer()
+		return sta3
+	}
+	if pdu.typ == aAssociateRJPDU {
+		machine.pduOutputChan <- pdu
+		machine.startTimer()
+		return sta13
+	}
+	return machine.abort()
+}
+
 //
 // func st1(machine *Machine) error {
 // 	if machine.acceptor {
@@ -277,6 +351,8 @@ func (pduWriter *pduWriter1) run() {
 // 	if err != nil {
 // 		return nil
 // 	}
+// }
+
 //
 // 	// if it is an A-ASSOCIATE-RQ PDU, handle it
 // 	if pdu.typ == aAssociateRQPDU {
