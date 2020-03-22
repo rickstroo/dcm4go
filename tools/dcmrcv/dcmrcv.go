@@ -50,6 +50,9 @@ func main() {
 		if shutdown {
 			break
 		}
+
+		// break all the time for now
+		break
 	}
 
 	check(listener.Close())
@@ -57,7 +60,35 @@ func main() {
 }
 
 func handleConnection(conn net.Conn, aeTitle string) error {
-	return dcm4go.HandleConnection(conn, aeTitle)
+	// create some capabilities
+	defaultTransferSyntaxes := []string{
+		dcm4go.ImplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRLittleEndianUID,
+		dcm4go.ExplicitVRBigEndianUID,
+	}
+
+	capabilities := dcm4go.NewCapabilities()
+	capabilities.Add(
+		dcm4go.NewCapability(
+			dcm4go.VerificationUID,
+			[]string{dcm4go.ImplicitVRLittleEndianUID},
+		),
+	)
+	capabilities.Add(
+		dcm4go.NewCapability(
+			dcm4go.EnhancedXAImageStorageUID,
+			defaultTransferSyntaxes,
+		),
+	)
+	capabilities.Add(
+		dcm4go.NewCapability(
+			dcm4go.GeneralECGWaveformStorageUID,
+			defaultTransferSyntaxes,
+		),
+	)
+
+	// start the state machine
+	return dcm4go.StartMachineForServiceProvider(conn, aeTitle, capabilities)
 }
 
 // // handleConnection does the actual work, returning an error if it cannot
