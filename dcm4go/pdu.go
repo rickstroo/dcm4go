@@ -408,47 +408,13 @@ func readAssocPDU(reader io.Reader, pcItemType byte) (*assocPDU, error) {
 	return assocPDU, nil
 }
 
-// writeAssocPDU writes an associate PDU
+// writeAssocPDU writes an associate PDU to a writer
 func writeAssocPDU(writer io.Writer, assocPDU *assocPDU, pduType byte, pcItemType byte) error {
 
-	// create a byte array output stream so we can calculate the length of the rest of the PDU
-	byteWriter := new(bytes.Buffer)
-
-	// write the protocol version
-	if err := writeShort(byteWriter, assocPDU.protocol, binary.BigEndian); err != nil {
-		return err
-	}
-
-	// write a short zero
-	if err := writeShort(byteWriter, 0x00, binary.BigEndian); err != nil {
-		return err
-	}
-
-	// write the called ae title
-	if err := writeString(byteWriter, fmt.Sprintf("%-16s", assocPDU.calledAETitle)); err != nil {
-		return err
-	}
-
-	// write the calling ae title
-	if err := writeString(byteWriter, fmt.Sprintf("%-16s", assocPDU.callingAETitle)); err != nil {
-		return err
-	}
-
-	// write thirty two zeroes, zero is the initial value for arrays, so this works
-	var zeros [32]byte
-	if err := writeBytes(byteWriter, zeros[:]); err != nil {
-		return err
-	}
-
-	// write the variable items
-	if err := assocPDU.writeVariableItems(byteWriter, pcItemType); err != nil {
-		return err
-	}
-
 	// create a pdu
-	pdu := &pdu{
-		typ: pduType,
-		buf: byteWriter.Bytes(),
+	pdu, err := createAssocPDU(assocPDU, pduType, pcItemType)
+	if err != nil {
+		return err
 	}
 
 	// write the pdu
@@ -458,6 +424,53 @@ func writeAssocPDU(writer io.Writer, assocPDU *assocPDU, pduType byte, pcItemTyp
 
 	// return success
 	return nil
+}
+
+// createAssocPDU creates an associate PDU
+func createAssocPDU(assocPDU *assocPDU, pduType byte, pcItemType byte) (*pdu, error) {
+
+	// create a byte array output stream so we can calculate the length of the rest of the PDU
+	byteWriter := new(bytes.Buffer)
+
+	// write the protocol version
+	if err := writeShort(byteWriter, assocPDU.protocol, binary.BigEndian); err != nil {
+		return nil, err
+	}
+
+	// write a short zero
+	if err := writeShort(byteWriter, 0x00, binary.BigEndian); err != nil {
+		return nil, err
+	}
+
+	// write the called ae title
+	if err := writeString(byteWriter, fmt.Sprintf("%-16s", assocPDU.calledAETitle)); err != nil {
+		return nil, err
+	}
+
+	// write the calling ae title
+	if err := writeString(byteWriter, fmt.Sprintf("%-16s", assocPDU.callingAETitle)); err != nil {
+		return nil, err
+	}
+
+	// write thirty two zeroes, zero is the initial value for arrays, so this works
+	var zeros [32]byte
+	if err := writeBytes(byteWriter, zeros[:]); err != nil {
+		return nil, err
+	}
+
+	// write the variable items
+	if err := assocPDU.writeVariableItems(byteWriter, pcItemType); err != nil {
+		return nil, err
+	}
+
+	// create a pdu
+	pdu := &pdu{
+		typ: pduType,
+		buf: byteWriter.Bytes(),
+	}
+
+	// return the pdu and success
+	return pdu, nil
 }
 
 // writeVariableItems writes the application context name, the presentation contexts and user info
@@ -522,6 +535,11 @@ func writeAssocRQPDU(writer io.Writer, assocRQPDU *assocPDU) error {
 	return writeAssocPDU(writer, assocRQPDU, aAssociateRQPDU, rqPCItemType)
 }
 
+// createAssocRQPDU creates an associate request
+func createAssocRQPDU(assocRQPDU *assocPDU) (*pdu, error) {
+	return createAssocPDU(assocRQPDU, aAssociateRQPDU, rqPCItemType)
+}
+
 // newAssocACPDU creates an associate accept PDU from an associate request PDU
 func newAssocACPDU(assocRQPDU *assocPDU) *assocPDU {
 	return newAssocPDU(assocRQPDU.calledAETitle, assocRQPDU.callingAETitle, nil)
@@ -535,6 +553,11 @@ func readAssocACPDU(reader io.Reader) (*assocPDU, error) {
 // writeAssocACPDU writes an associate accept PDU
 func writeAssocACPDU(writer io.Writer, assocACPDU *assocPDU) error {
 	return writeAssocPDU(writer, assocACPDU, aAssociateACPDU, acPCItemType)
+}
+
+// createAssocACPDU creates an associate accept PDU
+func createAssocACPDU(assocACPDU *assocPDU) (*pdu, error) {
+	return createAssocPDU(assocACPDU, aAssociateACPDU, acPCItemType)
 }
 
 // define the results of association rejection
@@ -618,41 +641,13 @@ func readAssocRJPDU(reader io.Reader) (*assocRJPDU, error) {
 	return assocRJPDU, nil
 }
 
-// writeAssocRJPDU writes an associate reject PDU
+// writeAssocRJPDU writes an associate reject pdu to a writer
 func writeAssocRJPDU(writer io.Writer, assocRJPDU *assocRJPDU) error {
 
-	// create a byte writer
-	byteWriter := new(bytes.Buffer)
-
-	// write a reserved byte
-	if err := writeByte(byteWriter, 0x00); err != nil {
-		return nil
-	}
-
-	// write a reserved byte
-	if err := writeByte(byteWriter, 0x00); err != nil {
-		return nil
-	}
-
-	// write the result
-	if err := writeByte(byteWriter, assocRJPDU.result); err != nil {
-		return nil
-	}
-
-	// write the source
-	if err := writeByte(byteWriter, assocRJPDU.source); err != nil {
-		return nil
-	}
-
-	// write the reason
-	if err := writeByte(byteWriter, assocRJPDU.reason); err != nil {
-		return nil
-	}
-
 	// create a pdu
-	pdu := &pdu{
-		typ: aAssociateRJPDU,
-		buf: byteWriter.Bytes(),
+	pdu, err := createAssocRJPDU(assocRJPDU)
+	if err != nil {
+		return err
 	}
 
 	// write the pdu
@@ -662,6 +657,42 @@ func writeAssocRJPDU(writer io.Writer, assocRJPDU *assocRJPDU) error {
 
 	// return success
 	return nil
+}
+
+// createAssocRJPDU writes an associate reject PDU
+func createAssocRJPDU(assocRJPDU *assocRJPDU) (*pdu, error) {
+
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write a reserved byte
+	if err := writeByte(byteWriter, 0x00); err != nil {
+		return nil, err
+	}
+
+	// write the result
+	if err := writeByte(byteWriter, assocRJPDU.result); err != nil {
+		return nil, err
+	}
+
+	// write the source
+	if err := writeByte(byteWriter, assocRJPDU.source); err != nil {
+		return nil, err
+	}
+
+	// write the reason
+	if err := writeByte(byteWriter, assocRJPDU.reason); err != nil {
+		return nil, err
+	}
+
+	// create a pdu
+	pdu := &pdu{
+		typ: aAssociateRJPDU,
+		buf: byteWriter.Bytes(),
+	}
+
+	// return the pdu and success
+	return pdu, nil
 }
 
 // readReleasePDU reads an release request pdu
@@ -685,7 +716,7 @@ func writeReleasePDU(writer io.Writer, pduType byte) error {
 
 	// write a long
 	if err := writeLong(byteWriter, 0x00, binary.BigEndian); err != nil {
-		return nil
+		return err
 	}
 
 	// create a pdu
