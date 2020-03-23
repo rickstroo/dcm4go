@@ -140,6 +140,7 @@ var ae6 = &action{n: "ae6", d: "Stop ARTIM timer. If A-ASSOCIATE-RQ acceptable b
 		return sta13
 	},
 }
+
 var ae7 = &action{n: "ae7", d: "Send A-ASSOCIATE-AC PDU.  Next state is Sta6.",
 	f: func(m *machine, d *deed) *state {
 		err := writePDU(m.conn, d.p)
@@ -150,6 +151,7 @@ var ae7 = &action{n: "ae7", d: "Send A-ASSOCIATE-AC PDU.  Next state is Sta6.",
 		return sta6
 	},
 }
+
 var ae8 = &action{n: "ae8", d: "Send A-ASSOCIATE-RJ PDU.  Next state is Sta13.",
 	f: func(m *machine, d *deed) *state {
 		err := writePDU(m.conn, d.p)
@@ -161,35 +163,69 @@ var ae8 = &action{n: "ae8", d: "Send A-ASSOCIATE-RJ PDU.  Next state is Sta13.",
 	},
 }
 
-var dt1 = &action{n: "dt1", d: "", f: func(m *machine, e *deed) *state { return sta6 }}
-var dt2 = &action{n: "dt2", d: "", f: func(m *machine, e *deed) *state { return sta6 }}
+var dt1 = &action{n: "dt1", d: "Send P-DATA-TF PDU.  Next state is Sta6.",
+	f: func(m *machine, d *deed) *state {
+		return sta6
+	},
+}
 
-var ar1 = &action{n: "ar1", d: "", f: func(m *machine, e *deed) *state { return sta7 }}
-var ar2 = &action{n: "ar2", d: "", f: func(m *machine, e *deed) *state { return sta8 }}
-var ar3 = &action{n: "ar3", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var ar4 = &action{n: "ar4", d: "", f: func(m *machine, e *deed) *state { return sta13 }}
-var ar5 = &action{n: "ar5", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var ar6 = &action{n: "ar6", d: "", f: func(m *machine, e *deed) *state { return sta7 }}
-var ar7 = &action{n: "ar8", d: "", f: func(m *machine, e *deed) *state { return sta8 }}
-var ar8 = &action{n: "ar7", d: "",
-	f: func(m *machine, e *deed) *state {
+var dt2 = &action{n: "dt2", d: "Send P-DATA indication primitive.  Next state is Sta6.",
+	f: func(m *machine, d *deed) *state {
+		if err := m.sp.onDataTF(d.p); err != nil {
+			log.Printf("err is %v", err)
+		}
+		return sta6
+	},
+}
+
+var ar1 = &action{n: "ar1", d: "Send A-RELEASE-RQ PDU.  Next state is Sta7.", f: func(m *machine, d *deed) *state { return sta7 }}
+var ar2 = &action{n: "ar2", d: "Issue A-RELEASE indication primitive.  Next state is Sta8.", f: func(m *machine, d *deed) *state { return sta8 }}
+var ar3 = &action{n: "ar3", d: "Issue A-RELEASE confirmation primitive, and close transport connection.  Next state is Sta1.", f: func(m *machine, d *deed) *state { return sta1 }}
+var ar4 = &action{n: "ar4", d: "Issue A-RELEASE-RP PDU and start ARTIM timer.  Next state is Sta13.", f: func(m *machine, d *deed) *state { return sta13 }}
+var ar5 = &action{n: "ar5", d: "Stop ARTIM timer.  Next state is Sta1.",
+	f: func(m *machine, de *deed) *state {
+		m.stopTimer()
+		return sta1
+	},
+}
+var ar6 = &action{n: "ar6", d: "Issue P-DATA indication.  Next state is Sta7.", f: func(m *machine, d *deed) *state { return sta7 }}
+
+var ar7 = &action{n: "ar7", d: "Issue P-DATA-TF PDU.  Next state is Sta8.",
+	f: func(m *machine, d *deed) *state {
+		return sta8
+	},
+}
+
+var ar8 = &action{n: "ar8", d: "Issue A-RELEASE indication (release collision).  If association-requestor (service user), next state is Sta9, other next state is Sta10.",
+	f: func(m *machine, d *deed) *state {
 		if m.isServiceUser {
 			return sta9
 		}
 		return sta10
 	},
 }
-var ar9 = &action{n: "ar9", d: "", f: func(m *machine, e *deed) *state { return sta11 }}
-var ar10 = &action{n: "ar10", d: "", f: func(m *machine, e *deed) *state { return sta12 }}
 
-var aa1 = &action{n: "aa1", d: "", f: func(m *machine, e *deed) *state { return sta13 }}
-var aa2 = &action{n: "aa2", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var aa3 = &action{n: "aa3", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var aa4 = &action{n: "aa4", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var aa5 = &action{n: "aa5", d: "", f: func(m *machine, e *deed) *state { return sta1 }}
-var aa6 = &action{n: "aa6", d: "", f: func(m *machine, e *deed) *state { return sta13 }}
-var aa7 = &action{n: "aa7", d: "", f: func(m *machine, e *deed) *state { return sta13 }}
-var aa8 = &action{n: "aa8", d: "", f: func(m *machine, e *deed) *state { return sta13 }}
+var ar9 = &action{n: "ar9", d: "Send A-RELEASE-RP PDU.  Next state is Sta11.", f: func(m *machine, d *deed) *state { return sta11 }}
+
+var ar10 = &action{n: "ar10", d: "Issue A-RELEASE confirmation primitive.  Next state is Sta12.",
+	f: func(m *machine, d *deed) *state {
+		return sta12
+	},
+}
+
+var aa1 = &action{n: "aa1", d: "Send A-ABORT PDU (service-user source) and start (or restart if already started) ARTIM timer.  Next state is Sta13.",
+	f: func(m *machine, d *deed) *state {
+		return sta13
+	},
+}
+
+var aa2 = &action{n: "aa2", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
+var aa3 = &action{n: "aa3", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
+var aa4 = &action{n: "aa4", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
+var aa5 = &action{n: "aa5", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
+var aa6 = &action{n: "aa6", d: "", f: func(m *machine, d *deed) *state { return sta13 }}
+var aa7 = &action{n: "aa7", d: "", f: func(m *machine, d *deed) *state { return sta13 }}
+var aa8 = &action{n: "aa8", d: "", f: func(m *machine, d *deed) *state { return sta13 }}
 
 var actions = map[*event]map[*state]*action{
 	evt1:  {sta1: ae1},
@@ -200,16 +236,16 @@ var actions = map[*event]map[*state]*action{
 	evt6:  {sta2: ae6, sta3: aa8, sta5: aa8, sta6: aa8, sta7: aa8, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa7},
 	evt7:  {sta3: ae7},
 	evt8:  {sta3: ae8},
-	evt9:  {sta3: aa1, sta4: aa2, sta5: aa1, sta6: aa1, sta7: aa1, sta8: aa1, sta9: aa1, sta10: aa1, sta11: aa1, sta12: aa1},
-	evt10: {sta2: aa2, sta3: aa3, sta5: aa3, sta6: aa3, sta7: aa3, sta8: aa3, sta9: aa3, sta10: aa3, sta11: aa3, sta12: aa3, sta13: aa2},
-	evt11: {sta2: aa5, sta3: aa4, sta5: aa4, sta6: aa4, sta7: aa4, sta8: aa4, sta9: aa4, sta10: aa4, sta11: aa4, sta12: aa4, sta13: ar5},
-	evt12: {sta2: aa2, sta13: aa2},
-	evt13: {sta3: ae8},
-	evt14: {sta6: dt1, sta8: ar7},
-	evt15: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: dt2, sta7: ar6, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa6},
-	evt16: {sta6: ar1},
-	evt17: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: ar2, sta7: ar8, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa6},
-	evt18: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: aa8, sta7: ar3, sta8: aa8, sta9: aa8, sta10: ar10, sta11: ar3, sta12: aa8, sta13: aa6},
+	evt9:  {sta6: dt1, sta8: ar7},
+	evt10: {sta2: aa1, sta3: aa8, sta8: aa3, sta6: dt2, sta7: ar6, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa6},
+	evt11: {sta6: ar1},
+	evt12: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: ar2, sta7: ar8, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa6},
+	evt13: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: aa8, sta7: ar3, sta8: aa8, sta9: aa8, sta10: ar10, sta11: ar3, sta12: aa8, sta13: aa6},
+	evt14: {sta8: ar4, sta9: ar9, sta12: ar4},
+	evt15: {sta3: aa1, sta4: aa2, sta5: aa1, sta6: aa1, sta7: aa1, sta8: aa1, sta9: aa1, sta10: aa1, sta11: aa1, sta12: aa1},
+	evt16: {sta2: aa2, sta3: aa3, sta5: aa3, sta6: aa3, sta7: aa3, sta8: aa3, sta9: aa3, sta10: aa3, sta11: aa3, sta12: aa3, sta13: aa2},
+	evt17: {sta2: aa5, sta3: aa4, sta4: aa4, sta5: aa4, sta6: aa4, sta7: aa4, sta8: aa4, sta9: aa4, sta10: aa4, sta11: aa4, sta12: aa4, sta13: ar5},
+	evt18: {sta2: aa2, sta13: aa2},
 	evt19: {sta2: aa1, sta3: aa8, sta5: aa8, sta6: aa8, sta7: ar8, sta8: aa8, sta9: aa8, sta10: aa8, sta11: aa8, sta12: aa8, sta13: aa7},
 }
 
@@ -287,7 +323,7 @@ func (m *machine) run() error {
 
 // StartMachineForServiceProvider starts the machine for a service provider
 func StartMachineForServiceProvider(conn net.Conn, aeTitle string, capabilities *Capabilities) error {
-	sp := &serviceProvider{aeTitle: aeTitle, capabilities: capabilities}
+	sp := newServiceProvider(aeTitle, capabilities)
 	m := &machine{
 		sp:            sp,                  // the service provider
 		isServiceUser: false,               // is a service provider
