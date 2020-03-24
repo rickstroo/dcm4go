@@ -330,6 +330,7 @@ func StartMachineForServiceProvider(conn net.Conn, aeTitle string, capabilities 
 		deedChan:      make(chan *deed, 1), // a channel for events
 		state:         sta1,                // the idle state
 	}
+	sp.machine = m
 	// the first event is a connection event
 	m.deedChan <- &deed{e: evt5, c: conn}
 	// run the machine

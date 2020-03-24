@@ -8,6 +8,7 @@ import (
 )
 
 type serviceProvider struct {
+	machine      *machine
 	aeTitle      string
 	capabilities *Capabilities
 	pdvInputChan chan *pdv
@@ -84,6 +85,26 @@ func (sp *serviceProvider) onDataTF(p *pdu) error {
 	return nil
 }
 
+func (sp *serviceProvider) onCEcho(command *Object) {
+	log.Printf("received DICOM C-Echo request, command is %v", command)
+
+	//
+	// 	// create a response
+	// 	response, err := dcm4go.NewCEchoResponse(request)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	//
+	// 	// write the response
+	// 	if err := assoc.WriteResponse(response); err != nil {
+	// 		return err
+	// 	}
+	//
+	// 	// all is well
+	// 	return nil
+
+}
+
 type messageReader struct {
 	sp *serviceProvider
 }
@@ -113,6 +134,19 @@ func (mr *messageReader) run() {
 
 		log.Printf("pc id is %v", pcID)
 		log.Printf("command is %v", command)
+
+		commandField, err := command.AsShort(CommandFieldTag, 0)
+		if err != nil {
+			log.Printf("error while getting command field, %v", err)
+			continue
+		}
+		switch commandField {
+		case CEchoRQ:
+			mr.sp.onCEcho(command)
+		default:
+			log.Printf("unrecognized command, %v", command)
+			continue
+		}
 	}
 }
 
