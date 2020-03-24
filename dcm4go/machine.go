@@ -322,7 +322,7 @@ type machine struct {
 }
 
 func (m *machine) startTimer() {
-	m.artim = time.AfterFunc(10*time.Second,
+	m.artim = time.AfterFunc(time.Duration(10)*time.Second,
 		func() {
 			m.deedChan <- &deed{e: evt18}
 		},

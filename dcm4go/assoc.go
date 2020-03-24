@@ -576,7 +576,10 @@ func (assoc *Assoc) findAcceptedTransferSyntaxByPCID(pcid byte) (*transferSyntax
 }
 
 func (assoc *Assoc) writeMessage(message *Message) error {
-	return writeMessage(assoc, message)
+	// create a writer for the network
+	pDataWriter := &pDataNetworkWriter{writer: assoc.pduWriter}
+	// write the message
+	return writeMessage(assoc, message, pDataWriter)
 }
 
 func (assoc *Assoc) readMessage(shouldReadData bool) (*Message, error) {

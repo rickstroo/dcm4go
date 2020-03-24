@@ -4,24 +4,23 @@ package dcm4go
 
 import (
 	"bytes"
-	"io"
 )
 
 // pdvWriter is used to write DICOM data using a series of PDUs and PDVs
 type pdvWriter struct {
-	writer    io.Writer     // the underlying writer
-	pcID      byte          // the presentation context id
-	isCommand bool          // is this a command or a data set?
-	buf       *bytes.Buffer // a buffer to stage into
+	pDataWriter pDataWriter   // the pdu writer
+	pcID        byte          // the presentation context id
+	isCommand   bool          // is this a command or a data set?
+	buf         *bytes.Buffer // a buffer to stage into
 }
 
 // newPDVWriter constructs a new PDataWriter
-func newPDVWriter(writer io.Writer, pcID byte, isCommand bool, maxLen uint32) *pdvWriter {
+func newPDVWriter(pDataWriter pDataWriter, pcID byte, isCommand bool, maxLen uint32) *pdvWriter {
 	return &pdvWriter{
-		writer,
-		pcID,
-		isCommand,
-		bytes.NewBuffer(make([]byte, 0, maxLen-6)), // need to reserve 6 bytes for the PDV
+		pDataWriter: pDataWriter,
+		pcID:        pcID,
+		isCommand:   isCommand,
+		buf:         bytes.NewBuffer(make([]byte, 0, maxLen-6)), // need to reserve 6 bytes for the PDV
 	}
 }
 
@@ -91,7 +90,7 @@ func (pdvWriter *pdvWriter) Flush(isLast bool) error {
 	pdu.buf = byteWriter.Bytes()
 
 	// write the PDU
-	if err := writePDU(pdvWriter.writer, pdu); err != nil {
+	if err := pdvWriter.pDataWriter.writePDU(pdu); err != nil {
 		return err
 	}
 

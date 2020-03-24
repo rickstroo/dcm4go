@@ -173,9 +173,9 @@ func readObject(reader io.Reader, transferSyntax *transferSyntax) (*Object, erro
 }
 
 // WriteMessage writes the message
-func writeMessage(assoc *Assoc, message *Message) error {
+func writeMessage(assoc *Assoc, message *Message, pDataWriter pDataWriter) error {
 
-	if err := writeCommand(assoc.pduWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.command); err != nil {
+	if err := writeCommand(pDataWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.command); err != nil {
 		return err
 	}
 
@@ -186,13 +186,13 @@ func writeMessage(assoc *Assoc, message *Message) error {
 			return err
 		}
 
-		if err := writeData(assoc.pduWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.data, transferSyntax); err != nil {
+		if err := writeData(pDataWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.data, transferSyntax); err != nil {
 			return err
 		}
 
 	} else if message.dataReader != nil {
 
-		if err := copyDataFromReader(assoc.pduWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.dataReader); err != nil {
+		if err := copyDataFromReader(pDataWriter, message.pcID, assoc.assocRQPDU.userInfo.maxLenReceived, message.dataReader); err != nil {
 			return err
 		}
 	}
@@ -202,10 +202,10 @@ func writeMessage(assoc *Assoc, message *Message) error {
 }
 
 // writeCommand writes the command portion of the message
-func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object) error {
+func writeCommand(pDataWriter pDataWriter, pcID byte, maxBufLen uint32, command *Object) error {
 
 	// create a writer to write the data to
-	pdvWriter := newPDVWriter(writer, pcID, true, maxBufLen)
+	pdvWriter := newPDVWriter(pDataWriter, pcID, true, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
@@ -226,10 +226,10 @@ func writeCommand(writer io.Writer, pcID byte, maxBufLen uint32, command *Object
 }
 
 // // writeData writes the data portion of the message
-func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, transferSyntax *transferSyntax) error {
+func writeData(pDataWriter pDataWriter, pcID byte, maxBufLen uint32, data *Object, transferSyntax *transferSyntax) error {
 
 	// create a writer to write the data to
-	pdvWriter := newPDVWriter(writer, pcID, false, maxBufLen)
+	pdvWriter := newPDVWriter(pDataWriter, pcID, false, maxBufLen)
 
 	// create an encoder for writing objects
 	encoder := newEncoder()
@@ -251,7 +251,7 @@ func writeData(writer io.Writer, pcID byte, maxBufLen uint32, data *Object, tran
 
 // copyDataFromReader copies the data from a reader to a stream of PDUs and PDVs
 func copyDataFromReader(
-	writer io.Writer,
+	pDataWriter pDataWriter,
 	pcID byte,
 	maxBufLen uint32,
 	reader io.Reader,
@@ -261,10 +261,10 @@ func copyDataFromReader(
 	// it knows how to create pdus and
 	// since it implements a writer, we can use a copy method
 	pdvWriter := newPDVWriter(
-		writer,    // write to the association connection
-		pcID,      // pc id for each pdv
-		false,     // false means we are writing data
-		maxBufLen, // max length of each pdu
+		pDataWriter, // write to the association connection
+		pcID,        // pc id for each pdv
+		false,       // false means we are writing data
+		maxBufLen,   // max length of each pdu
 	)
 
 	// copy the data
