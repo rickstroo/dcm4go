@@ -165,6 +165,11 @@ var ae8 = &action{n: "ae8", d: "Send A-ASSOCIATE-RJ PDU.  Next state is Sta13.",
 
 var dt1 = &action{n: "dt1", d: "Send P-DATA-TF PDU.  Next state is Sta6.",
 	f: func(m *machine, d *deed) *state {
+		err := writePDU(m.conn, d.p)
+		if err != nil {
+			log.Printf("error while writing P-DATA-TF pdu, error is %v", err)
+			return sta13
+		}
 		return sta6
 	},
 }
