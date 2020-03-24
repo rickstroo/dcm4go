@@ -184,9 +184,28 @@ var dt2 = &action{n: "dt2", d: "Send P-DATA indication primitive.  Next state is
 }
 
 var ar1 = &action{n: "ar1", d: "Send A-RELEASE-RQ PDU.  Next state is Sta7.", f: func(m *machine, d *deed) *state { return sta7 }}
-var ar2 = &action{n: "ar2", d: "Issue A-RELEASE indication primitive.  Next state is Sta8.", f: func(m *machine, d *deed) *state { return sta8 }}
+var ar2 = &action{n: "ar2", d: "Issue A-RELEASE indication primitive.  Next state is Sta8.",
+	f: func(m *machine, d *deed) *state {
+		m.sp.onReleaseRQ(d.p, false)
+		return sta8
+	},
+}
 var ar3 = &action{n: "ar3", d: "Issue A-RELEASE confirmation primitive, and close transport connection.  Next state is Sta1.", f: func(m *machine, d *deed) *state { return sta1 }}
-var ar4 = &action{n: "ar4", d: "Issue A-RELEASE-RP PDU and start ARTIM timer.  Next state is Sta13.", f: func(m *machine, d *deed) *state { return sta13 }}
+var ar4 = &action{n: "ar4", d: "Issue A-RELEASE-RP PDU and start ARTIM timer.  Next state is Sta13.",
+	f: func(m *machine, d *deed) *state {
+		p, e := createReleaseRPPDU()
+		if e != nil {
+			log.Printf("error while creating A-RELEASE-RP PDU, error is %v", e)
+			return sta13
+		}
+		if e := writePDU(m.conn, p); e != nil {
+			log.Printf("error while writing A-RELEASE-RP PDU, error is %v", e)
+			return sta13
+		}
+		m.startTimer()
+		return sta13
+	},
+}
 var ar5 = &action{n: "ar5", d: "Stop ARTIM timer.  Next state is Sta1.",
 	f: func(m *machine, de *deed) *state {
 		m.stopTimer()
@@ -203,6 +222,7 @@ var ar7 = &action{n: "ar7", d: "Issue P-DATA-TF PDU.  Next state is Sta8.",
 
 var ar8 = &action{n: "ar8", d: "Issue A-RELEASE indication (release collision).  If association-requestor (service user), next state is Sta9, other next state is Sta10.",
 	f: func(m *machine, d *deed) *state {
+		m.sp.onReleaseRQ(d.p, true)
 		if m.isServiceUser {
 			return sta9
 		}
@@ -210,7 +230,20 @@ var ar8 = &action{n: "ar8", d: "Issue A-RELEASE indication (release collision). 
 	},
 }
 
-var ar9 = &action{n: "ar9", d: "Send A-RELEASE-RP PDU.  Next state is Sta11.", f: func(m *machine, d *deed) *state { return sta11 }}
+var ar9 = &action{n: "ar9", d: "Send A-RELEASE-RP PDU.  Next state is Sta11.",
+	f: func(m *machine, d *deed) *state {
+		p, e := createReleaseRPPDU()
+		if e != nil {
+			log.Printf("error while creating A-RELEASE-RP PDU, error is %v", e)
+			return sta13
+		}
+		if e := writePDU(m.conn, p); e != nil {
+			log.Printf("error while writing A-RELEASE-RP PDU, error is %v", e)
+			return sta13
+		}
+		return sta11
+	},
+}
 
 var ar10 = &action{n: "ar10", d: "Issue A-RELEASE confirmation primitive.  Next state is Sta12.",
 	f: func(m *machine, d *deed) *state {
@@ -224,7 +257,13 @@ var aa1 = &action{n: "aa1", d: "Send A-ABORT PDU (service-user source) and start
 	},
 }
 
-var aa2 = &action{n: "aa2", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
+var aa2 = &action{n: "aa2", d: "Stop ARTIM timer if running.  Close transport connection.  Next state is Sta1.",
+	f: func(m *machine, d *deed) *state {
+		m.stopTimer()
+		m.conn.Close()
+		return sta1
+	},
+}
 var aa3 = &action{n: "aa3", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
 var aa4 = &action{n: "aa4", d: "", f: func(m *machine, d *deed) *state { return sta1 }}
 var aa5 = &action{n: "aa5", d: "", f: func(m *machine, d *deed) *state { return sta1 }}

@@ -95,6 +95,12 @@ func (sp *serviceProvider) onDataTF(p *pdu) error {
 	return nil
 }
 
+func (sp *serviceProvider) onReleaseRQ(p *pdu, c bool) error {
+	d := &deed{e: evt14}
+	sp.machine.deedChan <- d
+	return nil
+}
+
 func (sp *serviceProvider) onCEcho(request *Message) error {
 	log.Printf("received DICOM C-Echo request, request is %v", request)
 

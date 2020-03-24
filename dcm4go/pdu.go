@@ -711,18 +711,10 @@ func readReleasePDU(reader io.Reader) error {
 // writeReleasePDU writes a release request PDU to a writer
 func writeReleasePDU(writer io.Writer, pduType byte) error {
 
-	// create a byte writer
-	byteWriter := new(bytes.Buffer)
-
-	// write a long
-	if err := writeLong(byteWriter, 0x00, binary.BigEndian); err != nil {
-		return err
-	}
-
 	// create a pdu
-	pdu := &pdu{
-		typ: pduType,
-		buf: byteWriter.Bytes(),
+	pdu, err := createReleasePDU(pduType)
+	if err != nil {
+		return err
 	}
 
 	// write the pdu
@@ -732,6 +724,26 @@ func writeReleasePDU(writer io.Writer, pduType byte) error {
 
 	// return success
 	return nil
+}
+
+func createReleasePDU(pduType byte) (*pdu, error) {
+
+	// create a byte writer
+	byteWriter := new(bytes.Buffer)
+
+	// write a long
+	if err := writeLong(byteWriter, 0x00, binary.BigEndian); err != nil {
+		return nil, err
+	}
+
+	// create a pdu
+	pdu := &pdu{
+		typ: pduType,
+		buf: byteWriter.Bytes(),
+	}
+
+	// return success
+	return pdu, nil
 }
 
 // readReleaseRQPDU reads a release request PDU
@@ -744,6 +756,10 @@ func writeReleaseRQPDU(writer io.Writer) error {
 	return writeReleasePDU(writer, aReleaseRQPDU)
 }
 
+func createReleaseRQPDU() (*pdu, error) {
+	return createReleasePDU(aReleaseRQPDU)
+}
+
 // readReleaseRPPDU reads an associate request
 func readReleaseRPPDU(reader io.Reader) error {
 	return readReleasePDU(reader)
@@ -752,6 +768,9 @@ func readReleaseRPPDU(reader io.Reader) error {
 // writeReleaseRPPDU writes an release request PDU
 func writeReleaseRPPDU(writer io.Writer) error {
 	return writeReleasePDU(writer, aReleaseRPPDU)
+}
+func createReleaseRPPDU() (*pdu, error) {
+	return createReleasePDU(aReleaseRPPDU)
 }
 
 // a dataTFPDU repesents a data transfer pdu
