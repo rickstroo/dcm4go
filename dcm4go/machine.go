@@ -416,12 +416,15 @@ func (nr *networkReader) run() {
 		if err != nil {
 			if err != io.EOF {
 				log.Printf("error while attempting to read pdu, error is %v", err)
-				d := &deed{e: evt19}
+				d := &deed{e: evt19} // unrecognized or invalid pdu received
 				log.Printf("created deed %s", d)
 				nr.dc <- d
 				break
 			}
 			log.Printf("reached EOF while reading pdus")
+			d := &deed{e: evt17} // transport closed
+			log.Printf("created deed %s", d)
+			nr.dc <- d
 			break
 		}
 		log.Printf("read pdu %s", p)
