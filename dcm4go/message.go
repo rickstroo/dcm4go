@@ -63,11 +63,11 @@ func isDataSetPresent(commandDataSetType uint16) bool {
 	return commandDataSetType != NoDataSetCode
 }
 
-func readMessage(assoc *Assoc, shouldReadData bool) (*Message, error) {
+func readMessage(assoc *Assoc, shouldReadData bool, pDataReader pDataReader) (*Message, error) {
 
 	// create a reader for the command
 	// start by reading from the pdu that was provided
-	commandReader, err := newPDVReader(assoc.pduReader, true)
+	commandReader, err := newPDVReader(pDataReader, true)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func readMessage(assoc *Assoc, shouldReadData bool) (*Message, error) {
 	if isDataSetPresent(commandDataSet) {
 
 		// create a reader for the data
-		dataReader, err := newPDVReader(assoc.pduReader, false)
+		dataReader, err := newPDVReader(pDataReader, false)
 		if err != nil {
 			return nil, err
 		}

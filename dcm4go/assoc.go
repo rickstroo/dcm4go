@@ -583,7 +583,10 @@ func (assoc *Assoc) writeMessage(message *Message) error {
 }
 
 func (assoc *Assoc) readMessage(shouldReadData bool) (*Message, error) {
-	return readMessage(assoc, shouldReadData)
+	// create pDataReader
+	pDataReader := &pDataNetworkReader{pduReader: assoc.pduReader}
+	// read the message
+	return readMessage(assoc, shouldReadData, pDataReader)
 }
 
 func onAbort(reader io.Reader) error {
