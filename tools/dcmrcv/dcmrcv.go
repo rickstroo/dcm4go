@@ -65,35 +65,37 @@ func handleConnection(conn net.Conn, aeTitle string) error {
 	// ensure the connection gets closed
 	//defer conn.Close()
 
-	// create some capabilities
-	defaultTransferSyntaxes := []string{
-		dcm4go.ImplicitVRLittleEndianUID,
-		dcm4go.ExplicitVRLittleEndianUID,
-		dcm4go.ExplicitVRBigEndianUID,
-	}
+	// // create some capabilities
+	// defaultTransferSyntaxes := []string{
+	// 	dcm4go.ImplicitVRLittleEndianUID,
+	// 	dcm4go.ExplicitVRLittleEndianUID,
+	// 	dcm4go.ExplicitVRBigEndianUID,
+	// }
+	//
+	// capabilities := dcm4go.NewCapabilities()
+	// capabilities.Add(
+	// 	dcm4go.NewCapability(
+	// 		dcm4go.VerificationUID,
+	// 		[]string{dcm4go.ImplicitVRLittleEndianUID},
+	// 	),
+	// )
+	// capabilities.Add(
+	// 	dcm4go.NewCapability(
+	// 		dcm4go.EnhancedXAImageStorageUID,
+	// 		defaultTransferSyntaxes,
+	// 	),
+	// )
+	// capabilities.Add(
+	// 	dcm4go.NewCapability(
+	// 		dcm4go.GeneralECGWaveformStorageUID,
+	// 		defaultTransferSyntaxes,
+	// 	),
+	// )
+	//
+	// // start the state machine
+	//	return dcm4go.StartMachineForServiceProvider(conn, aeTitle, capabilities)
 
-	capabilities := dcm4go.NewCapabilities()
-	capabilities.Add(
-		dcm4go.NewCapability(
-			dcm4go.VerificationUID,
-			[]string{dcm4go.ImplicitVRLittleEndianUID},
-		),
-	)
-	capabilities.Add(
-		dcm4go.NewCapability(
-			dcm4go.EnhancedXAImageStorageUID,
-			defaultTransferSyntaxes,
-		),
-	)
-	capabilities.Add(
-		dcm4go.NewCapability(
-			dcm4go.GeneralECGWaveformStorageUID,
-			defaultTransferSyntaxes,
-		),
-	)
-
-	// start the state machine
-	return dcm4go.StartMachineForServiceProvider(conn, aeTitle, capabilities)
+	return dcm4go.Start(conn)
 }
 
 // 	// create an ae for this server
