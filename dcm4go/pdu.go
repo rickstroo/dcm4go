@@ -38,6 +38,9 @@ type pdu struct {
 
 // String returns a string representation of a PDU
 func (pdu *pdu) String() string {
+	if pdu == nil {
+		return "nil"
+	}
 	return fmt.Sprintf("{typ:%v,buf:%v}", pdu.typ, pdu.buf)
 }
 
@@ -174,6 +177,10 @@ func readAbortPDU(reader io.Reader) (*abortPDU, error) {
 	}
 
 	return abortPDU, nil
+}
+
+func decodeAbortPDU(pdu *pdu) (*abortPDU, error) {
+	return readAbortPDU(bytes.NewReader(pdu.buf))
 }
 
 // writeAbortPDU writes an AbortPDU to a writer
